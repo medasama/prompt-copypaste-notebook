@@ -1389,7 +1389,7 @@ function renderView() {
   list.innerHTML = '';
 
   let items = [];
-  let dateOnlySort = false;
+  let sortMode = 'recentlyUsed'; // recentlyUsed(最近使った順) | dateOnly(更新日時順) | favoriteThenDate(お気に入り優先→更新日時順)
   if (currentView === '__trash__') {
     titleEl.textContent = 'ゴミ箱';
     addBtn.style.display = 'none';
@@ -1403,11 +1403,19 @@ function renderView() {
     titleEl.textContent = g ? g.name : '';
     addBtn.style.display = 'block';
     items = notebook.prompts.filter((p) => p.genreId === currentView && !p.trashed);
-    dateOnlySort = !!(g && g.hasImage);
+    sortMode = (g && g.hasImage) ? 'dateOnly' : 'favoriteThenDate';
   }
 
-  const key = dateOnlySort ? (p) => (p.updatedAt || '') : sortKey;
-  items.sort((a, b) => key(b).localeCompare(key(a)));
+  if (sortMode === 'dateOnly') {
+    items.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  } else if (sortMode === 'favoriteThenDate') {
+    items.sort((a, b) => {
+      if (!!a.favorite !== !!b.favorite) return a.favorite ? -1 : 1;
+      return (b.updatedAt || '').localeCompare(a.updatedAt || '');
+    });
+  } else {
+    items.sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
+  }
 
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
@@ -1799,6 +1807,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 編集ポップアップ：閉じる操作＝自動保存
   $('#pn-editor-close-btn').onclick = () => closeEditorSave();
+  // PC（マウス環境）限定：タイトル欄をクリックしたら保存して一覧に戻る
+  const isMouseEnv = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  if (isMouseEnv) {
+    $('#pn-editor-title').addEventListener('click', () => closeEditorSave());
+  }
   $('#pn-editor-overlay').addEventListener('click', (e) => {
     if (e.target === $('#pn-editor-overlay')) closeEditorSave();
   });
