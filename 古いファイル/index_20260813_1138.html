@@ -102,12 +102,6 @@ textarea, input { font-family: inherit; }
 .add-new-btn { display: block; width: 100%; text-align: left; background: var(--paper-card); border: 1px dashed var(--rule-strong); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 20px; color: var(--ink-soft); font-size: 13.5px; box-shadow: var(--shadow); }
 .add-new-btn:hover { background: var(--accent-soft); color: var(--ink); }
 
-.list-toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: stretch; }
-.list-toolbar .add-new-btn { flex: 1 1 200px; margin-bottom: 0; }
-.search-input { flex: 1 1 160px; padding: 12px 14px; border: 1px solid var(--rule-strong); border-radius: var(--radius); background: var(--paper-card); font-size: 13.5px; color: var(--ink); box-shadow: var(--shadow); outline: none; }
-.search-input::placeholder { color: var(--ink-soft); }
-.search-input:focus { border-color: var(--accent); }
-
 .empty-state { color: var(--ink-soft); font-size: 13px; padding: 30px 0; text-align: center; }
 
 /* ============== 編集ポップアップ（共通シェル） ============== */
@@ -192,32 +186,28 @@ textarea, input { font-family: inherit; }
 .undo-hint { font-size: 11px; color: var(--accent); text-decoration: underline; }
 
 @media (max-width: 720px) {
-  .mode-bar { height: 40px; gap: 6px; padding: 0 10px; }
-  .mode-btn { padding: 6px 12px; font-size: 12px; }
-  .mode-shell-btn { font-size: 10.5px; padding: 5px 8px; }
-  .app-mode { min-height: calc(100vh - 40px); }
-
   #cp-app-screen.active, #pn-app-screen.active { flex-direction: column; }
   .spiral { display: none; }
   .tabs {
-    width: 100%; flex-direction: row; flex-wrap: wrap; flex-shrink: 0;
-    padding: 10px 12px; gap: 6px;
+    width: 100%; flex-direction: row; flex-wrap: nowrap; flex-shrink: 0;
+    padding: 12px 12px; gap: 6px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
+  .tabs::-webkit-scrollbar { display: none; }
   .tab-btn { margin-right: 0; flex-shrink: 0; padding: 6px 12px; font-size: 12px; border-radius: 14px; }
   .tab-btn.active { transform: none; }
   .tab-btn.trash-tab { margin-top: 0; }
-  .tab-add-row { padding: 0; flex-shrink: 0; width: auto; }
-  .tab-add-row button { white-space: nowrap; padding: 6px 10px; font-size: 11px; width: auto; }
+  .tab-add-row { padding: 0; flex-shrink: 0; }
+  .tab-add-row button { white-space: nowrap; padding: 6px 10px; font-size: 11px; }
 
-  .main { padding: 14px 14px; }
-  .main-header { margin-bottom: 10px; gap: 4px 10px; }
+  .main { padding: 16px 14px; }
+  .main-header { margin-bottom: 14px; gap: 4px 10px; }
   .main-header h2 { font-size: 16px; max-width: 55vw; }
   .header-actions { gap: 8px; }
   #cp-export-btn, #cp-import-label, #pn-export-btn, #pn-import-label { display: none; }
 
-  .list-toolbar { margin-bottom: 12px; gap: 8px; }
-  .add-new-btn { padding: 10px 12px; font-size: 13px; }
-  .search-input { padding: 10px 12px; font-size: 13px; }
+  .add-new-btn { padding: 10px 12px; margin-bottom: 14px; font-size: 13px; }
 
   .prompt-card { padding: 8px 12px; margin-bottom: 6px; }
   .prompt-card .thumb { width: 38px; height: 38px; }
@@ -271,10 +261,7 @@ textarea, input { font-family: inherit; }
       </div>
     </div>
 
-    <div class="list-toolbar">
-      <button class="add-new-btn" id="cp-add-new-btn">＋ 新規追加</button>
-      <input type="text" class="search-input" id="cp-search-input" placeholder="🔍 検索">
-    </div>
+    <button class="add-new-btn" id="cp-add-new-btn">＋ 新規追加</button>
 
     <div class="sheet" id="cp-item-sheet">
       <div id="cp-item-list"></div>
@@ -332,10 +319,7 @@ textarea, input { font-family: inherit; }
       </div>
     </div>
 
-    <div class="list-toolbar">
-      <button class="add-new-btn" id="pn-add-new-btn">＋ 新しいプロンプトを追加</button>
-      <input type="text" class="search-input" id="pn-search-input" placeholder="🔍 検索">
-    </div>
+    <button class="add-new-btn" id="pn-add-new-btn">＋ 新しいプロンプトを追加</button>
 
     <div id="pn-prompt-list"></div>
     <div class="empty-state" id="pn-empty-state" style="display:none;">まだプロンプトがありません</div>
@@ -346,7 +330,6 @@ textarea, input { font-family: inherit; }
   <div class="editor-panel" id="pn-editor-panel">
     <div class="editor-topbar">
       <input type="text" id="pn-editor-title" placeholder="タイトル（任意）">
-      <button id="pn-editor-tentative-title-btn" title="本文の語句から仮タイトルを作成">🪄</button>
       <button id="pn-editor-copy-btn" title="コピー">📋</button>
       <button id="pn-editor-fav-btn" title="お気に入り">☆</button>
       <button id="pn-editor-close-btn">✕</button>
@@ -362,7 +345,6 @@ textarea, input { font-family: inherit; }
         📎 画像を添付
         <input type="file" id="pn-editor-image-input" accept="image/*" style="display:none;">
       </label>
-      <button class="file-label" id="pn-clipboard-paste-btn" type="button">📋 クリップボードから貼り付け</button>
       <p class="paste-hint">画像はここに貼り付け(Ctrl+V)、またはドラッグ＆ドロップでも添付できます</p>
     </div>
   </div>
@@ -616,7 +598,6 @@ let cachedSalt = null;
 let notebook = null;
 let currentView = null;
 let editMode = false;
-let searchQuery = '';
 let copyToastTimer = null;
 
 function uid() {
@@ -787,11 +768,6 @@ function renderView() {
     const aKey = a.lastUsedAt || a.updatedAt || '';
     return bKey.localeCompare(aKey);
   });
-
-  if (searchQuery) {
-    const q = searchQuery.toLowerCase();
-    items = items.filter((it) => (it.title || '').toLowerCase().includes(q) || (it.text || '').toLowerCase().includes(q));
-  }
   $('#cp-empty-state').style.display = items.length ? 'none' : 'block';
   items.forEach((it) => list.appendChild(renderRow(it)));
 }
@@ -1025,7 +1001,6 @@ window.addEventListener('DOMContentLoaded', () => {
     e.target.value = '';
   });
   $('#cp-add-new-btn').onclick = () => openEditor(null);
-  $('#cp-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderView(); });
   $('#cp-genre-cancel-btn').onclick = closeGenreDialog;
   $('#cp-genre-confirm-btn').onclick = confirmAddGenre;
 
@@ -1169,33 +1144,12 @@ function unsubscribeRealtime() {
 
 // ============== アプリ本体 ==============
 const PALETTE = ['#35507a', '#7a3b4e', '#3f6b52', '#8a6a2f', '#5a4a7a', '#2f6a6b'];
-
-// 仮タイトル抽出用の単語リスト（AI不使用・単純な文字列一致。語幹で登録すると活用違いも拾える）
-const TITLE_KEYWORDS = [
-  // 視点
-  'POV',
-  // 時間帯
-  '夜', '深夜', '朝', '昼', '夕方', '明け方',
-  // 場所
-  '路地', '車内', 'ベッド', '室内', '屋外', '浴室', '玄関', '廃墟', '森', '海', '部屋', 'ホテル', 'フローリング', '和室', 'ラグ', '布団', '山', 'アリーナ',
-  // 人数・対象
-  '1人', '2人', '3人', '男', '女', '少女', '少年', '女子', '私',
-  // 行動
-  '連れ去', '拘束', '抵抗', '逃走', '監禁', '尾行', '撮影',
-  // 表情・感情
-  '恐怖', '涙', '汗', '興奮', '緊張', '苦痛', '絶望', '安堵', '嫌', '痛',
-  // 服装・身体
-  'レギンス', 'マスク', '脇',
-  // 状態・その他
-  '荷物', '縛', '裸足', '濡れ', '血', '目隠し', '大量', '光沢', '舐め', '食べ', 'クリーム', '塗る', 'ソフト', 'ソフトクリーム', 'チョコソフト', 'はちみつ', 'ハチミツ', '口の周り',
-];
 const $ = (sel) => document.querySelector(sel);
 
 let db = null;
 let encKey = null;
 let notebook = null;
 let currentView = null;
-let searchQuery = '';
 let editUndoMap = new Map();
 let imageUrlCache = new Map();
 
@@ -1408,12 +1362,6 @@ function renderView() {
 
   const key = dateOnlySort ? (p) => (p.updatedAt || '') : sortKey;
   items.sort((a, b) => key(b).localeCompare(key(a)));
-
-  if (searchQuery) {
-    const q = searchQuery.toLowerCase();
-    items = items.filter((p) => (p.title || '').toLowerCase().includes(q) || (p.text || '').toLowerCase().includes(q));
-  }
-
   $('#pn-empty-state').style.display = items.length ? 'none' : 'block';
   items.forEach((p) => list.appendChild(renderCard(p)));
 }
@@ -1779,7 +1727,6 @@ window.addEventListener('DOMContentLoaded', () => {
     e.target.value = '';
   });
   $('#pn-add-new-btn').onclick = () => openEditor(null);
-  $('#pn-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderView(); });
   $('#pn-genre-cancel-btn').onclick = closeGenreDialog;
   $('#pn-genre-confirm-btn').onclick = confirmAddGenre;
   $('#pn-image-modal').onclick = () => $('#pn-image-modal').classList.remove('active');
@@ -1847,60 +1794,20 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 本文を選択して「コピー」(スマホ)／右クリック(PC)した時だけ、その文字列をタイトルに追記する
-  const appendSelectionToTitle = (rawSel) => {
-    if (!editorHasImageGenre) return; // 画像生成用ジャンルのみで有効
-    let sel = (rawSel || '').replace(/\s+/g, ' ').trim();
+  // 本文を範囲選択すると、コピペしなくてもその文字列をタイトルに反映
+  const applySelectionToTitle = () => {
+    const ta = $('#pn-editor-text');
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    if (end <= start) return;
+    let sel = ta.value.slice(start, end).replace(/\s+/g, ' ').trim();
     if (!sel) return;
     if (sel.length > 60) sel = sel.slice(0, 60) + '…';
-    const titleEl = $('#pn-editor-title');
-    const current = titleEl.value.trim();
-    if (current && current.includes(sel)) return; // 同じ語句の重複追加を防ぐ
-    let next = current ? current + '・' + sel : sel;
-    if (next.length > 80) next = next.slice(0, 80) + '…';
-    titleEl.value = next;
+    $('#pn-editor-title').value = sel;
   };
-  const getEditorSelection = () => {
-    const ta = $('#pn-editor-text');
-    return ta.value.slice(ta.selectionStart, ta.selectionEnd);
-  };
-  $('#pn-editor-text').addEventListener('copy', () => appendSelectionToTitle(getEditorSelection()));
-  $('#pn-editor-text').addEventListener('contextmenu', () => appendSelectionToTitle(getEditorSelection()));
-
-  // 仮タイトル：単語リストに含まれる語句を本文から抽出して並べる（AI不使用・単純な文字列一致）
-  $('#pn-editor-tentative-title-btn').onclick = () => {
-    const text = $('#pn-editor-text').value;
-    const found = [];
-    for (const kw of TITLE_KEYWORDS) {
-      if (text.includes(kw) && !found.includes(kw)) found.push(kw);
-    }
-    if (!found.length) { alert('該当する語句が見つかりませんでした'); return; }
-    $('#pn-editor-title').value = found.join('、');
-  };
-
-  // クリップボードから画像を貼り付け（対応ブラウザのみ。押した時だけ試行する）
-  $('#pn-clipboard-paste-btn').onclick = async () => {
-    if (!navigator.clipboard || !navigator.clipboard.read) {
-      alert('お使いのブラウザはクリップボードからの画像貼り付けに対応していません');
-      return;
-    }
-    try {
-      const clipItems = await navigator.clipboard.read();
-      for (const item of clipItems) {
-        const imgType = item.types.find((t) => t.startsWith('image/'));
-        if (imgType) {
-          const blob = await item.getType(imgType);
-          const file = new File([blob], 'clipboard-image.png', { type: imgType });
-          setPendingImage(file);
-          return;
-        }
-      }
-      alert('クリップボードに画像が見つかりませんでした');
-    } catch (e) {
-      console.error(e);
-      alert('クリップボードの読み取りに失敗しました（未対応のブラウザか、権限が許可されていない可能性があります）');
-    }
-  };
+  $('#pn-editor-text').addEventListener('select', applySelectionToTitle);
+  $('#pn-editor-text').addEventListener('mouseup', applySelectionToTitle);
+  $('#pn-editor-text').addEventListener('touchend', applySelectionToTitle);
+  $('#pn-editor-text').addEventListener('keyup', (e) => { if (e.shiftKey) applySelectionToTitle(); });
 });
 
 })();
