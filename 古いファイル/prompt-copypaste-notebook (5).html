@@ -1807,6 +1807,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 編集ポップアップ：閉じる操作＝自動保存
   $('#pn-editor-close-btn').onclick = () => closeEditorSave();
+  // PC（マウス環境）限定：タイトル欄をクリックしたら保存して一覧に戻る
+  const isMouseEnv = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  if (isMouseEnv) {
+    $('#pn-editor-title').addEventListener('click', () => closeEditorSave());
+  }
   $('#pn-editor-overlay').addEventListener('click', (e) => {
     if (e.target === $('#pn-editor-overlay')) closeEditorSave();
   });
