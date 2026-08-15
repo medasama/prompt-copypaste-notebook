@@ -2714,23 +2714,23 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ドラッグ＆ドロップでも追加できるようにする
-  // 判定範囲は「追加モーダルが開いている画面全体」にする（箱のピクセル単位の内側だけだと外すと反応しないため）
-  const addModalEl = $('#ms-add-modal');
+  // ドラッグ＆ドロップでも追加できるようにする（モーダル全体が対象）
+  // ブラウザの既定動作（ドロップした画像をページごと開いてしまう）を先に止めておく
+  window.addEventListener('dragover', (e) => e.preventDefault());
+  window.addEventListener('drop', (e) => e.preventDefault());
 
-  window.addEventListener('dragover', (e) => {
+  const addModalEl = $('#ms-add-modal');
+  addModalEl.addEventListener('dragover', (e) => {
     e.preventDefault();
-    if ($('#ms-add-overlay').classList.contains('open')) addModalEl.classList.add('ms-drag-over');
+    e.stopPropagation();
+    addModalEl.classList.add('ms-drag-over');
   });
-  window.addEventListener('dragleave', (e) => {
-    // 画面外に出た時だけ枠を消す（子要素間の出入りでチラつかないように）
-    if (!e.relatedTarget) addModalEl.classList.remove('ms-drag-over');
-  });
-  window.addEventListener('drop', async (e) => {
+  addModalEl.addEventListener('dragleave', () => addModalEl.classList.remove('ms-drag-over'));
+  addModalEl.addEventListener('drop', async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     addModalEl.classList.remove('ms-drag-over');
-    if (!$('#ms-add-overlay').classList.contains('open')) return; // モーダルを開いていない時のドロップは無視
-    console.log('[素材帳] dropイベント発火(window). files:', e.dataTransfer.files);
+    console.log('[素材帳] dropイベント発火. files:', e.dataTransfer.files);
     const file = e.dataTransfer.files && e.dataTransfer.files[0];
     if (!file) { console.warn('[素材帳] dataTransfer.filesが空でした'); return; }
     await ingestImage(file);
