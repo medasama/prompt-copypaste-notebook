@@ -2731,8 +2731,7 @@ window.addEventListener('DOMContentLoaded', () => {
       console.log('[素材帳][診断] dragoverイベント検知. モーダルopen状態:', $('#ms-add-overlay').classList.contains('open'));
       dragoverLogged = true;
     }
-    const materialActive = document.getElementById('material-app').classList.contains('active');
-    if (materialActive) addModalEl.classList.add('ms-drag-over');
+    if ($('#ms-add-overlay').classList.contains('open')) addModalEl.classList.add('ms-drag-over');
   });
   window.addEventListener('dragleave', (e) => {
     dragoverLogged = false;
@@ -2741,15 +2740,10 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   window.addEventListener('drop', async (e) => {
     e.preventDefault();
+    const isOpen = $('#ms-add-overlay').classList.contains('open');
+    console.log('[素材帳][診断] dropイベント検知. モーダルopen状態:', isOpen, ' files:', e.dataTransfer.files, ' types:', e.dataTransfer.types);
     addModalEl.classList.remove('ms-drag-over');
-
-    // 素材帳モードでなければ何もしない（コピペ帳・プロンプト帳の画面へのドロップは無視）
-    const materialActive = document.getElementById('material-app').classList.contains('active');
-    if (!materialActive) return;
-
-    // 追加モーダルがまだ開いていなければ、ドロップをきっかけに自動で開く
-    if (!$('#ms-add-overlay').classList.contains('open')) openAdd();
-
+    if (!isOpen) { console.warn('[素材帳][診断] モーダルが開いていないと判定されたため処理をスキップしました'); return; }
     const file = e.dataTransfer.files && e.dataTransfer.files[0];
     if (!file) {
       console.warn('[素材帳] dataTransfer.filesが空でした', e.dataTransfer && e.dataTransfer.types);
