@@ -2724,26 +2724,19 @@ window.addEventListener('DOMContentLoaded', () => {
   // 判定範囲は「追加モーダルが開いている画面全体」にする（箱のピクセル単位の内側だけだと外すと反応しないため）
   const addModalEl = $('#ms-add-modal');
 
-  let dragoverLogged = false;
   window.addEventListener('dragover', (e) => {
     e.preventDefault();
-    if (!dragoverLogged) {
-      console.log('[素材帳][診断] dragoverイベント検知. モーダルopen状態:', $('#ms-add-overlay').classList.contains('open'));
-      dragoverLogged = true;
-    }
     if ($('#ms-add-overlay').classList.contains('open')) addModalEl.classList.add('ms-drag-over');
   });
   window.addEventListener('dragleave', (e) => {
-    dragoverLogged = false;
     // 画面外に出た時だけ枠を消す（子要素間の出入りでチラつかないように）
     if (!e.relatedTarget) addModalEl.classList.remove('ms-drag-over');
   });
   window.addEventListener('drop', async (e) => {
     e.preventDefault();
-    const isOpen = $('#ms-add-overlay').classList.contains('open');
-    console.log('[素材帳][診断] dropイベント検知. モーダルopen状態:', isOpen, ' files:', e.dataTransfer.files, ' types:', e.dataTransfer.types);
     addModalEl.classList.remove('ms-drag-over');
-    if (!isOpen) { console.warn('[素材帳][診断] モーダルが開いていないと判定されたため処理をスキップしました'); return; }
+    if (!$('#ms-add-overlay').classList.contains('open')) return; // モーダルを開いていない時のドロップは無視
+    console.log('[素材帳] dropイベント発火(window). files:', e.dataTransfer.files);
     const file = e.dataTransfer.files && e.dataTransfer.files[0];
     if (!file) {
       console.warn('[素材帳] dataTransfer.filesが空でした', e.dataTransfer && e.dataTransfer.types);
