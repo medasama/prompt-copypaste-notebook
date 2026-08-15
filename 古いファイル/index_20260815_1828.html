@@ -243,11 +243,6 @@ textarea, input { font-family: inherit; }
 .ms-h1 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 600; margin: 0 0 16px; letter-spacing: -.01em; color: var(--ms-text); }
 
 .ms-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-.ms-search-input {
-  width: 100%; height: 38px; margin-bottom: 10px; background: var(--ms-surface2); border: 1px solid var(--ms-border);
-  border-radius: 12px; color: var(--ms-text); padding: 0 12px; font-size: 13px;
-}
-.ms-search-input::placeholder { color: var(--ms-text-dim); }
 .ms-tab {
   padding: 6px 12px; border-radius: 20px; border: 1px solid var(--ms-border); background: var(--ms-surface);
   color: var(--ms-text-dim); font-size: 12px; font-family: 'IBM Plex Mono', monospace; cursor: pointer; white-space: nowrap;
@@ -349,15 +344,6 @@ textarea, input { font-family: inherit; }
   color: var(--ms-text); padding: 0 12px; font-size: 13px; font-family: 'Inter', sans-serif;
 }
 .ms-chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.ms-new-cat-row { display: flex; gap: 6px; margin-top: 8px; }
-.ms-new-cat-row input[type=text] {
-  flex: 1; height: 34px; background: var(--ms-surface2); border: 1px solid var(--ms-border); border-radius: 10px;
-  color: var(--ms-text); padding: 0 10px; font-size: 12.5px;
-}
-.ms-new-cat-row button {
-  width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--ms-accent); background: var(--ms-accent-dim);
-  color: var(--ms-accent); font-size: 15px; cursor: pointer;
-}
 .ms-chip {
   padding: 7px 13px; border-radius: 20px; border: 1px solid var(--ms-border); background: var(--ms-surface2);
   color: var(--ms-text-dim); font-size: 12px; cursor: pointer;
@@ -384,14 +370,6 @@ textarea, input { font-family: inherit; }
 #material-app input[type=file] { display: none; }
 
 .ms-merge-target { outline: 2px dashed var(--ms-accent); outline-offset: -4px; }
-.ms-selected { outline: 2px solid var(--ms-star); outline-offset: -2px; }
-.ms-select-check {
-  position: absolute; bottom: 8px; left: 8px; width: 22px; height: 22px; border-radius: 50%;
-  border: 1px solid var(--ms-text-dim); background: rgba(0,0,0,.5); color: var(--ms-text);
-  font-size: 13px; display: flex; align-items: center; justify-content: center; pointer-events: none;
-}
-.ms-select-check.on { background: var(--ms-star); border-color: var(--ms-star); color: #1B1A1E; }
-#ms-select-mode-btn.active { background: var(--ms-star); border-color: var(--ms-star); color: #1B1A1E; }
 .ms-group-count {
   position: absolute; bottom: 8px; right: 8px; font-size: 10px; font-family: 'IBM Plex Mono', monospace;
   background: rgba(0,0,0,.6); color: var(--ms-text); padding: 2px 7px; border-radius: 8px; pointer-events: none;
@@ -583,15 +561,11 @@ textarea, input { font-family: inherit; }
 
   <div class="ms-tabs" id="ms-cat-tabs"></div>
 
-  <input type="text" class="ms-search-input" id="ms-search-input" placeholder="🔍 メモ・カテゴリ・サブカテゴリで検索">
-  <div class="ms-tabs" id="ms-tag-chips"></div>
-
   <div class="ms-toolbar">
     <button class="ms-tbtn ms-primary" id="ms-open-add-btn">＋ 追加</button>
     <button class="ms-tbtn" id="ms-quick-paste-btn">📋 貼り付け</button>
     <button class="ms-tbtn ms-fav-filter" id="ms-fav-filter-btn" title="お気に入りのみ表示">★</button>
     <button class="ms-tbtn" id="ms-reveal-all-btn">👁 一括表示/非表示</button>
-    <button class="ms-tbtn" id="ms-select-mode-btn">☑ 複数選択</button>
   </div>
 
   <div class="ms-grid" id="ms-grid"></div>
@@ -620,10 +594,6 @@ textarea, input { font-family: inherit; }
       <input type="text" id="ms-memo-input" placeholder="例：全身・私服" />
       <div class="ms-field-label">カテゴリ</div>
       <div class="ms-chip-row" id="ms-cat-chips"></div>
-      <div class="ms-new-cat-row">
-        <input type="text" id="ms-new-cat-input" placeholder="新しいカテゴリを入力">
-        <button id="ms-new-cat-add-btn">＋</button>
-      </div>
       <button class="ms-modal-submit" id="ms-confirm-add-btn">この内容で追加</button>
     </div>
   </div>
@@ -636,30 +606,7 @@ textarea, input { font-family: inherit; }
 <div class="ms-modal-overlay" id="ms-group-modal-overlay">
   <div class="ms-modal" id="ms-group-modal">
     <div class="ms-modal-head"><h2 id="ms-group-modal-title">グループ</h2><div class="ms-modal-close" id="ms-group-modal-close-btn">✕</div></div>
-    <div class="ms-tabs" id="ms-group-subtabs"></div>
     <div class="ms-group-grid" id="ms-group-grid"></div>
-  </div>
-</div>
-
-<!-- アイテム編集モーダル（メモ・カテゴリ・サブカテゴリ） -->
-<div class="ms-modal-overlay" id="ms-edit-item-overlay">
-  <div class="ms-modal" id="ms-edit-item-modal">
-    <div class="ms-modal-head"><h2>編集</h2><div class="ms-modal-close" id="ms-edit-item-close-btn">✕</div></div>
-    <div class="ms-field-label">メモ（一言ラベル）</div>
-    <input type="text" id="ms-edit-item-memo" placeholder="例：全身・私服" />
-    <div class="ms-field-label">カテゴリ</div>
-    <div class="ms-chip-row" id="ms-edit-item-cat-chips"></div>
-    <div class="ms-new-cat-row">
-      <input type="text" id="ms-edit-new-cat-input" placeholder="新しいカテゴリを入力">
-      <button id="ms-edit-new-cat-add-btn">＋</button>
-    </div>
-    <div class="ms-field-label">サブカテゴリ（任意・例：店員・女子アナ）</div>
-    <div class="ms-chip-row" id="ms-edit-item-subcat-chips"></div>
-    <div class="ms-new-cat-row">
-      <input type="text" id="ms-edit-new-subcat-input" placeholder="新しいサブカテゴリを入力">
-      <button id="ms-edit-new-subcat-add-btn">＋</button>
-    </div>
-    <button class="ms-modal-submit" id="ms-edit-item-save-btn">保存</button>
   </div>
 </div>
 
@@ -2307,19 +2254,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // crypto関数（deriveKey/encryptJSON/decryptJSON/encryptBytes/decryptBytes等）・supabaseクライアントは
   // 共有トップレベル（コピペ帳・プロンプト帳・素材帳 共通）で定義済みのものを使う
 
-  const CATEGORIES = ['モデル', '背景', 'その他']; // 既定のカテゴリ（一度も使われていなくても常に候補に出す）
-
-  // これまでに使われたカテゴリ・グループ内カテゴリを一覧として取得する（新規入力したものも次から候補に出る）
-  function getKnownCategories() {
-    const used = new Set(CATEGORIES);
-    if (stock) stock.items.forEach((x) => { if (x.category) used.add(x.category); });
-    return [...used];
-  }
-  function getKnownSubCategories() {
-    const used = new Set();
-    if (stock) stock.items.forEach((x) => { itemSubCats(x).forEach((s) => { if (s) used.add(s); }); });
-    return [...used];
-  }
+  const CATEGORIES = ['モデル', '背景', 'その他'];
 
   // ============== storage: IndexedDBにこのブラウザ内だけで保存 ==============
   const DB_NAME = 'materialStockDB';
@@ -2428,15 +2363,8 @@ window.addEventListener('DOMContentLoaded', () => {
   let stock = null;
   let activeTab = 'すべて';
   let favOnly = false;
-  let searchQuery = '';
-  let subFilterValue = ''; // 選んでいる大分類の中でのサブカテゴリ絞り込み
   const revealedIds = new Set(); // タップで表示した素材id（セッション限りで永続化しない）
   let bulkRevealState = false; // 一括表示/非表示ボタンの現在の状態（新規追加した素材にも反映する）
-  let selectionMode = false; // 複数選択モード（☑ボタンで切替→タップで選択→ドラッグでまとめてグループ化）
-  const selectedItemIds = new Set();
-  let dragSourceItemIds = null; // 複数選択ドラッグ時の一時保持
-  let suppressClickAfterLongPress = false; // 予備（現在未使用）
-
   const imageUrlCache = new Map();
   const imageBlobCache = new Map();
 
@@ -2605,54 +2533,21 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // ============== タブ ==============
   function renderTabs() {
-    const tabs = ['すべて', ...getKnownCategories()];
+    const tabs = ['すべて', ...CATEGORIES];
     const container = $('#ms-cat-tabs');
     container.innerHTML = '';
     tabs.forEach((t) => {
       const el = document.createElement('div');
       el.className = 'ms-tab' + (t === activeTab ? ' active' : '');
       el.textContent = t;
-      el.onclick = () => { activeTab = t; subFilterValue = ''; renderTabs(); renderGrid(); };
+      el.onclick = () => { activeTab = t; renderTabs(); renderGrid(); };
       container.appendChild(el);
     });
     const trashEl = document.createElement('div');
     trashEl.className = 'ms-tab ms-trash-tab' + (activeTab === '__trash__' ? ' active' : '');
     trashEl.textContent = '🗑 ゴミ箱';
-    trashEl.onclick = () => { activeTab = '__trash__'; subFilterValue = ''; renderTabs(); renderGrid(); };
+    trashEl.onclick = () => { activeTab = '__trash__'; renderTabs(); renderGrid(); };
     container.appendChild(trashEl);
-    renderSubFilterChips();
-  }
-
-  // 選んでいる大分類（モデル等）の中で使われているサブカテゴリだけを絞り込みチップとして出す
-  function getSubCategoriesForCategory(cat) {
-    const used = new Set();
-    if (stock) {
-      stock.items.forEach((x) => {
-        if (x.trashed || x.category !== cat) return;
-        itemSubCats(x).forEach((s) => { if (s) used.add(s); });
-      });
-    }
-    return [...used];
-  }
-  function renderSubFilterChips() {
-    const container = $('#ms-tag-chips');
-    container.innerHTML = '';
-    if (activeTab === 'すべて' || activeTab === '__trash__') { container.style.display = 'none'; return; }
-    const subs = getSubCategoriesForCategory(activeTab);
-    if (!subs.length) { container.style.display = 'none'; return; }
-    container.style.display = 'flex';
-    const allEl = document.createElement('div');
-    allEl.className = 'ms-tab' + (subFilterValue === '' ? ' active' : '');
-    allEl.textContent = 'すべて';
-    allEl.onclick = () => { subFilterValue = ''; renderSubFilterChips(); renderGrid(); };
-    container.appendChild(allEl);
-    subs.forEach((s) => {
-      const el = document.createElement('div');
-      el.className = 'ms-tab' + (subFilterValue === s ? ' active' : '');
-      el.textContent = s;
-      el.onclick = () => { subFilterValue = (subFilterValue === s ? '' : s); renderSubFilterChips(); renderGrid(); };
-      container.appendChild(el);
-    });
   }
 
   // ============== グリッド ==============
@@ -2664,16 +2559,7 @@ window.addEventListener('DOMContentLoaded', () => {
     } else {
       list = stock.items.filter((it) => !it.trashed && (activeTab === 'すべて' || it.category === activeTab));
       if (favOnly) list = list.filter((it) => it.favorite);
-      if (subFilterValue) list = list.filter((it) => itemSubCats(it).includes(subFilterValue));
       list = [...list].sort((a, b) => (Number(!!b.favorite) - Number(!!a.favorite)) || (b.createdAt || '').localeCompare(a.createdAt || ''));
-    }
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter((it) =>
-        (it.memo || '').toLowerCase().includes(q) ||
-        (it.category || '').toLowerCase().includes(q) ||
-        itemSubCats(it).some((s) => s.toLowerCase().includes(q))
-      );
     }
     return list;
   }
@@ -2730,41 +2616,15 @@ window.addEventListener('DOMContentLoaded', () => {
     showToast('まとめました');
   }
 
-  // 複数選択した既存アイテムを、まとめて対象のグループへ結合する
-  async function mergeMultipleIntoGroup(sourceIds, targetId) {
-    const target = stock.items.find((x) => x.id === targetId);
-    if (!target) return;
-    const gid = target.groupId || uid();
-    const oldGids = new Set();
-    sourceIds.forEach((sid) => {
-      const s = stock.items.find((x) => x.id === sid);
-      if (s && s.groupId) oldGids.add(s.groupId);
-    });
-    stock.items.forEach((x) => {
-      if (x.id === target.id || sourceIds.includes(x.id)) x.groupId = gid;
-      else if (oldGids.has(x.groupId)) x.groupId = gid;
-    });
-    await saveStock();
-    renderGrid();
-    showToast(`${sourceIds.length}枚をまとめました`);
-  }
-
   function attachDragMergeHandlers(card, itemId) {
     card.draggable = true;
     card.addEventListener('dragstart', (e) => {
-      if (selectionMode && selectedItemIds.size > 1 && selectedItemIds.has(itemId)) {
-        dragSourceItemIds = [...selectedItemIds];
-        e.dataTransfer.setData('text/x-ms-item-ids', JSON.stringify(dragSourceItemIds));
-        console.log('[素材帳][診断] 複数ドラッグ開始. ids:', dragSourceItemIds);
-      } else {
-        dragSourceItemId = itemId;
-        e.dataTransfer.setData('text/x-ms-item-id', itemId);
-        console.log('[素材帳][診断] 単体ドラッグ開始. id:', itemId, ' selectionMode:', selectionMode, ' selectedItemIds:', [...selectedItemIds]);
-      }
+      dragSourceItemId = itemId;
+      e.dataTransfer.setData('text/x-ms-item-id', itemId);
       e.dataTransfer.effectAllowed = 'move';
     });
     card.addEventListener('dragover', (e) => {
-      const isInternal = e.dataTransfer.types.includes('text/x-ms-item-id') || e.dataTransfer.types.includes('text/x-ms-item-ids');
+      const isInternal = e.dataTransfer.types.includes('text/x-ms-item-id');
       const isExternalFiles = e.dataTransfer.types.includes('Files');
       if (!isInternal && !isExternalFiles) return;
       e.preventDefault();
@@ -2773,23 +2633,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     card.addEventListener('dragleave', () => card.classList.remove('ms-merge-target'));
     card.addEventListener('drop', async (e) => {
-      const isMultiInternal = e.dataTransfer.types.includes('text/x-ms-item-ids');
       const isInternal = e.dataTransfer.types.includes('text/x-ms-item-id');
-      console.log('[素材帳][診断] drop. types:', [...e.dataTransfer.types], ' isMultiInternal:', isMultiInternal, ' isInternal:', isInternal);
-      if (isMultiInternal) {
-        e.preventDefault();
-        e.stopPropagation();
-        card.classList.remove('ms-merge-target');
-        let ids = [];
-        try { ids = JSON.parse(e.dataTransfer.getData('text/x-ms-item-ids')); } catch (err) { ids = dragSourceItemIds || []; }
-        ids = ids.filter((id) => id !== itemId);
-        if (ids.length) await mergeMultipleIntoGroup(ids, itemId);
-        selectionMode = false;
-        selectedItemIds.clear();
-        $('#ms-select-mode-btn').classList.remove('active');
-        renderGrid();
-        return;
-      }
       if (isInternal) {
         e.preventDefault();
         e.stopPropagation();
@@ -2844,13 +2688,12 @@ window.addEventListener('DOMContentLoaded', () => {
   function renderGroupCard(groupId, members) {
     const cover = members[0];
     const card = document.createElement('div');
-    card.className = 'ms-card ms-group-card' + (selectionMode && selectedItemIds.has(cover.id) ? ' ms-selected' : '');
+    card.className = 'ms-card ms-group-card';
     attachDragMergeHandlers(card, cover.id);
 
     const thumb = document.createElement('div');
     const revealed = revealedIds.has(cover.id);
     thumb.className = 'ms-thumb' + (revealed ? ' revealed' : '');
-    thumb.dataset.itemId = cover.id;
     if (revealed && imageUrlCache.has(cover.id)) thumb.style.backgroundImage = `url(${imageUrlCache.get(cover.id)})`;
     const veil = document.createElement('div');
     veil.className = 'ms-veil-icon';
@@ -2864,20 +2707,7 @@ window.addEventListener('DOMContentLoaded', () => {
     countBadge.className = 'ms-group-count';
     countBadge.textContent = `📚 ×${members.length}`;
     thumb.appendChild(countBadge);
-    if (selectionMode) {
-      const checkBadge = document.createElement('div');
-      checkBadge.className = 'ms-select-check' + (selectedItemIds.has(cover.id) ? ' on' : '');
-      checkBadge.textContent = selectedItemIds.has(cover.id) ? '✓' : '';
-      thumb.appendChild(checkBadge);
-    }
     thumb.onclick = async () => {
-      if (suppressClickAfterLongPress) { suppressClickAfterLongPress = false; return; }
-      if (selectionMode) {
-        if (selectedItemIds.has(cover.id)) selectedItemIds.delete(cover.id);
-        else selectedItemIds.add(cover.id);
-        renderGrid();
-        return;
-      }
       if (!revealedIds.has(cover.id)) {
         const url = await loadImageUrl(cover);
         if (!url) { showToast('画像の読み込みに失敗しました'); return; }
@@ -2901,27 +2731,17 @@ window.addEventListener('DOMContentLoaded', () => {
     memo.onclick = () => openGroupModal(groupId);
     card.appendChild(memo);
 
-    const actions = document.createElement('div');
-    actions.className = 'ms-card-actions';
-    const groupEditBtn = document.createElement('button');
-    groupEditBtn.className = 'ms-mini-btn';
-    groupEditBtn.textContent = '✎ このモデルのカテゴリ・メモを編集';
-    groupEditBtn.onclick = (e) => { e.stopPropagation(); openEditGroupModal(groupId); };
-    actions.appendChild(groupEditBtn);
-    card.appendChild(actions);
-
     return card;
   }
 
   function renderCard(it) {
     const card = document.createElement('div');
-    card.className = 'ms-card' + (selectionMode && selectedItemIds.has(it.id) ? ' ms-selected' : '');
+    card.className = 'ms-card';
     if (activeTab !== '__trash__') attachDragMergeHandlers(card, it.id);
 
     const thumb = document.createElement('div');
     const revealed = revealedIds.has(it.id);
     thumb.className = 'ms-thumb' + (revealed ? ' revealed' : '');
-    if (activeTab !== '__trash__') thumb.dataset.itemId = it.id;
     if (revealed && imageUrlCache.has(it.id)) {
       thumb.style.backgroundImage = `url(${imageUrlCache.get(it.id)})`;
     }
@@ -2933,21 +2753,8 @@ window.addEventListener('DOMContentLoaded', () => {
     badge.className = 'ms-cat-badge';
     badge.textContent = it.category;
     thumb.appendChild(badge);
-    if (selectionMode && activeTab !== '__trash__') {
-      const checkBadge = document.createElement('div');
-      checkBadge.className = 'ms-select-check' + (selectedItemIds.has(it.id) ? ' on' : '');
-      checkBadge.textContent = selectedItemIds.has(it.id) ? '✓' : '';
-      thumb.appendChild(checkBadge);
-    }
     thumb.onclick = async () => {
-      if (suppressClickAfterLongPress) { suppressClickAfterLongPress = false; return; }
-      if (selectionMode && activeTab !== '__trash__') {
-        if (selectedItemIds.has(it.id)) selectedItemIds.delete(it.id);
-        else selectedItemIds.add(it.id);
-        renderGrid();
-        return;
-      }
-      if (revealedIds.has(it.id)) { openEditItemModal(it); return; } // 表示済みの画像を再タップすると編集画面
+      if (revealedIds.has(it.id)) return; // 個別タップでは隠さない（一括表示/非表示ボタンでのみ隠す）
       const url = await loadImageUrl(it);
       if (!url) { showToast('画像の読み込みに失敗しました'); return; }
       revealedIds.add(it.id);
@@ -2963,8 +2770,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const memo = document.createElement('div');
     memo.className = 'ms-memo' + (it.memo ? '' : ' placeholder');
-    memo.textContent = it.memo || 'メモ・カテゴリを編集';
-    memo.onclick = () => openEditItemModal(it);
+    memo.textContent = it.memo || 'メモを追加';
+    memo.onclick = async () => {
+      const val = prompt('メモを入力', it.memo || '');
+      if (val !== null) {
+        it.memo = val.trim();
+        it.updatedAt = new Date().toISOString();
+        await saveStock();
+        renderGrid();
+      }
+    };
     card.appendChild(memo);
 
     const actions = document.createElement('div');
@@ -3071,10 +2886,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // ============== グループ詳細モーダル ==============
   let currentGroupId = null;
-  let groupSubTab = 'すべて';
   function openGroupModal(groupId) {
     currentGroupId = groupId;
-    groupSubTab = 'すべて';
     renderGroupModal();
     $('#ms-group-modal-overlay').classList.add('open');
   }
@@ -3086,134 +2899,13 @@ window.addEventListener('DOMContentLoaded', () => {
   $('#ms-group-modal-overlay').addEventListener('click', (e) => { if (e.target === $('#ms-group-modal-overlay')) closeGroupModal(); });
 
   function renderGroupModal() {
-    const allMembers = stock.items.filter((x) => x.groupId === currentGroupId && !x.trashed);
-    const subCats = [...new Set(allMembers.map((m) => m.subCategory).filter(Boolean))];
-    const subTabsContainer = $('#ms-group-subtabs');
-    subTabsContainer.innerHTML = '';
-    if (subCats.length) {
-      ['すべて', ...subCats].forEach((t) => {
-        const el = document.createElement('div');
-        el.className = 'ms-tab' + (t === groupSubTab ? ' active' : '');
-        el.textContent = t;
-        el.onclick = () => { groupSubTab = t; renderGroupModal(); };
-        subTabsContainer.appendChild(el);
-      });
-    }
-    const members = allMembers
-      .filter((m) => groupSubTab === 'すべて' || m.subCategory === groupSubTab)
+    const members = stock.items.filter((x) => x.groupId === currentGroupId && !x.trashed)
       .sort((a, b) => (Number(!!b.favorite) - Number(!!a.favorite)) || (b.createdAt || '').localeCompare(a.createdAt || ''));
-    $('#ms-group-modal-title').textContent = `グループ（${allMembers.length}枚）`;
+    $('#ms-group-modal-title').textContent = `グループ（${members.length}枚）`;
     const grid = $('#ms-group-grid');
     grid.innerHTML = '';
     members.forEach((it) => grid.appendChild(renderGroupMemberCard(it)));
   }
-
-  // ============== アイテム編集モーダル（メモ・カテゴリ・サブカテゴリ） ==============
-  let editingItemId = null;
-  let editingGroupId = null; // 設定時はグループ全員に一括反映する
-  let editItemCategory = CATEGORIES[0];
-  let editItemSubCategories = new Set(); // 複数選択可能
-
-  function itemSubCats(x) { return x.subCategories || (x.subCategory ? [x.subCategory] : []); }
-
-  function openEditItemModal(it) {
-    editingItemId = it.id;
-    editingGroupId = null;
-    $('#ms-edit-item-memo').value = it.memo || '';
-    editItemCategory = it.category || CATEGORIES[0];
-    editItemSubCategories = new Set(itemSubCats(it));
-    renderEditItemCatChips();
-    renderEditItemSubCatChips();
-    $('#ms-edit-item-overlay').classList.add('open');
-  }
-  // モデル（グループ）全体のカテゴリ・メモ・サブカテゴリをまとめて編集する
-  function openEditGroupModal(groupId) {
-    const members = stock.items.filter((x) => x.groupId === groupId && !x.trashed);
-    if (!members.length) return;
-    const cover = members[0];
-    editingItemId = null;
-    editingGroupId = groupId;
-    $('#ms-edit-item-memo').value = cover.memo || '';
-    editItemCategory = cover.category || CATEGORIES[0];
-    editItemSubCategories = new Set(itemSubCats(cover));
-    renderEditItemCatChips();
-    renderEditItemSubCatChips();
-    $('#ms-edit-item-overlay').classList.add('open');
-  }
-  function closeEditItemModal() {
-    $('#ms-edit-item-overlay').classList.remove('open');
-    editingItemId = null;
-    editingGroupId = null;
-  }
-  function renderEditItemCatChips() {
-    const container = $('#ms-edit-item-cat-chips');
-    container.innerHTML = '';
-    getKnownCategories().forEach((c) => {
-      const el = document.createElement('div');
-      el.className = 'ms-chip' + (c === editItemCategory ? ' on' : '');
-      el.textContent = c;
-      el.onclick = () => { editItemCategory = c; renderEditItemCatChips(); };
-      container.appendChild(el);
-    });
-  }
-  function renderEditItemSubCatChips() {
-    const container = $('#ms-edit-item-subcat-chips');
-    container.innerHTML = '';
-    const known = getKnownSubCategories();
-    if (!known.length) { container.style.display = 'none'; return; }
-    container.style.display = 'flex';
-    known.forEach((c) => {
-      const el = document.createElement('div');
-      el.className = 'ms-chip' + (editItemSubCategories.has(c) ? ' on' : '');
-      el.textContent = c;
-      el.onclick = () => {
-        if (editItemSubCategories.has(c)) editItemSubCategories.delete(c);
-        else editItemSubCategories.add(c);
-        renderEditItemSubCatChips();
-      };
-      container.appendChild(el);
-    });
-  }
-  $('#ms-edit-new-cat-add-btn').addEventListener('click', () => {
-    const val = $('#ms-edit-new-cat-input').value.trim();
-    if (!val) return;
-    editItemCategory = val;
-    $('#ms-edit-new-cat-input').value = '';
-    renderEditItemCatChips();
-  });
-  $('#ms-edit-new-cat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#ms-edit-new-cat-add-btn').click(); });
-  $('#ms-edit-new-subcat-add-btn').addEventListener('click', () => {
-    const val = $('#ms-edit-new-subcat-input').value.trim();
-    if (!val) return;
-    editItemSubCategories.add(val);
-    $('#ms-edit-new-subcat-input').value = '';
-    renderEditItemSubCatChips();
-  });
-  $('#ms-edit-new-subcat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#ms-edit-new-subcat-add-btn').click(); });
-
-  $('#ms-edit-item-close-btn').addEventListener('click', closeEditItemModal);
-  $('#ms-edit-item-overlay').addEventListener('click', (e) => { if (e.target === $('#ms-edit-item-overlay')) closeEditItemModal(); });
-  $('#ms-edit-item-save-btn').addEventListener('click', async () => {
-    const memo = $('#ms-edit-item-memo').value.trim();
-    const subArr = [...editItemSubCategories];
-    if (editingGroupId) {
-      // グループ全員のカテゴリ・メモ・サブカテゴリをまとめて更新
-      const members = stock.items.filter((x) => x.groupId === editingGroupId && !x.trashed);
-      members.forEach((m) => {
-        m.memo = memo; m.category = editItemCategory; m.subCategories = subArr;
-        delete m.subCategory; m.updatedAt = new Date().toISOString();
-      });
-    } else {
-      const it = stock.items.find((x) => x.id === editingItemId);
-      if (!it) { closeEditItemModal(); return; }
-      it.memo = memo; it.category = editItemCategory; it.subCategories = subArr;
-      delete it.subCategory; it.updatedAt = new Date().toISOString();
-    }
-    await saveStock();
-    closeEditItemModal();
-    renderGrid();
-    if (currentGroupId) renderGroupModal();
-  });
 
   function renderGroupMemberCard(it) {
     const card = document.createElement('div');
@@ -3228,7 +2920,7 @@ window.addEventListener('DOMContentLoaded', () => {
     veil.innerHTML = '🖼<span>タップで表示</span>';
     thumb.appendChild(veil);
     thumb.onclick = async () => {
-      if (revealedIds.has(it.id)) { openEditItemModal(it); return; }
+      if (revealedIds.has(it.id)) return;
       const url = await loadImageUrl(it);
       if (!url) { showToast('画像の読み込みに失敗しました'); return; }
       revealedIds.add(it.id);
@@ -3295,13 +2987,6 @@ window.addEventListener('DOMContentLoaded', () => {
     };
     actions.appendChild(ungroupBtn);
 
-    const editBtn = document.createElement('button');
-    editBtn.className = 'ms-mini-btn';
-    editBtn.textContent = '✎';
-    editBtn.title = 'メモ・カテゴリを編集';
-    editBtn.onclick = (e) => { e.stopPropagation(); openEditItemModal(it); };
-    actions.appendChild(editBtn);
-
     card.appendChild(actions);
     return card;
   }
@@ -3333,18 +3018,6 @@ window.addEventListener('DOMContentLoaded', () => {
       bulkRevealState = false;
       list.forEach((it) => revealedIds.delete(it.id));
     }
-    renderGrid();
-  });
-
-  $('#ms-select-mode-btn').addEventListener('click', () => {
-    selectionMode = !selectionMode;
-    $('#ms-select-mode-btn').classList.toggle('active', selectionMode);
-    selectedItemIds.clear();
-    renderGrid();
-  });
-
-  $('#ms-search-input').addEventListener('input', (e) => {
-    searchQuery = e.target.value.trim();
     renderGrid();
   });
 
@@ -3472,7 +3145,7 @@ window.addEventListener('DOMContentLoaded', () => {
   let dragoverLogged = false;
   window.addEventListener('dragover', (e) => {
     e.preventDefault();
-    if (e.dataTransfer.types.includes('text/x-ms-item-id') || e.dataTransfer.types.includes('text/x-ms-item-ids')) return; // カード同士の結合ドラッグはここでは扱わない
+    if (e.dataTransfer.types.includes('text/x-ms-item-id')) return; // カード同士の結合ドラッグはここでは扱わない
     if (!dragoverLogged) {
       console.log('[素材帳][診断] dragoverイベント検知. モーダルopen状態:', $('#ms-add-overlay').classList.contains('open'));
       dragoverLogged = true;
@@ -3487,7 +3160,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   window.addEventListener('drop', async (e) => {
     e.preventDefault();
-    if (e.dataTransfer.types.includes('text/x-ms-item-id') || e.dataTransfer.types.includes('text/x-ms-item-ids')) return; // カード同士の結合ドラッグは各カードのdropで処理済み
+    if (e.dataTransfer.types.includes('text/x-ms-item-id')) return; // カード同士の結合ドラッグは各カードのdropで処理済み
     addModalEl.classList.remove('ms-drag-over');
 
     // 素材帳モードでなければ何もしない（コピペ帳・プロンプト帳の画面へのドロップは無視）
@@ -3539,7 +3212,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function renderCatChips() {
     const container = $('#ms-cat-chips');
     container.innerHTML = '';
-    getKnownCategories().forEach((c) => {
+    CATEGORIES.forEach((c) => {
       const el = document.createElement('div');
       el.className = 'ms-chip' + (c === pendingCategory ? ' on' : '');
       el.textContent = c;
@@ -3547,14 +3220,6 @@ window.addEventListener('DOMContentLoaded', () => {
       container.appendChild(el);
     });
   }
-  $('#ms-new-cat-add-btn').addEventListener('click', () => {
-    const val = $('#ms-new-cat-input').value.trim();
-    if (!val) return;
-    pendingCategory = val;
-    $('#ms-new-cat-input').value = '';
-    renderCatChips();
-  });
-  $('#ms-new-cat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#ms-new-cat-add-btn').click(); });
 
   $('#ms-confirm-add-btn').addEventListener('click', async () => {
     if (!pendingQueue.length) return;
