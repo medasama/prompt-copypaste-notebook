@@ -728,7 +728,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_GVtanlT_gDwSEQSsZPC_NQ_nEK-60x2';
 const NOTEBOOK_TABLE = 'copypaste-notebook';
 const NOTEBOOK_ROW_ID = 'notebook';
 
-// supabaseクライアントは共有トップレベル（master_script.js）のものを使う
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let realtimeChannel = null;
 
 // ============== storage: IndexedDBにこのブラウザ内だけで保存（オフライン用キャッシュ） ==============
@@ -1293,7 +1293,7 @@ const NOTEBOOK_TABLE = 'prompt-notebook';
 const IMAGES_TABLE = 'prompt-notebook-images';
 const NOTEBOOK_ROW_ID = 'notebook';
 
-// supabaseクライアントは共有トップレベル（master_script.js）のものを使う
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let realtimeChannel = null;
 
 // crypto関数（deriveKey/encryptJSON/decryptJSON/encryptBytes/decryptBytes等）は
@@ -2696,9 +2696,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   $('#ms-paste-img-btn').addEventListener('click', async () => {
     try {
-      if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('このブラウザはnavigator.clipboard.readに対応していません');
+      if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('unsupported');
       const clip = await navigator.clipboard.read();
-      console.log('[素材帳] クリップボードの内容:', clip.map((i) => i.types));
       for (const item of clip) {
         const type = item.types.find((t) => t.startsWith('image/'));
         if (type) {
@@ -2709,7 +2708,6 @@ window.addEventListener('DOMContentLoaded', () => {
       }
       showToast('クリップボードに画像が見つかりません');
     } catch (err) {
-      console.error('[素材帳] クリップボード貼り付けに失敗:', err);
       showToast('クリップボードから読み取れませんでした');
     }
   });
@@ -2730,9 +2728,8 @@ window.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     e.stopPropagation();
     addModalEl.classList.remove('ms-drag-over');
-    console.log('[素材帳] dropイベント発火. files:', e.dataTransfer.files);
     const file = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (!file) { console.warn('[素材帳] dataTransfer.filesが空でした'); return; }
+    if (!file) return;
     await ingestImage(file);
   });
 
