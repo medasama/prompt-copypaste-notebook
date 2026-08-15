@@ -348,18 +348,12 @@ textarea, input { font-family: inherit; }
   width: 100%; height: 44px; border-radius: 12px; border: 1px solid var(--ms-accent); background: var(--ms-accent-dim);
   color: var(--ms-accent); font-size: 14px; font-weight: 600; margin-top: 16px; cursor: pointer;
 }
-.ms-add-source-row-wrap { display: flex; align-items: stretch; gap: 6px; margin-bottom: 4px; }
-.ms-add-source-row { display: flex; gap: 8px; flex: 1; margin-bottom: 0; }
+.ms-add-source-row { display: flex; gap: 8px; margin-bottom: 4px; }
 .ms-add-source-row button {
   flex: 1; height: 64px; border-radius: 12px; border: 1px dashed var(--ms-border); background: var(--ms-surface);
   color: var(--ms-text-dim); font-size: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
 }
 .ms-add-source-row button:hover { border-color: var(--ms-accent); color: var(--ms-accent); }
-.ms-source-close-btn {
-  flex-shrink: 0; width: 30px; border-radius: 12px; border: 1px solid var(--ms-border); background: var(--ms-surface);
-  color: var(--ms-text-dim); cursor: pointer; font-size: 13px;
-}
-.ms-source-close-btn:hover { color: var(--ms-text); }
 
 #material-app input[type=file] { display: none; }
 
@@ -367,8 +361,8 @@ textarea, input { font-family: inherit; }
 .eye-toggle-btn { border: none; background: transparent; color: #6d7c82; font-size: 13px; padding: 6px 8px; border-radius: 12px; opacity: 0.6; }
 .eye-toggle-btn:hover { opacity: 1; }
 .eye-toggle-btn.active { opacity: 1; color: #fff; background: rgba(255,255,255,0.1); }
-#mode-material-btn { opacity: 0.16; transition: opacity 0.2s; }
-#mode-material-btn.revealed { opacity: 1; }
+#mode-material-btn { display: none; }
+#mode-material-btn.revealed { display: inline-block; }
 
 @media (max-width: 720px) {
   .ms-wrap { padding: 14px 12px 70px; }
@@ -558,12 +552,9 @@ textarea, input { font-family: inherit; }
     <div class="ms-modal-head"><h2>素材を追加</h2><div class="ms-modal-close" id="ms-close-add-btn">✕</div></div>
 
     <div id="ms-add-step1">
-      <div class="ms-add-source-row-wrap">
-        <div class="ms-add-source-row">
-          <button id="ms-pick-file-btn">📁<br>写真を選ぶ</button>
-          <button id="ms-paste-img-btn">📋<br>貼り付け</button>
-        </div>
-        <button class="ms-source-close-btn" id="ms-source-close-btn" title="この行を隠す">✕</button>
+      <div class="ms-add-source-row">
+        <button id="ms-pick-file-btn">📁<br>写真を選ぶ</button>
+        <button id="ms-paste-img-btn">📋<br>貼り付け</button>
       </div>
     </div>
 
@@ -2319,7 +2310,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============== 画像: リサイズ・アップロード・復号読み込み ==============
-  function resizeImageBlob(fileOrBlob, maxDim, quality) {
+  function resizeImageBlob(fileOrBlob, maxDim) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -2334,7 +2325,7 @@ window.addEventListener('DOMContentLoaded', () => {
           const canvas = document.createElement('canvas');
           canvas.width = width; canvas.height = height;
           canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-          canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+          canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.82);
         };
         img.onerror = reject;
         img.src = reader.result;
@@ -2668,9 +2659,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   $('#ms-open-add-btn').addEventListener('click', openAdd);
   $('#ms-close-add-btn').addEventListener('click', closeAdd);
-  $('#ms-source-close-btn').addEventListener('click', () => {
-    $('#ms-add-step1').style.display = 'none';
-  });
   $('#ms-add-overlay').addEventListener('click', (e) => { if (e.target === $('#ms-add-overlay')) closeAdd(); });
 
   $('#ms-pick-file-btn').addEventListener('click', () => $('#ms-file-input').click());
@@ -2687,7 +2675,7 @@ window.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const beforeKb = Math.round(srcFileOrBlob.size / 1024);
-    const blob = await resizeImageBlob(srcFileOrBlob, 2048, 0.90);
+    const blob = await resizeImageBlob(srcFileOrBlob, 1024);
     const afterKb = Math.round(blob.size / 1024);
     pendingImageBlob = blob;
     showAddStep2();
@@ -2713,42 +2701,22 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   // ドラッグ＆ドロップでも追加できるようにする（モーダル全体が対象）
-  // ブラウザの既定動作（ドロップした画像をページごと開いてしまう）を先に止めておく
-  window.addEventListener('dragover', (e) => e.preventDefault());
-  window.addEventListener('drop', (e) => e.preventDefault());
-
   const addModalEl = $('#ms-add-modal');
   addModalEl.addEventListener('dragover', (e) => {
     e.preventDefault();
-    e.stopPropagation();
     addModalEl.classList.add('ms-drag-over');
   });
   addModalEl.addEventListener('dragleave', () => addModalEl.classList.remove('ms-drag-over'));
   addModalEl.addEventListener('drop', async (e) => {
     e.preventDefault();
-    e.stopPropagation();
     addModalEl.classList.remove('ms-drag-over');
     const file = e.dataTransfer.files && e.dataTransfer.files[0];
     if (!file) return;
     await ingestImage(file);
   });
 
-  // Ctrl+V（貼り付け）にも対応。ファイル管理ソフトでコピーしたファイルは
-  // navigator.clipboard.read() では画像として認識されないことがあるため、
-  // こちらのpasteイベント経由の方が拾える場合が多い
-  document.addEventListener('paste', async (e) => {
-    if (!$('#ms-add-overlay').classList.contains('open')) return;
-    const items = e.clipboardData && e.clipboardData.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.kind === 'file' && item.type && item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) { await ingestImage(file); return; }
-      }
-    }
-  });
-
   function showAddStep2() {
+    $('#ms-add-step1').style.display = 'none';
     $('#ms-add-step2').style.display = 'block';
     if (pendingImagePreviewUrl) URL.revokeObjectURL(pendingImagePreviewUrl);
     pendingImagePreviewUrl = URL.createObjectURL(pendingImageBlob);
@@ -2846,10 +2814,6 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#mode-copy-btn').classList.toggle('active', mode === 'copy');
     $('#mode-prompt-btn').classList.toggle('active', mode === 'prompt');
     $('#mode-material-btn').classList.toggle('active', mode === 'material');
-    if (mode === 'material') {
-      $('#mode-material-btn').classList.add('revealed');
-      $('#eye-toggle-btn').classList.add('active');
-    }
     // 素材帳モードは「前回のモード」として記憶しない（リロード時に自動で開かれないようにするため）
     if (mode !== 'material') localStorage.setItem('combinedNotebookMode', mode);
     if (mode === 'material') ensureMaterialLoaded();
