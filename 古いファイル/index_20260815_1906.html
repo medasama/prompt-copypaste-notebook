@@ -142,7 +142,7 @@ textarea, input { font-family: inherit; }
 .dialog-overlay.active { display: flex; }
 .dialog { background: var(--paper-card); border-radius: var(--radius); padding: 24px; width: 300px; max-width: calc(100vw - 32px); box-shadow: var(--shadow); }
 .dialog h3 { margin: 0 0 14px; font-family: 'Shippori Mincho', serif; font-size: 16px; }
-.dialog input[type="text"], .dialog input[type="password"] { width: 100%; padding: 8px 10px; border: 1px solid var(--rule-strong); border-radius: var(--radius); margin-bottom: 12px; font-size: 14px; }
+.dialog input[type="text"] { width: 100%; padding: 8px 10px; border: 1px solid var(--rule-strong); border-radius: var(--radius); margin-bottom: 12px; font-size: 14px; }
 .dialog label.checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 16px; color: var(--ink-soft); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .dialog-actions button { border: none; padding: 8px 14px; border-radius: var(--radius); font-size: 13px; }
@@ -668,26 +668,6 @@ textarea, input { font-family: inherit; }
   <div class="shell-footer">
     <button class="mode-shell-btn" id="shell-lock-btn">🔒 閉じる</button>
     <button class="mode-shell-btn" id="shell-forget-btn">🔑 記憶を消す</button>
-    <button class="mode-shell-btn" id="shell-change-pass-btn">🔐 合言葉を変更</button>
-  </div>
-</div>
-
-<!-- 合言葉変更モーダル（3ツール共通） -->
-<div class="dialog-overlay" id="change-pass-overlay">
-  <div class="dialog" id="change-pass-dialog" style="width:320px;">
-    <h3>合言葉を変更</h3>
-    <p style="font-size:12px; color:var(--ink-soft); margin:-6px 0 14px; line-height:1.6;">
-      画像を含む全データを再暗号化します。念のため、実行前に各ツールの「⬇書き出し」でバックアップを取ることをおすすめします。
-    </p>
-    <input type="password" id="change-pass-old" placeholder="現在の合言葉" autocomplete="current-password">
-    <input type="password" id="change-pass-new1" placeholder="新しい合言葉" autocomplete="new-password" style="margin-top:8px;">
-    <input type="password" id="change-pass-new2" placeholder="新しい合言葉（確認）" autocomplete="new-password" style="margin-top:8px;">
-    <div class="login-error" id="change-pass-error"></div>
-    <div id="change-pass-progress" style="font-size:12px; color:var(--ink-soft); min-height:16px;"></div>
-    <div class="dialog-actions">
-      <button class="cancel" id="change-pass-cancel-btn">キャンセル</button>
-      <button class="confirm" id="change-pass-submit-btn">変更する</button>
-    </div>
   </div>
 </div>
 
@@ -973,15 +953,6 @@ window.__cpReset = function () {
   unsubscribeRealtime();
   encKey = null; cachedSalt = null; notebook = null; currentView = null; editMode = false;
   $('#cp-app-screen').classList.remove('active');
-};
-
-// 合言葉変更用：新しい鍵・saltで丸ごと再暗号化する
-window.__cpReencrypt = async function (oldKey, newKey, newSalt) {
-  const { ivB64, ciphertextB64 } = await encryptJSON(notebook, newKey);
-  await idbPut(db, 'meta', { key: 'notebook', salt: newSalt, iv: ivB64, ciphertext: ciphertextB64 });
-  await pushRemoteNotebook(ivB64, ciphertextB64);
-  encKey = newKey;
-  cachedSalt = newSalt;
 };
 
 // ---------- 書き出し・読み込み ----------
@@ -1622,47 +1593,6 @@ window.__pnReset = function () {
   imageUrlCache.forEach((u) => URL.revokeObjectURL(u));
   imageUrlCache.clear();
   $('#pn-app-screen').classList.remove('active');
-};
-
-// 合言葉変更用：画像を含めて丸ごと再暗号化する。
-// フェーズ1/2は計算のみ（何も送信しない）、フェーズ3で初めて保存する。
-// 途中で失敗した場合、フェーズ3に入る前ならリモート側は一切変更されていない。
-window.__pnReencrypt = async function (oldKey, newKey, newSalt) {
-  // フェーズ1: 画像を全部「旧鍵で復号→新鍵で再暗号化」し、結果をメモリ上に貯める
-  const imageUpdates = [];
-  for (const p of notebook.prompts) {
-    if (!p.imageId) continue;
-    let rec = await idbGet(db, 'images', p.imageId);
-    let cipherBuf, mime;
-    if (rec) { cipherBuf = rec.cipher; mime = rec.mime; }
-    else {
-      const remoteRec = await fetchRemoteImage(p.imageId);
-      if (!remoteRec) continue;
-      cipherBuf = b64ToBuf(remoteRec.cipher_b64); mime = remoteRec.mime;
-    }
-    const plainBuf = await decryptBytes(p.imageIv, cipherBuf, oldKey);
-    const { ivB64, cipherBuffer } = await encryptBytes(plainBuf, newKey);
-    imageUpdates.push({ promptRef: p, imageId: p.imageId, ivB64, mime, cipherBuffer });
-  }
-  // フェーズ2: ノート本体も新しい鍵で暗号化（imageIvの更新も反映した状態で計算）
-  const tempNotebook = JSON.parse(JSON.stringify(notebook));
-  imageUpdates.forEach((u) => {
-    const target = tempNotebook.prompts.find((x) => x.id === u.promptRef.id);
-    if (target) target.imageIv = u.ivB64;
-  });
-  const { ivB64: nbIv, ciphertextB64: nbCipher } = await encryptJSON(tempNotebook, newKey);
-
-  // フェーズ3: ここから実際に保存する（画像→ノートの順）
-  for (const u of imageUpdates) {
-    await idbPut(db, 'images', { imageId: u.imageId, iv: u.ivB64, mime: u.mime, cipher: u.cipherBuffer });
-    await pushRemoteImage(u.imageId, u.ivB64, u.mime, bufToB64(u.cipherBuffer));
-    u.promptRef.imageIv = u.ivB64;
-  }
-  await idbPut(db, 'meta', { key: 'notebook', salt: newSalt, iv: nbIv, ciphertext: nbCipher });
-  await pushRemoteNotebook(newSalt, nbIv, nbCipher);
-  encKey = newKey;
-  imageUrlCache.forEach((u) => URL.revokeObjectURL(u));
-  imageUrlCache.clear();
 };
 
 // ---------- 書き出し・読み込み（Supabase移行時にそのまま使える形式） ----------
@@ -2505,6 +2435,7 @@ window.addEventListener('DOMContentLoaded', () => {
   let selectionMode = false; // 複数選択モード（☑ボタンで切替→タップで選択→ドラッグでまとめてグループ化）
   const selectedItemIds = new Set();
   let dragSourceItemIds = null; // 複数選択ドラッグ時の一時保持
+  let suppressClickAfterLongPress = false; // 予備（現在未使用）
 
   const imageUrlCache = new Map();
   const imageBlobCache = new Map();
@@ -2664,43 +2595,6 @@ window.addEventListener('DOMContentLoaded', () => {
     imageBlobCache.clear();
   };
 
-  // 合言葉変更用：画像を含めて丸ごと再暗号化する（フェーズ1/2は計算のみ、フェーズ3で保存）
-  window.__msReencrypt = async function (oldKey, newKey, newSalt) {
-    const imageUpdates = [];
-    for (const it of stock.items) {
-      if (!it.imageId) continue;
-      let rec = await idbGet(db, 'images', it.imageId);
-      let cipherBuf, mime;
-      if (rec) { cipherBuf = rec.cipher; mime = rec.mime; }
-      else {
-        const remoteRec = await fetchRemoteImage(it.imageId);
-        if (!remoteRec) continue;
-        cipherBuf = b64ToBuf(remoteRec.cipher_b64); mime = remoteRec.mime;
-      }
-      const plainBuf = await decryptBytes(it.imageIv, cipherBuf, oldKey);
-      const { ivB64, cipherBuffer } = await encryptBytes(plainBuf, newKey);
-      imageUpdates.push({ itemRef: it, imageId: it.imageId, ivB64, mime, cipherBuffer });
-    }
-    const tempStock = JSON.parse(JSON.stringify(stock));
-    imageUpdates.forEach((u) => {
-      const target = tempStock.items.find((x) => x.id === u.itemRef.id);
-      if (target) target.imageIv = u.ivB64;
-    });
-    const { ivB64: stIv, ciphertextB64: stCipher } = await encryptJSON(tempStock, newKey);
-
-    for (const u of imageUpdates) {
-      await idbPut(db, 'images', { imageId: u.imageId, iv: u.ivB64, mime: u.mime, cipher: u.cipherBuffer });
-      await pushRemoteImage(u.imageId, u.ivB64, u.mime, bufToB64(u.cipherBuffer));
-      u.itemRef.imageIv = u.ivB64;
-    }
-    await idbPut(db, 'meta', { key: 'stock', salt: newSalt, iv: stIv, ciphertext: stCipher });
-    await pushRemoteStock(newSalt, stIv, stCipher);
-    encKey = newKey;
-    imageUrlCache.forEach((u) => URL.revokeObjectURL(u));
-    imageUrlCache.clear();
-    imageBlobCache.clear();
-  };
-
   async function saveStock() {
     const meta = await idbGet(db, 'meta', 'stock');
     const { ivB64, ciphertextB64 } = await encryptJSON(stock, encKey);
@@ -2855,23 +2749,12 @@ window.addEventListener('DOMContentLoaded', () => {
     showToast(`${sourceIds.length}枚をまとめました`);
   }
 
-  // ドラッグ中、カーソルに「🖼×N」の枚数バッジを表示する（一瞬だけDOMに置いてsetDragImageに渡す）
-  function setDragCountBadge(e, count) {
-    const el = document.createElement('div');
-    el.textContent = `🖼 ×${count}`;
-    el.style.cssText = 'position:fixed; top:-999px; left:-999px; background:#8FAE96; color:#1B1A1E; font-weight:700; font-size:14px; padding:8px 14px; border-radius:20px; font-family:sans-serif; white-space:nowrap;';
-    document.body.appendChild(el);
-    e.dataTransfer.setDragImage(el, 20, 20);
-    setTimeout(() => el.remove(), 0);
-  }
-
   function attachDragMergeHandlers(card, itemId) {
     card.draggable = true;
     card.addEventListener('dragstart', (e) => {
       if (selectionMode && selectedItemIds.size > 1 && selectedItemIds.has(itemId)) {
         dragSourceItemIds = [...selectedItemIds];
         e.dataTransfer.setData('text/x-ms-item-ids', JSON.stringify(dragSourceItemIds));
-        setDragCountBadge(e, dragSourceItemIds.length);
         console.log('[素材帳][診断] 複数ドラッグ開始. ids:', dragSourceItemIds);
       } else {
         dragSourceItemId = itemId;
@@ -2988,6 +2871,7 @@ window.addEventListener('DOMContentLoaded', () => {
       thumb.appendChild(checkBadge);
     }
     thumb.onclick = async () => {
+      if (suppressClickAfterLongPress) { suppressClickAfterLongPress = false; return; }
       if (selectionMode) {
         if (selectedItemIds.has(cover.id)) selectedItemIds.delete(cover.id);
         else selectedItemIds.add(cover.id);
@@ -3056,6 +2940,7 @@ window.addEventListener('DOMContentLoaded', () => {
       thumb.appendChild(checkBadge);
     }
     thumb.onclick = async () => {
+      if (suppressClickAfterLongPress) { suppressClickAfterLongPress = false; return; }
       if (selectionMode && activeTab !== '__trash__') {
         if (selectedItemIds.has(it.id)) selectedItemIds.delete(it.id);
         else selectedItemIds.add(it.id);
@@ -3202,9 +3087,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   function renderGroupModal() {
     const allMembers = stock.items.filter((x) => x.groupId === currentGroupId && !x.trashed);
-    const subCatSet = new Set();
-    allMembers.forEach((m) => itemSubCats(m).forEach((s) => { if (s) subCatSet.add(s); }));
-    const subCats = [...subCatSet];
+    const subCats = [...new Set(allMembers.map((m) => m.subCategory).filter(Boolean))];
     const subTabsContainer = $('#ms-group-subtabs');
     subTabsContainer.innerHTML = '';
     if (subCats.length) {
@@ -3217,7 +3100,7 @@ window.addEventListener('DOMContentLoaded', () => {
       });
     }
     const members = allMembers
-      .filter((m) => groupSubTab === 'すべて' || itemSubCats(m).includes(groupSubTab))
+      .filter((m) => groupSubTab === 'すべて' || m.subCategory === groupSubTab)
       .sort((a, b) => (Number(!!b.favorite) - Number(!!a.favorite)) || (b.createdAt || '').localeCompare(a.createdAt || ''));
     $('#ms-group-modal-title').textContent = `グループ（${allMembers.length}枚）`;
     const grid = $('#ms-group-grid');
@@ -3522,14 +3405,18 @@ window.addEventListener('DOMContentLoaded', () => {
     pendingQueueIndex = 0;
     showAddStep2();
   }
+  // 単発の貼り付け（Ctrl+V・クリップボードボタン）用の簡易ラッパー
+  async function ingestImage(srcFileOrBlob) {
+    await ingestImages([srcFileOrBlob]);
+  }
 
   // 貼り付け（クリップボードボタン・Ctrl+V）は確認画面を出さず自動で追加する
-  async function autoAddImage(srcFileOrBlob, silent) {
+  async function autoAddImage(srcFileOrBlob) {
     if (!srcFileOrBlob || !srcFileOrBlob.type || !srcFileOrBlob.type.startsWith('image/')) {
-      if (!silent) showToast('画像ファイルを指定してください');
-      return false;
+      showToast('画像ファイルを指定してください');
+      return;
     }
-    if (!stock) { showToast('素材帳データの読み込みに失敗しています。一度閉じて開き直してください'); return false; }
+    if (!stock) { showToast('素材帳データの読み込みに失敗しています。一度閉じて開き直してください'); return; }
     try {
       const blob = await resizeImageBlob(srcFileOrBlob, 2048, 0.90);
       const { imageId, imageIv, imageMime } = await uploadImage(blob);
@@ -3545,12 +3432,10 @@ window.addEventListener('DOMContentLoaded', () => {
         if (url) revealedIds.add(newItem.id);
       }
       renderGrid();
-      if (!silent) showToast('素材を追加しました');
-      return true;
+      showToast('素材を追加しました');
     } catch (err) {
       console.error('[素材帳] 自動追加に失敗:', err);
-      if (!silent) showToast('追加に失敗しました');
-      return false;
+      showToast('追加に失敗しました');
     }
   }
 
@@ -3559,21 +3444,15 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('このブラウザはnavigator.clipboard.readに対応していません');
       const clip = await navigator.clipboard.read();
       console.log('[素材帳] クリップボードの内容:', clip.map((i) => i.types));
-      let addedCount = 0;
       for (const item of clip) {
         const type = item.types.find((t) => t.startsWith('image/'));
         if (type) {
           const srcBlob = await item.getType(type);
-          if (await autoAddImage(srcBlob, true)) addedCount++;
+          await autoAddImage(srcBlob);
+          return;
         }
       }
-      if (addedCount === 0) {
-        showToast('クリップボードに画像が見つかりません（Ctrl+Vでもお試しください）');
-      } else if (addedCount === 1) {
-        showToast('素材を追加しました');
-      } else {
-        showToast(`${addedCount}枚を追加しました`);
-      }
+      showToast('クリップボードに画像が見つかりません（Ctrl+Vでもお試しください）');
     } catch (err) {
       console.error('[素材帳] クリップボード貼り付けに失敗:', err);
       let msg = 'クリップボードから読み取れませんでした。Ctrl+V（スマホは長押し→貼り付け）でもお試しください';
@@ -3615,16 +3494,16 @@ window.addEventListener('DOMContentLoaded', () => {
     const materialActive = document.getElementById('material-app').classList.contains('active');
     if (!materialActive) return;
 
+    // 追加モーダルがまだ開いていなければ、ドロップをきっかけに自動で開く
+    if (!$('#ms-add-overlay').classList.contains('open')) openAdd();
+
     const files = e.dataTransfer.files;
     if (!files || !files.length) {
       console.warn('[素材帳] dataTransfer.filesが空でした', e.dataTransfer && e.dataTransfer.types);
       showToast('画像ファイルとして認識できませんでした。「写真を選ぶ」からもお試しください');
       return;
     }
-    let addedCount = 0;
-    for (const f of files) { if (await autoAddImage(f, true)) addedCount++; }
-    if (addedCount === 1) showToast('素材を追加しました');
-    else if (addedCount > 1) showToast(`${addedCount}枚を追加しました`);
+    await ingestImages(files);
   });
 
   // Ctrl+V（貼り付け）にも対応。ファイル管理ソフトでコピーしたファイルは
@@ -3642,11 +3521,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (file) files.push(file);
       }
     }
-    if (!files.length) return;
-    let addedCount = 0;
-    for (const f of files) { if (await autoAddImage(f, true)) addedCount++; }
-    if (addedCount === 1) showToast('素材を追加しました');
-    else if (addedCount > 1) showToast(`${addedCount}枚を追加しました`);
+    for (const f of files) await autoAddImage(f);
   });
 
   function showAddStep2() {
@@ -3843,82 +3718,6 @@ window.addEventListener('DOMContentLoaded', () => {
     lockAll();
   }
 
-  // ============== 合言葉の変更 ==============
-  async function keysRawEqual(keyA, keyB) {
-    const a = bufToB64(await crypto.subtle.exportKey('raw', keyA));
-    const b = bufToB64(await crypto.subtle.exportKey('raw', keyB));
-    return a === b;
-  }
-
-  function openChangePassDialog() {
-    $('#change-pass-old').value = '';
-    $('#change-pass-new1').value = '';
-    $('#change-pass-new2').value = '';
-    $('#change-pass-error').textContent = '';
-    $('#change-pass-progress').textContent = '';
-    $('#change-pass-overlay').classList.add('active');
-  }
-  function closeChangePassDialog() {
-    $('#change-pass-overlay').classList.remove('active');
-  }
-
-  async function submitChangePassphrase() {
-    const errEl = $('#change-pass-error');
-    const progEl = $('#change-pass-progress');
-    errEl.textContent = '';
-    const oldPw = $('#change-pass-old').value;
-    const newPw1 = $('#change-pass-new1').value;
-    const newPw2 = $('#change-pass-new2').value;
-
-    if (!oldPw || !newPw1 || !newPw2) { errEl.textContent = 'すべて入力してください'; return; }
-    if (newPw1 !== newPw2) { errEl.textContent = '新しい合言葉が一致しません'; return; }
-    if (newPw1.length < 8) { errEl.textContent = '新しい合言葉は8文字以上をおすすめします'; return; }
-    if (!masterKeyRef || !masterSalt) { errEl.textContent = '現在ログイン状態を確認できません。開き直してからお試しください'; return; }
-
-    const btn = $('#change-pass-submit-btn');
-    btn.disabled = true;
-    try {
-      progEl.textContent = '現在の合言葉を確認しています…';
-      const oldKey = await deriveKey(oldPw, masterSalt);
-      const same = await keysRawEqual(oldKey, masterKeyRef);
-      if (!same) { errEl.textContent = '現在の合言葉が違います'; return; }
-
-      const newSalt = newSaltB64();
-      const newKey = await deriveKey(newPw1, newSalt);
-
-      // 素材帳が未読み込みなら、変更対象に含めるため先に読み込む（読み込めない場合はここで中断し、何も変更しない）
-      progEl.textContent = '素材帳を確認しています…';
-      await ensureMaterialLoaded();
-      if (!msLoaded) {
-        errEl.textContent = '素材帳の読み込みに失敗したため中断しました（データは変更されていません）。通信状況を確認してもう一度お試しください';
-        return;
-      }
-
-      progEl.textContent = 'コピペ帳を更新しています…';
-      await window.__cpReencrypt(oldKey, newKey, newSalt);
-
-      progEl.textContent = 'プロンプト帳を更新しています（画像を含むため時間がかかる場合があります）…';
-      await window.__pnReencrypt(oldKey, newKey, newSalt);
-
-      progEl.textContent = '素材帳を更新しています（画像を含むため時間がかかる場合があります）…';
-      await window.__msReencrypt(oldKey, newKey, newSalt);
-
-      masterKeyRef = newKey;
-      masterSalt = newSalt;
-      await cacheMasterKey(newKey, newSalt);
-
-      progEl.textContent = '';
-      closeChangePassDialog();
-      alert('合言葉を変更しました。次回からは新しい合言葉でお使いください。');
-    } catch (e) {
-      console.error('合言葉の変更に失敗しました', e);
-      errEl.textContent = '変更に失敗しました。通信状況をご確認の上もう一度お試しください（ここまでの内容は保存されていません）';
-    } finally {
-      btn.disabled = false;
-      progEl.textContent = '';
-    }
-  }
-
   window.addEventListener('DOMContentLoaded', async () => {
     $('#master-unlock-btn').onclick = () => attemptUnlock($('#master-password-input').value);
     $('#master-password-input').addEventListener('keydown', (e) => {
@@ -3939,10 +3738,6 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#shell-forget-btn').onclick = () => {
       if (confirm('この端末の記憶を消します。次回からまた合言葉の入力が必要になります。よろしいですか？')) forgetAndLock();
     };
-    $('#shell-change-pass-btn').onclick = openChangePassDialog;
-    $('#change-pass-cancel-btn').onclick = closeChangePassDialog;
-    $('#change-pass-overlay').addEventListener('click', (e) => { if (e.target === $('#change-pass-overlay')) closeChangePassDialog(); });
-    $('#change-pass-submit-btn').onclick = submitChangePassphrase;
 
     const ok = await tryAutoUnlock();
     if (!ok) showLogin();
