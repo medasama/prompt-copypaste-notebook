@@ -236,9 +236,6 @@ textarea, input { font-family: inherit; }
   font-family: 'Inter', sans-serif; color: var(--ms-text);
 }
 .ms-wrap { max-width: 460px; margin: 0 auto; padding: 20px 14px 90px; }
-@media (min-width: 720px) {
-  .ms-wrap { max-width: 1100px; }
-}
 .ms-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .12em; color: var(--ms-accent); text-transform: uppercase; margin-bottom: 4px; }
 .ms-h1 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 600; margin: 0 0 16px; letter-spacing: -.01em; color: var(--ms-text); }
 
@@ -251,16 +248,15 @@ textarea, input { font-family: inherit; }
 .ms-tab.ms-trash-tab { color: var(--ms-text-dim); }
 .ms-tab.ms-trash-tab.active { background: rgba(196,121,111,0.16); border-color: var(--ms-danger); color: var(--ms-danger); }
 
-.ms-toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.ms-toolbar { display: flex; gap: 8px; margin-bottom: 16px; }
 .ms-tbtn {
-  flex: 1 1 100px; height: 40px; border-radius: 12px; border: 1px solid var(--ms-border); background: var(--ms-surface2);
+  flex: 1; height: 40px; border-radius: 12px; border: 1px solid var(--ms-border); background: var(--ms-surface2);
   color: var(--ms-text); font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
 }
 .ms-tbtn.ms-primary { background: var(--ms-accent-dim); border-color: var(--ms-accent); color: var(--ms-accent); font-weight: 600; }
-.ms-tbtn.ms-fav-filter { color: var(--ms-star); font-size: 18px; }
 .ms-tbtn.ms-fav-filter.active { background: var(--ms-star); border-color: var(--ms-star); color: #1B1A1E; }
 
-.ms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.ms-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .ms-card {
   background: var(--ms-surface); border: 1px solid var(--ms-border); border-radius: 16px; padding: 10px;
   display: flex; flex-direction: column; gap: 8px; position: relative;
@@ -332,7 +328,6 @@ textarea, input { font-family: inherit; }
   width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--ms-border); background: var(--ms-surface);
   color: var(--ms-text-dim); display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
-.ms-queue-progress { font-size: 11.5px; color: var(--ms-accent); font-family: 'IBM Plex Mono', monospace; margin-bottom: 8px; text-align: right; }
 .ms-add-preview {
   width: 100%; aspect-ratio: 4/3; border-radius: 14px; background: var(--ms-surface2); background-size: cover;
   background-position: center; margin-bottom: 12px; display: flex; align-items: center; justify-content: center;
@@ -369,15 +364,6 @@ textarea, input { font-family: inherit; }
 
 #material-app input[type=file] { display: none; }
 
-.ms-merge-target { outline: 2px dashed var(--ms-accent); outline-offset: -4px; }
-.ms-group-count {
-  position: absolute; bottom: 8px; right: 8px; font-size: 10px; font-family: 'IBM Plex Mono', monospace;
-  background: rgba(0,0,0,.6); color: var(--ms-text); padding: 2px 7px; border-radius: 8px; pointer-events: none;
-}
-.ms-group-card .ms-memo { cursor: pointer; }
-.ms-group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; max-height: 60vh; overflow-y: auto; }
-.ms-group-grid .ms-card { padding: 8px; }
-
 /* モードバーの目のアイコン・隠しモードボタン */
 .eye-toggle-btn { border: none; background: transparent; color: #6d7c82; font-size: 13px; padding: 6px 8px; border-radius: 12px; opacity: 0.6; }
 .eye-toggle-btn:hover { opacity: 1; }
@@ -411,7 +397,6 @@ textarea, input { font-family: inherit; }
     <button class="mode-btn" id="mode-prompt-btn">🗒 プロンプト帳</button>
     <button class="mode-btn" id="mode-material-btn">🖼 素材帳</button>
     <button class="eye-toggle-btn" id="eye-toggle-btn" title="隠しモードを表示">👁</button>
-    <a href="https://gemini.google.com/app" target="_blank" rel="noopener" class="eye-toggle-btn" title="Geminiを開く">✨ Gemini</a>
   </div>
 
   <div id="copy-app" class="app-mode">
@@ -562,9 +547,7 @@ textarea, input { font-family: inherit; }
 
   <div class="ms-toolbar">
     <button class="ms-tbtn ms-primary" id="ms-open-add-btn">＋ 追加</button>
-    <button class="ms-tbtn" id="ms-quick-paste-btn">📋 貼り付け</button>
-    <button class="ms-tbtn ms-fav-filter" id="ms-fav-filter-btn" title="お気に入りのみ表示">★</button>
-    <button class="ms-tbtn" id="ms-reveal-all-btn">👁 一括表示/非表示</button>
+    <button class="ms-tbtn ms-fav-filter" id="ms-fav-filter-btn">★ お気に入りのみ</button>
   </div>
 
   <div class="ms-grid" id="ms-grid"></div>
@@ -587,7 +570,6 @@ textarea, input { font-family: inherit; }
     </div>
 
     <div id="ms-add-step2" style="display:none;">
-      <div class="ms-queue-progress" id="ms-queue-progress"></div>
       <div class="ms-add-preview" id="ms-add-preview"></div>
       <div class="ms-field-label">メモ（一言ラベル）</div>
       <input type="text" id="ms-memo-input" placeholder="例：全身・私服" />
@@ -598,16 +580,8 @@ textarea, input { font-family: inherit; }
   </div>
 </div>
 
-<input type="file" id="ms-file-input" accept="image/*" multiple>
+<input type="file" id="ms-file-input" accept="image/*">
 <div class="ms-toast" id="ms-toast"></div>
-
-<!-- グループ詳細モーダル -->
-<div class="ms-modal-overlay" id="ms-group-modal-overlay">
-  <div class="ms-modal" id="ms-group-modal">
-    <div class="ms-modal-head"><h2 id="ms-group-modal-title">グループ</h2><div class="ms-modal-close" id="ms-group-modal-close-btn">✕</div></div>
-    <div class="ms-group-grid" id="ms-group-grid"></div>
-  </div>
-</div>
 
   </div>
 
@@ -2347,17 +2321,6 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============== 画像: リサイズ・アップロード・復号読み込み ==============
-  // クリップボードへの画像書き込みはPNG形式しか正式対応していないブラウザが多いため、コピー直前だけPNGに変換する
-  async function blobToPngBlob(blob) {
-    if (blob.type === 'image/png') return blob;
-    const bitmap = await createImageBitmap(blob);
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    canvas.getContext('2d').drawImage(bitmap, 0, 0);
-    return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-  }
-
   function resizeImageBlob(fileOrBlob, maxDim, quality) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -2507,7 +2470,10 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============== グリッド ==============
-  function getFilteredList() {
+  function renderGrid() {
+    const grid = $('#ms-grid');
+    $('#ms-open-add-btn').style.display = activeTab === '__trash__' ? 'none' : 'flex';
+
     let list;
     if (activeTab === '__trash__') {
       list = stock.items.filter((it) => it.trashed);
@@ -2517,14 +2483,6 @@ window.addEventListener('DOMContentLoaded', () => {
       if (favOnly) list = list.filter((it) => it.favorite);
       list = [...list].sort((a, b) => (Number(!!b.favorite) - Number(!!a.favorite)) || (b.createdAt || '').localeCompare(a.createdAt || ''));
     }
-    return list;
-  }
-
-  function renderGrid() {
-    const grid = $('#ms-grid');
-    $('#ms-open-add-btn').style.display = activeTab === '__trash__' ? 'none' : 'flex';
-
-    const list = getFilteredList();
 
     if (list.length === 0) {
       const msg = activeTab === '__trash__' ? 'ゴミ箱は空です。' : 'まだ素材がありません。「＋ 追加」から登録してください。';
@@ -2532,123 +2490,12 @@ window.addEventListener('DOMContentLoaded', () => {
       return;
     }
     grid.innerHTML = '';
-
-    if (activeTab === '__trash__') {
-      list.forEach((it) => grid.appendChild(renderCard(it)));
-      return;
-    }
-
-    // グループ化されたアイテムは1枚のタイルにまとめる
-    const seenGroups = new Set();
-    list.forEach((it) => {
-      if (it.groupId) {
-        if (seenGroups.has(it.groupId)) return;
-        seenGroups.add(it.groupId);
-        const members = stock.items.filter((x) => x.groupId === it.groupId && !x.trashed)
-          .sort((a, b) => (Number(!!b.favorite) - Number(!!a.favorite)) || (b.createdAt || '').localeCompare(a.createdAt || ''));
-        grid.appendChild(renderGroupCard(it.groupId, members));
-      } else {
-        grid.appendChild(renderCard(it));
-      }
-    });
-  }
-
-  // ドラッグ＆ドロップで別のアイテムに重ねてまとめる（同じモデルの写真をグループ化）
-  let dragSourceItemId = null;
-  async function mergeIntoGroup(sourceId, targetId) {
-    const source = stock.items.find((x) => x.id === sourceId);
-    const target = stock.items.find((x) => x.id === targetId);
-    if (!source || !target || source.id === target.id) return;
-    const gid = target.groupId || source.groupId || uid();
-    const oldSourceGid = source.groupId;
-    const oldTargetGid = target.groupId;
-    stock.items.forEach((x) => {
-      if (x.id === source.id || x.id === target.id) x.groupId = gid;
-      else if (oldSourceGid && x.groupId === oldSourceGid) x.groupId = gid;
-      else if (oldTargetGid && x.groupId === oldTargetGid) x.groupId = gid;
-    });
-    await saveStock();
-    renderGrid();
-    showToast('まとめました');
-  }
-
-  function attachDragMergeHandlers(card, itemId) {
-    card.draggable = true;
-    card.addEventListener('dragstart', (e) => {
-      dragSourceItemId = itemId;
-      e.dataTransfer.setData('text/x-ms-item-id', itemId);
-      e.dataTransfer.effectAllowed = 'move';
-    });
-    card.addEventListener('dragover', (e) => {
-      if (!e.dataTransfer.types.includes('text/x-ms-item-id')) return;
-      e.preventDefault();
-      e.stopPropagation();
-      card.classList.add('ms-merge-target');
-    });
-    card.addEventListener('dragleave', () => card.classList.remove('ms-merge-target'));
-    card.addEventListener('drop', (e) => {
-      if (!e.dataTransfer.types.includes('text/x-ms-item-id')) return;
-      e.preventDefault();
-      e.stopPropagation();
-      card.classList.remove('ms-merge-target');
-      const sourceId = e.dataTransfer.getData('text/x-ms-item-id') || dragSourceItemId;
-      if (sourceId && sourceId !== itemId) mergeIntoGroup(sourceId, itemId);
-    });
-  }
-
-  function renderGroupCard(groupId, members) {
-    const cover = members[0];
-    const card = document.createElement('div');
-    card.className = 'ms-card ms-group-card';
-    attachDragMergeHandlers(card, cover.id);
-
-    const thumb = document.createElement('div');
-    const revealed = revealedIds.has(cover.id);
-    thumb.className = 'ms-thumb' + (revealed ? ' revealed' : '');
-    if (revealed && imageUrlCache.has(cover.id)) thumb.style.backgroundImage = `url(${imageUrlCache.get(cover.id)})`;
-    const veil = document.createElement('div');
-    veil.className = 'ms-veil-icon';
-    veil.innerHTML = '🖼<span>タップで表示</span>';
-    thumb.appendChild(veil);
-    const badge = document.createElement('div');
-    badge.className = 'ms-cat-badge';
-    badge.textContent = cover.category;
-    thumb.appendChild(badge);
-    const countBadge = document.createElement('div');
-    countBadge.className = 'ms-group-count';
-    countBadge.textContent = `📚 ×${members.length}`;
-    thumb.appendChild(countBadge);
-    thumb.onclick = async () => {
-      if (!revealedIds.has(cover.id)) {
-        const url = await loadImageUrl(cover);
-        if (!url) { showToast('画像の読み込みに失敗しました'); return; }
-        revealedIds.add(cover.id);
-        renderGrid();
-        return;
-      }
-      openGroupModal(groupId);
-    };
-    card.appendChild(thumb);
-
-    const favBtn = document.createElement('button');
-    favBtn.className = 'ms-fav-btn' + (cover.favorite ? ' on' : '');
-    favBtn.textContent = '★';
-    favBtn.onclick = async (e) => { e.stopPropagation(); cover.favorite = !cover.favorite; await saveStock(); renderGrid(); };
-    card.appendChild(favBtn);
-
-    const memo = document.createElement('div');
-    memo.className = 'ms-memo';
-    memo.textContent = `グループ（${members.length}枚）・タップで一覧`;
-    memo.onclick = () => openGroupModal(groupId);
-    card.appendChild(memo);
-
-    return card;
+    list.forEach((it) => grid.appendChild(renderCard(it)));
   }
 
   function renderCard(it) {
     const card = document.createElement('div');
     card.className = 'ms-card';
-    if (activeTab !== '__trash__') attachDragMergeHandlers(card, it.id);
 
     const thumb = document.createElement('div');
     const revealed = revealedIds.has(it.id);
@@ -2665,7 +2512,11 @@ window.addEventListener('DOMContentLoaded', () => {
     badge.textContent = it.category;
     thumb.appendChild(badge);
     thumb.onclick = async () => {
-      if (revealedIds.has(it.id)) return; // 個別タップでは隠さない（一括表示/非表示ボタンでのみ隠す）
+      if (revealedIds.has(it.id)) {
+        revealedIds.delete(it.id);
+        renderGrid();
+        return;
+      }
       const url = await loadImageUrl(it);
       if (!url) { showToast('画像の読み込みに失敗しました'); return; }
       revealedIds.add(it.id);
@@ -2737,13 +2588,12 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!blob) { showToast('画像の読み込みに失敗しました'); return; }
       try {
         if (!navigator.clipboard || !navigator.clipboard.write) throw new Error('unsupported');
-        const pngBlob = await blobToPngBlob(blob);
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
         showToast('画像をコピーしました');
         copyBtn.textContent = '✓'; copyBtn.classList.add('copied');
         setTimeout(() => { copyBtn.textContent = '📋'; copyBtn.classList.remove('copied'); }, 1100);
       } catch (err) {
-        console.error('[素材帳] 画像コピーに失敗:', err);
+        console.error(err);
         showToast('お使いのブラウザは画像コピーに対応していません');
       }
     };
@@ -2795,144 +2645,14 @@ window.addEventListener('DOMContentLoaded', () => {
     return card;
   }
 
-  // ============== グループ詳細モーダル ==============
-  let currentGroupId = null;
-  function openGroupModal(groupId) {
-    currentGroupId = groupId;
-    renderGroupModal();
-    $('#ms-group-modal-overlay').classList.add('open');
-  }
-  function closeGroupModal() {
-    $('#ms-group-modal-overlay').classList.remove('open');
-    currentGroupId = null;
-  }
-  $('#ms-group-modal-close-btn').addEventListener('click', closeGroupModal);
-  $('#ms-group-modal-overlay').addEventListener('click', (e) => { if (e.target === $('#ms-group-modal-overlay')) closeGroupModal(); });
-
-  function renderGroupModal() {
-    const members = stock.items.filter((x) => x.groupId === currentGroupId && !x.trashed)
-      .sort((a, b) => (Number(!!b.favorite) - Number(!!a.favorite)) || (b.createdAt || '').localeCompare(a.createdAt || ''));
-    $('#ms-group-modal-title').textContent = `グループ（${members.length}枚）`;
-    const grid = $('#ms-group-grid');
-    grid.innerHTML = '';
-    members.forEach((it) => grid.appendChild(renderGroupMemberCard(it)));
-  }
-
-  function renderGroupMemberCard(it) {
-    const card = document.createElement('div');
-    card.className = 'ms-card';
-
-    const thumb = document.createElement('div');
-    const revealed = revealedIds.has(it.id);
-    thumb.className = 'ms-thumb' + (revealed ? ' revealed' : '');
-    if (revealed && imageUrlCache.has(it.id)) thumb.style.backgroundImage = `url(${imageUrlCache.get(it.id)})`;
-    const veil = document.createElement('div');
-    veil.className = 'ms-veil-icon';
-    veil.innerHTML = '🖼<span>タップで表示</span>';
-    thumb.appendChild(veil);
-    thumb.onclick = async () => {
-      if (revealedIds.has(it.id)) return;
-      const url = await loadImageUrl(it);
-      if (!url) { showToast('画像の読み込みに失敗しました'); return; }
-      revealedIds.add(it.id);
-      renderGroupModal();
-    };
-    card.appendChild(thumb);
-
-    const actions = document.createElement('div');
-    actions.className = 'ms-card-actions';
-
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'ms-mini-btn';
-    copyBtn.textContent = '📋';
-    copyBtn.title = '画像をコピー';
-    copyBtn.onclick = async (e) => {
-      e.stopPropagation();
-      const blob = await loadImageBlob(it);
-      if (!blob) { showToast('画像の読み込みに失敗しました'); return; }
-      try {
-        const pngBlob = await blobToPngBlob(blob);
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
-        showToast('画像をコピーしました');
-      } catch (err) {
-        console.error('[素材帳] 画像コピーに失敗:', err);
-        showToast('お使いのブラウザは画像コピーに対応していません');
-      }
-    };
-    actions.appendChild(copyBtn);
-
-    const shareBtn = document.createElement('button');
-    shareBtn.className = 'ms-mini-btn';
-    shareBtn.textContent = '↗';
-    shareBtn.title = '共有';
-    shareBtn.onclick = async (e) => {
-      e.stopPropagation();
-      const blob = await loadImageBlob(it);
-      if (!blob) { showToast('画像の読み込みに失敗しました'); return; }
-      const file = new File([blob], 'material.jpg', { type: blob.type });
-      try {
-        if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file] });
-        else throw new Error('unsupported');
-      } catch (err) {
-        console.error(err);
-        showToast('お使いの環境は共有に対応していません');
-      }
-    };
-    actions.appendChild(shareBtn);
-
-    const ungroupBtn = document.createElement('button');
-    ungroupBtn.className = 'ms-mini-btn';
-    ungroupBtn.textContent = '解除';
-    ungroupBtn.title = 'グループから外す';
-    ungroupBtn.onclick = async (e) => {
-      e.stopPropagation();
-      const gid = it.groupId;
-      it.groupId = null;
-      const remaining = stock.items.filter((x) => x.groupId === gid && !x.trashed);
-      if (remaining.length <= 1) remaining.forEach((x) => { x.groupId = null; });
-      await saveStock();
-      const stillExists = stock.items.some((x) => x.groupId === gid && !x.trashed);
-      if (!stillExists) closeGroupModal();
-      else renderGroupModal();
-      renderGrid();
-    };
-    actions.appendChild(ungroupBtn);
-
-    card.appendChild(actions);
-    return card;
-  }
-
   $('#ms-fav-filter-btn').addEventListener('click', () => {
     favOnly = !favOnly;
     $('#ms-fav-filter-btn').classList.toggle('active', favOnly);
     renderGrid();
   });
 
-  // 一括表示/非表示切り替え（今表示中の一覧に対してまとめて反映）
-  $('#ms-reveal-all-btn').addEventListener('click', async () => {
-    const list = getFilteredList();
-    const anyHidden = list.some((it) => !revealedIds.has(it.id));
-    const btn = $('#ms-reveal-all-btn');
-    if (anyHidden) {
-      btn.disabled = true;
-      btn.textContent = '読み込み中…';
-      for (const it of list) {
-        if (!revealedIds.has(it.id)) {
-          const url = await loadImageUrl(it);
-          if (url) revealedIds.add(it.id);
-        }
-      }
-      btn.disabled = false;
-      btn.textContent = '👁 一括表示/非表示';
-    } else {
-      list.forEach((it) => revealedIds.delete(it.id));
-    }
-    renderGrid();
-  });
-
   // ============== 追加モーダル ==============
-  let pendingQueue = []; // 複数選択時は resize済みblobの配列。1件ずつ順番に確認・追加する
-  let pendingQueueIndex = 0;
+  let pendingImageBlob = null;
   let pendingImagePreviewUrl = null;
   let pendingCategory = CATEGORIES[0];
 
@@ -2943,8 +2663,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   function closeAdd() {
     $('#ms-add-overlay').classList.remove('open');
-    pendingQueue = [];
-    pendingQueueIndex = 0;
+    pendingImageBlob = null;
     if (pendingImagePreviewUrl) { URL.revokeObjectURL(pendingImagePreviewUrl); pendingImagePreviewUrl = null; }
     $('#ms-memo-input').value = '';
   }
@@ -2958,41 +2677,26 @@ window.addEventListener('DOMContentLoaded', () => {
 
   $('#ms-pick-file-btn').addEventListener('click', () => $('#ms-file-input').click());
   $('#ms-file-input').addEventListener('change', async (e) => {
-    const files = e.target.files;
-    if (!files || !files.length) return;
-    await ingestImages(files);
+    const file = e.target.files[0];
+    if (!file) return;
+    await ingestImage(file);
     e.target.value = '';
   });
 
-  // 複数枚まとめて選択・ドロップした場合、全部リサイズしてキューに積み、1枚目から順に確認画面を出す
-  async function ingestImages(fileList) {
-    const files = Array.from(fileList).filter((f) => f && f.type && f.type.startsWith('image/'));
-    if (!files.length) {
+  async function ingestImage(srcFileOrBlob) {
+    if (!srcFileOrBlob || !srcFileOrBlob.type || !srcFileOrBlob.type.startsWith('image/')) {
       showToast('画像ファイルを指定してください');
       return;
     }
-    if (files.length > 1) showToast(`${files.length}枚を処理しています…`);
-    const results = [];
-    for (const f of files) {
-      try {
-        const blob = await resizeImageBlob(f, 2048, 0.90);
-        results.push(blob);
-      } catch (err) { console.error('[素材帳] リサイズに失敗:', err); }
-    }
-    if (!results.length) {
-      showToast('画像の読み込みに失敗しました');
-      return;
-    }
-    pendingQueue = results;
-    pendingQueueIndex = 0;
+    const beforeKb = Math.round(srcFileOrBlob.size / 1024);
+    const blob = await resizeImageBlob(srcFileOrBlob, 2048, 0.90);
+    const afterKb = Math.round(blob.size / 1024);
+    pendingImageBlob = blob;
     showAddStep2();
-  }
-  // 単発の貼り付け（Ctrl+V・クリップボードボタン）用の簡易ラッパー
-  async function ingestImage(srcFileOrBlob) {
-    await ingestImages([srcFileOrBlob]);
+    showToast(`自動リサイズしました（約${beforeKb}KB→約${afterKb}KB）`);
   }
 
-  async function tryPasteFromClipboardRead() {
+  $('#ms-paste-img-btn').addEventListener('click', async () => {
     try {
       if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('このブラウザはnavigator.clipboard.readに対応していません');
       const clip = await navigator.clipboard.read();
@@ -3001,7 +2705,6 @@ window.addEventListener('DOMContentLoaded', () => {
         const type = item.types.find((t) => t.startsWith('image/'));
         if (type) {
           const srcBlob = await item.getType(type);
-          if (!$('#ms-add-overlay').classList.contains('open')) openAdd();
           await ingestImage(srcBlob);
           return;
         }
@@ -3015,9 +2718,7 @@ window.addEventListener('DOMContentLoaded', () => {
       }
       showToast(msg);
     }
-  }
-  $('#ms-paste-img-btn').addEventListener('click', tryPasteFromClipboardRead);
-  $('#ms-quick-paste-btn').addEventListener('click', tryPasteFromClipboardRead);
+  });
 
   // ドラッグ＆ドロップでも追加できるようにする
   // 判定範囲は「追加モーダルが開いている画面全体」にする（箱のピクセル単位の内側だけだと外すと反応しないため）
@@ -3026,7 +2727,6 @@ window.addEventListener('DOMContentLoaded', () => {
   let dragoverLogged = false;
   window.addEventListener('dragover', (e) => {
     e.preventDefault();
-    if (e.dataTransfer.types.includes('text/x-ms-item-id')) return; // カード同士の結合ドラッグはここでは扱わない
     if (!dragoverLogged) {
       console.log('[素材帳][診断] dragoverイベント検知. モーダルopen状態:', $('#ms-add-overlay').classList.contains('open'));
       dragoverLogged = true;
@@ -3041,7 +2741,6 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   window.addEventListener('drop', async (e) => {
     e.preventDefault();
-    if (e.dataTransfer.types.includes('text/x-ms-item-id')) return; // カード同士の結合ドラッグは各カードのdropで処理済み
     addModalEl.classList.remove('ms-drag-over');
 
     // 素材帳モードでなければ何もしない（コピペ帳・プロンプト帳の画面へのドロップは無視）
@@ -3051,44 +2750,35 @@ window.addEventListener('DOMContentLoaded', () => {
     // 追加モーダルがまだ開いていなければ、ドロップをきっかけに自動で開く
     if (!$('#ms-add-overlay').classList.contains('open')) openAdd();
 
-    const files = e.dataTransfer.files;
-    if (!files || !files.length) {
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) {
       console.warn('[素材帳] dataTransfer.filesが空でした', e.dataTransfer && e.dataTransfer.types);
       showToast('画像ファイルとして認識できませんでした。「写真を選ぶ」からもお試しください');
       return;
     }
-    await ingestImages(files);
+    await ingestImage(file);
   });
 
   // Ctrl+V（貼り付け）にも対応。ファイル管理ソフトでコピーしたファイルは
   // navigator.clipboard.read() では画像として認識されないことがあるため、
   // こちらのpasteイベント経由の方が拾える場合が多い
   document.addEventListener('paste', async (e) => {
-    const materialActive = document.getElementById('material-app').classList.contains('active');
-    if (!materialActive) return;
+    if (!$('#ms-add-overlay').classList.contains('open')) return;
     const items = e.clipboardData && e.clipboardData.items;
     if (!items) return;
-    const files = [];
     for (const item of items) {
       if (item.kind === 'file' && item.type && item.type.startsWith('image/')) {
         const file = item.getAsFile();
-        if (file) files.push(file);
+        if (file) { await ingestImage(file); return; }
       }
-    }
-    if (files.length) {
-      if (!$('#ms-add-overlay').classList.contains('open')) openAdd();
-      await ingestImages(files);
     }
   });
 
   function showAddStep2() {
     $('#ms-add-step2').style.display = 'block';
-    const current = pendingQueue[pendingQueueIndex];
     if (pendingImagePreviewUrl) URL.revokeObjectURL(pendingImagePreviewUrl);
-    pendingImagePreviewUrl = URL.createObjectURL(current);
+    pendingImagePreviewUrl = URL.createObjectURL(pendingImageBlob);
     $('#ms-add-preview').style.backgroundImage = `url(${pendingImagePreviewUrl})`;
-    $('#ms-queue-progress').textContent = pendingQueue.length > 1 ? `${pendingQueueIndex + 1} / ${pendingQueue.length} 枚目` : '';
-    $('#ms-memo-input').value = '';
     pendingCategory = CATEGORIES[0];
     renderCatChips();
   }
@@ -3106,7 +2796,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   $('#ms-confirm-add-btn').addEventListener('click', async () => {
-    if (!pendingQueue.length) return;
+    if (!pendingImageBlob) return;
     if (!stock) {
       showToast('素材帳データの読み込みに失敗しています。一度閉じて開き直してください');
       return;
@@ -3115,22 +2805,16 @@ window.addEventListener('DOMContentLoaded', () => {
     btn.disabled = true;
     btn.textContent = '追加しています…';
     try {
-      const blob = pendingQueue[pendingQueueIndex];
-      const { imageId, imageIv, imageMime } = await uploadImage(blob);
+      const { imageId, imageIv, imageMime } = await uploadImage(pendingImageBlob);
       stock.items.push({
-        id: uid(), imageId, imageIv, imageMime, groupId: null,
+        id: uid(), imageId, imageIv, imageMime,
         memo: $('#ms-memo-input').value.trim(), category: pendingCategory, favorite: false,
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       });
       await saveStock();
+      closeAdd();
       renderGrid();
-      pendingQueueIndex++;
-      if (pendingQueueIndex < pendingQueue.length) {
-        showAddStep2();
-      } else {
-        closeAdd();
-        showToast('追加しました');
-      }
+      showToast('素材を追加しました');
     } catch (e) {
       console.error(e);
       showToast('追加に失敗しました');
