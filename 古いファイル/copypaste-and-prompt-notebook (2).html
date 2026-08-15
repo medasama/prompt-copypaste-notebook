@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>コピペ帳 / プロンプト帳</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
 
 :root {
   --paper: #e9eef0;
@@ -56,9 +56,9 @@ textarea, input { font-family: inherit; }
 }
 .mode-btn:hover { opacity: 1; }
 .mode-btn.active { background: rgba(255,255,255,0.14); color: #fff; opacity: 1; font-weight: 700; }
-.mode-shell-btn { border: none; background: transparent; color: var(--ink-soft); font-size: 11.5px; padding: 6px 10px; border-radius: 12px; white-space: nowrap; opacity: 0.75; }
-.mode-shell-btn:hover { opacity: 1; text-decoration: underline; }
-.shell-footer { display: flex; justify-content: center; gap: 18px; padding: 22px 14px 34px; }
+.mode-bar-spacer { flex: 1; }
+.mode-shell-btn { border: none; background: transparent; color: #8a969b; font-size: 11.5px; padding: 6px 10px; border-radius: 12px; white-space: nowrap; }
+.mode-shell-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
 
 .app-mode { display: none; min-height: calc(100vh - 46px); }
 .app-mode.active { display: block; }
@@ -101,12 +101,6 @@ textarea, input { font-family: inherit; }
 
 .add-new-btn { display: block; width: 100%; text-align: left; background: var(--paper-card); border: 1px dashed var(--rule-strong); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 20px; color: var(--ink-soft); font-size: 13.5px; box-shadow: var(--shadow); }
 .add-new-btn:hover { background: var(--accent-soft); color: var(--ink); }
-
-.list-toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: stretch; }
-.list-toolbar .add-new-btn { flex: 1 1 200px; margin-bottom: 0; }
-.search-input { flex: 1 1 160px; padding: 12px 14px; border: 1px solid var(--rule-strong); border-radius: var(--radius); background: var(--paper-card); font-size: 13.5px; color: var(--ink); box-shadow: var(--shadow); outline: none; }
-.search-input::placeholder { color: var(--ink-soft); }
-.search-input:focus { border-color: var(--accent); }
 
 .empty-state { color: var(--ink-soft); font-size: 13px; padding: 30px 0; text-align: center; }
 
@@ -192,181 +186,34 @@ textarea, input { font-family: inherit; }
 .undo-hint { font-size: 11px; color: var(--accent); text-decoration: underline; }
 
 @media (max-width: 720px) {
-  .mode-bar { height: 40px; gap: 6px; padding: 0 10px; }
-  .mode-btn { padding: 6px 12px; font-size: 12px; }
-  .mode-shell-btn { font-size: 10.5px; padding: 5px 8px; }
-  .app-mode { min-height: calc(100vh - 40px); }
-
   #cp-app-screen.active, #pn-app-screen.active { flex-direction: column; }
   .spiral { display: none; }
   .tabs {
-    width: 100%; flex-direction: row; flex-wrap: wrap; flex-shrink: 0;
-    padding: 10px 12px; gap: 6px;
+    width: 100%; flex-direction: row; flex-wrap: nowrap; flex-shrink: 0;
+    padding: 12px 12px; gap: 6px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
+  .tabs::-webkit-scrollbar { display: none; }
   .tab-btn { margin-right: 0; flex-shrink: 0; padding: 6px 12px; font-size: 12px; border-radius: 14px; }
   .tab-btn.active { transform: none; }
   .tab-btn.trash-tab { margin-top: 0; }
-  .tab-add-row { padding: 0; flex-shrink: 0; width: auto; }
-  .tab-add-row button { white-space: nowrap; padding: 6px 10px; font-size: 11px; width: auto; }
+  .tab-add-row { padding: 0; flex-shrink: 0; }
+  .tab-add-row button { white-space: nowrap; padding: 6px 10px; font-size: 11px; }
 
-  .main { padding: 14px 14px; }
-  .main-header { margin-bottom: 10px; gap: 4px 10px; }
+  .main { padding: 16px 14px; }
+  .main-header { margin-bottom: 14px; gap: 4px 10px; }
   .main-header h2 { font-size: 16px; max-width: 55vw; }
   .header-actions { gap: 8px; }
   #cp-export-btn, #cp-import-label, #pn-export-btn, #pn-import-label { display: none; }
 
-  .list-toolbar { margin-bottom: 12px; gap: 8px; }
-  .add-new-btn { padding: 10px 12px; font-size: 13px; }
-  .search-input { padding: 10px 12px; font-size: 13px; }
+  .add-new-btn { padding: 10px 12px; margin-bottom: 14px; font-size: 13px; }
 
   .prompt-card { padding: 8px 12px; margin-bottom: 6px; }
   .prompt-card .thumb { width: 38px; height: 38px; }
   .card-title { font-size: 13px; }
   .card-preview { font-size: 12px; -webkit-line-clamp: 1; }
   .prompt-card .card-actions { margin-top: 4px; gap: 6px; font-size: 11px; }
-}
-
-
-/* ===================== 素材帳 (Material Stock) — 独立した配色・クラス体系 ===================== */
-#material-app {
-  --ms-bg:#1B1A1E; --ms-surface:#232227; --ms-surface2:#2A282E; --ms-border:#38363c;
-  --ms-text:#EDEAE5; --ms-text-dim:#9B969F; --ms-accent:#8FAE96; --ms-accent-dim:rgba(143,174,150,0.16);
-  --ms-star:#D8B978; --ms-danger:#c4796f;
-  background: var(--ms-bg);
-  font-family: 'Inter', sans-serif; color: var(--ms-text);
-}
-.ms-wrap { max-width: 460px; margin: 0 auto; padding: 20px 14px 90px; }
-.ms-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .12em; color: var(--ms-accent); text-transform: uppercase; margin-bottom: 4px; }
-.ms-h1 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 600; margin: 0 0 16px; letter-spacing: -.01em; color: var(--ms-text); }
-
-.ms-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-.ms-tab {
-  padding: 6px 12px; border-radius: 20px; border: 1px solid var(--ms-border); background: var(--ms-surface);
-  color: var(--ms-text-dim); font-size: 12px; font-family: 'IBM Plex Mono', monospace; cursor: pointer; white-space: nowrap;
-}
-.ms-tab.active { background: var(--ms-accent-dim); border-color: var(--ms-accent); color: var(--ms-accent); }
-.ms-tab.ms-trash-tab { color: var(--ms-text-dim); }
-.ms-tab.ms-trash-tab.active { background: rgba(196,121,111,0.16); border-color: var(--ms-danger); color: var(--ms-danger); }
-
-.ms-toolbar { display: flex; gap: 8px; margin-bottom: 16px; }
-.ms-tbtn {
-  flex: 1; height: 40px; border-radius: 12px; border: 1px solid var(--ms-border); background: var(--ms-surface2);
-  color: var(--ms-text); font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-}
-.ms-tbtn.ms-primary { background: var(--ms-accent-dim); border-color: var(--ms-accent); color: var(--ms-accent); font-weight: 600; }
-.ms-tbtn.ms-fav-filter.active { background: var(--ms-star); border-color: var(--ms-star); color: #1B1A1E; }
-
-.ms-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.ms-card {
-  background: var(--ms-surface); border: 1px solid var(--ms-border); border-radius: 16px; padding: 10px;
-  display: flex; flex-direction: column; gap: 8px; position: relative;
-}
-.ms-thumb {
-  width: 100%; aspect-ratio: 1; border-radius: 12px; background-size: cover; background-position: center;
-  cursor: pointer; position: relative; background-color: var(--ms-surface2);
-  border: 1px solid var(--ms-border); transition: border-color .2s;
-}
-.ms-thumb:hover { border-color: var(--ms-accent); }
-.ms-veil-icon {
-  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 6px; font-size: 22px; color: var(--ms-text-dim);
-}
-.ms-veil-icon span { font-size: 10px; font-family: 'IBM Plex Mono', monospace; letter-spacing: .04em; }
-.ms-thumb.revealed .ms-veil-icon { display: none; }
-.ms-cat-badge {
-  position: absolute; top: 8px; left: 8px; font-size: 9.5px; font-family: 'IBM Plex Mono', monospace;
-  background: rgba(0,0,0,.55); color: var(--ms-text); padding: 2px 7px; border-radius: 8px; pointer-events: none;
-}
-.ms-fav-btn {
-  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 8px; border: none;
-  background: rgba(0,0,0,.5); color: var(--ms-text-dim); font-size: 14px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-}
-.ms-fav-btn.on { color: var(--ms-star); }
-.ms-memo {
-  font-size: 11.5px; color: var(--ms-text); font-family: 'IBM Plex Mono', monospace; min-height: 14px;
-  border-bottom: 1px dashed transparent; cursor: text;
-}
-.ms-memo:hover { border-color: var(--ms-border); }
-.ms-memo.placeholder { color: var(--ms-text-dim); }
-.ms-card-actions { display: flex; gap: 6px; }
-.ms-mini-btn {
-  flex: 1; height: 30px; border-radius: 8px; border: 1px solid var(--ms-border); background: var(--ms-surface2);
-  color: var(--ms-text-dim); font-size: 12px; cursor: pointer;
-}
-.ms-mini-btn:hover { color: var(--ms-text); border-color: #55525a; }
-.ms-mini-btn.copied { background: var(--ms-accent-dim); border-color: var(--ms-accent); color: var(--ms-accent); }
-.ms-mini-btn.del:hover { color: var(--ms-danger); border-color: var(--ms-danger); }
-
-.ms-empty-state {
-  grid-column: 1/-1; border: 1px dashed var(--ms-border); border-radius: 16px; padding: 32px 16px; text-align: center;
-  color: var(--ms-text-dim); font-size: 12.5px; line-height: 1.7;
-}
-
-.ms-toast {
-  position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); background: var(--ms-surface2);
-  border: 1px solid var(--ms-border); color: var(--ms-text); padding: 10px 16px; border-radius: 12px;
-  font-size: 12.5px; font-family: 'IBM Plex Mono', monospace; box-shadow: 0 8px 24px rgba(0,0,0,.4);
-  z-index: 250; opacity: 0; pointer-events: none; transition: opacity .2s; max-width: 82%; text-align: center;
-}
-.ms-toast.show { opacity: 1; pointer-events: auto; }
-.ms-toast { display: flex; align-items: center; gap: 12px; }
-.ms-toast-action { border: none; background: transparent; color: var(--ms-accent); text-decoration: underline; font-size: 12.5px; font-family: 'IBM Plex Mono', monospace; padding: 0; pointer-events: auto; }
-
-.ms-modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: flex-end; justify-content: center; z-index: 220;
-}
-.ms-modal-overlay.open { display: flex; }
-.ms-modal {
-  width: 100%; max-width: 460px; background: var(--ms-bg); border-top: 1px solid var(--ms-border);
-  border-radius: 20px 20px 0 0; padding: 18px 16px 24px; color: var(--ms-text);
-}
-.ms-modal.ms-drag-over { outline: 2px dashed var(--ms-accent); outline-offset: -4px; }
-.ms-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.ms-modal-head h2 { margin: 0; font-size: 15px; font-family: 'Space Grotesk', sans-serif; }
-.ms-modal-close {
-  width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--ms-border); background: var(--ms-surface);
-  color: var(--ms-text-dim); display: flex; align-items: center; justify-content: center; cursor: pointer;
-}
-.ms-add-preview {
-  width: 100%; aspect-ratio: 4/3; border-radius: 14px; background: var(--ms-surface2); background-size: cover;
-  background-position: center; margin-bottom: 12px; display: flex; align-items: center; justify-content: center;
-  color: var(--ms-text-dim); font-size: 12px; border: 1px solid var(--ms-border);
-}
-.ms-field-label { font-size: 11px; color: var(--ms-text-dim); font-family: 'IBM Plex Mono', monospace; margin: 10px 0 6px; }
-.ms-modal input[type=text] {
-  width: 100%; height: 40px; background: var(--ms-surface2); border: 1px solid var(--ms-border); border-radius: 10px;
-  color: var(--ms-text); padding: 0 12px; font-size: 13px; font-family: 'Inter', sans-serif;
-}
-.ms-chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.ms-chip {
-  padding: 7px 13px; border-radius: 20px; border: 1px solid var(--ms-border); background: var(--ms-surface2);
-  color: var(--ms-text-dim); font-size: 12px; cursor: pointer;
-}
-.ms-chip.on { background: var(--ms-accent-dim); border-color: var(--ms-accent); color: var(--ms-accent); }
-.ms-modal-submit {
-  width: 100%; height: 44px; border-radius: 12px; border: 1px solid var(--ms-accent); background: var(--ms-accent-dim);
-  color: var(--ms-accent); font-size: 14px; font-weight: 600; margin-top: 16px; cursor: pointer;
-}
-.ms-add-source-row { display: flex; gap: 8px; margin-bottom: 4px; }
-.ms-add-source-row button {
-  flex: 1; height: 64px; border-radius: 12px; border: 1px dashed var(--ms-border); background: var(--ms-surface);
-  color: var(--ms-text-dim); font-size: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-}
-.ms-add-source-row button:hover { border-color: var(--ms-accent); color: var(--ms-accent); }
-
-#material-app input[type=file] { display: none; }
-
-/* モードバーの目のアイコン・隠しモードボタン */
-.eye-toggle-btn { border: none; background: transparent; color: #6d7c82; font-size: 13px; padding: 6px 8px; border-radius: 12px; opacity: 0.6; }
-.eye-toggle-btn:hover { opacity: 1; }
-.eye-toggle-btn.active { opacity: 1; color: #fff; background: rgba(255,255,255,0.1); }
-#mode-material-btn { display: none; }
-#mode-material-btn.revealed { display: inline-block; }
-
-@media (max-width: 720px) {
-  .ms-wrap { padding: 14px 12px 70px; }
-  .ms-grid { gap: 8px; }
 }
 
 </style>
@@ -381,15 +228,16 @@ textarea, input { font-family: inherit; }
     <button id="master-unlock-btn">開く</button>
     <div class="login-error" id="master-login-error"></div>
   </div>
-  <p class="local-note">内容は合言葉から作った鍵でこの端末上で暗号化してからクラウド(Supabase)に保存します。各ツールとも同じ1つの合言葉で開きます。同じ合言葉ならPC・スマホどちらからでも同じ内容が見られます。合言葉はどこにも保存されないため、忘れると復元できません。一度開くと、この端末・ブラウザでは次回から合言葉の入力を省略できます（下の「この端末の記憶を消す」でいつでもリセットできます）。</p>
+  <p class="local-note">内容は合言葉から作った鍵でこの端末上で暗号化してからクラウド(Supabase)に保存します。コピペ帳・プロンプト帳とも同じ1つの合言葉で開きます。同じ合言葉ならPC・スマホどちらからでも同じ内容が見られます。合言葉はどこにも保存されないため、忘れると復元できません。一度開くと、この端末・ブラウザでは次回から合言葉の入力を省略できます（下の「この端末の記憶を消す」でいつでもリセットできます）。</p>
 </div>
 
 <div id="main-shell" style="display:none;">
   <div class="mode-bar">
     <button class="mode-btn" id="mode-copy-btn">📋 コピペ帳</button>
     <button class="mode-btn" id="mode-prompt-btn">🗒 プロンプト帳</button>
-    <button class="mode-btn" id="mode-material-btn">🖼 素材帳</button>
-    <button class="eye-toggle-btn" id="eye-toggle-btn" title="隠しモードを表示">👁</button>
+    <span class="mode-bar-spacer"></span>
+    <button class="mode-shell-btn" id="shell-lock-btn">🔒 閉じる</button>
+    <button class="mode-shell-btn" id="shell-forget-btn">🔑 記憶を消す</button>
   </div>
 
   <div id="copy-app" class="app-mode">
@@ -413,10 +261,7 @@ textarea, input { font-family: inherit; }
       </div>
     </div>
 
-    <div class="list-toolbar">
-      <button class="add-new-btn" id="cp-add-new-btn">＋ 新規追加</button>
-      <input type="text" class="search-input" id="cp-search-input" placeholder="🔍 検索">
-    </div>
+    <button class="add-new-btn" id="cp-add-new-btn">＋ 新規追加</button>
 
     <div class="sheet" id="cp-item-sheet">
       <div id="cp-item-list"></div>
@@ -429,7 +274,6 @@ textarea, input { font-family: inherit; }
   <div class="editor-panel" id="cp-editor-panel">
     <div class="editor-topbar">
       <input type="text" id="cp-editor-title" placeholder="タイトル（任意）">
-      <button id="cp-editor-paste-btn" title="クリップボードから貼り付け">📋</button>
       <button id="cp-editor-fav-btn" title="お気に入り">☆</button>
       <button id="cp-editor-close-btn">✕</button>
     </div>
@@ -475,10 +319,7 @@ textarea, input { font-family: inherit; }
       </div>
     </div>
 
-    <div class="list-toolbar">
-      <button class="add-new-btn" id="pn-add-new-btn">＋ 新しいプロンプトを追加</button>
-      <input type="text" class="search-input" id="pn-search-input" placeholder="🔍 検索">
-    </div>
+    <button class="add-new-btn" id="pn-add-new-btn">＋ 新しいプロンプトを追加</button>
 
     <div id="pn-prompt-list"></div>
     <div class="empty-state" id="pn-empty-state" style="display:none;">まだプロンプトがありません</div>
@@ -489,7 +330,6 @@ textarea, input { font-family: inherit; }
   <div class="editor-panel" id="pn-editor-panel">
     <div class="editor-topbar">
       <input type="text" id="pn-editor-title" placeholder="タイトル（任意）">
-      <button id="pn-editor-tentative-title-btn" title="本文の語句から仮タイトルを作成">🪄</button>
       <button id="pn-editor-copy-btn" title="コピー">📋</button>
       <button id="pn-editor-fav-btn" title="お気に入り">☆</button>
       <button id="pn-editor-close-btn">✕</button>
@@ -505,7 +345,6 @@ textarea, input { font-family: inherit; }
         📎 画像を添付
         <input type="file" id="pn-editor-image-input" accept="image/*" style="display:none;">
       </label>
-      <button class="file-label" id="pn-clipboard-paste-btn" type="button">📋 クリップボードから貼り付け</button>
       <p class="paste-hint">画像はここに貼り付け(Ctrl+V)、またはドラッグ＆ドロップでも添付できます</p>
     </div>
   </div>
@@ -529,54 +368,6 @@ textarea, input { font-family: inherit; }
 <div class="modal-overlay" id="pn-image-modal">
   <img id="pn-modal-image" src="" alt="拡大画像">
 </div>
-  </div>
-
-  <div id="material-app" class="app-mode">
-<div class="ms-wrap">
-  <div class="ms-eyebrow">Material Stock</div>
-  <h1 class="ms-h1">素材帳</h1>
-
-  <div class="ms-tabs" id="ms-cat-tabs"></div>
-
-  <div class="ms-toolbar">
-    <button class="ms-tbtn ms-primary" id="ms-open-add-btn">＋ 追加</button>
-    <button class="ms-tbtn ms-fav-filter" id="ms-fav-filter-btn">★ お気に入りのみ</button>
-  </div>
-
-  <div class="ms-grid" id="ms-grid"></div>
-</div>
-
-<!-- 追加モーダル -->
-<div class="ms-modal-overlay" id="ms-add-overlay">
-  <div class="ms-modal" id="ms-add-modal">
-    <div class="ms-modal-head"><h2>素材を追加</h2><div class="ms-modal-close" id="ms-close-add-btn">✕</div></div>
-
-    <div id="ms-add-step1">
-      <div class="ms-add-source-row">
-        <button id="ms-pick-file-btn">📁<br>写真を選ぶ</button>
-        <button id="ms-paste-img-btn">📋<br>貼り付け</button>
-      </div>
-    </div>
-
-    <div id="ms-add-step2" style="display:none;">
-      <div class="ms-add-preview" id="ms-add-preview"></div>
-      <div class="ms-field-label">メモ（一言ラベル）</div>
-      <input type="text" id="ms-memo-input" placeholder="例：全身・私服" />
-      <div class="ms-field-label">カテゴリ</div>
-      <div class="ms-chip-row" id="ms-cat-chips"></div>
-      <button class="ms-modal-submit" id="ms-confirm-add-btn">この内容で追加</button>
-    </div>
-  </div>
-</div>
-
-<input type="file" id="ms-file-input" accept="image/*">
-<div class="ms-toast" id="ms-toast"></div>
-
-  </div>
-
-  <div class="shell-footer">
-    <button class="mode-shell-btn" id="shell-lock-btn">🔒 閉じる</button>
-    <button class="mode-shell-btn" id="shell-forget-btn">🔑 記憶を消す</button>
   </div>
 </div>
 
@@ -807,7 +598,6 @@ let cachedSalt = null;
 let notebook = null;
 let currentView = null;
 let editMode = false;
-let searchQuery = '';
 let copyToastTimer = null;
 
 function uid() {
@@ -978,11 +768,6 @@ function renderView() {
     const aKey = a.lastUsedAt || a.updatedAt || '';
     return bKey.localeCompare(aKey);
   });
-
-  if (searchQuery) {
-    const q = searchQuery.toLowerCase();
-    items = items.filter((it) => (it.title || '').toLowerCase().includes(q) || (it.text || '').toLowerCase().includes(q));
-  }
   $('#cp-empty-state').style.display = items.length ? 'none' : 'block';
   items.forEach((it) => list.appendChild(renderRow(it)));
 }
@@ -1216,7 +1001,6 @@ window.addEventListener('DOMContentLoaded', () => {
     e.target.value = '';
   });
   $('#cp-add-new-btn').onclick = () => openEditor(null);
-  $('#cp-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderView(); });
   $('#cp-genre-cancel-btn').onclick = closeGenreDialog;
   $('#cp-genre-confirm-btn').onclick = confirmAddGenre;
 
@@ -1230,40 +1014,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   $('#cp-editor-fav-btn').onclick = () => { editorFavorite = !editorFavorite; updateEditorFavBtn(); };
   $('#cp-editor-close-btn').onclick = () => closeEditorSave();
-
-  // クリップボードから本文へ貼り付け（テキスト。押したら確認なしで即反映）
-  $('#cp-editor-paste-btn').onclick = async () => {
-    if (!navigator.clipboard) {
-      alert('お使いのブラウザはクリップボードからの貼り付けに対応していません');
-      return;
-    }
-    try {
-      let text = '';
-      if (navigator.clipboard.readText) {
-        text = await navigator.clipboard.readText();
-      } else if (navigator.clipboard.read) {
-        const clipItems = await navigator.clipboard.read();
-        for (const item of clipItems) {
-          if (item.types.includes('text/plain')) {
-            const blob = await item.getType('text/plain');
-            text = await blob.text();
-            break;
-          }
-        }
-      }
-      if (!text) { alert('クリップボードにテキストが見つかりませんでした'); return; }
-      const ta = $('#cp-editor-text');
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
-      const pos = start + text.length;
-      ta.selectionStart = ta.selectionEnd = pos;
-      ta.focus();
-    } catch (e) {
-      console.error(e);
-      alert('クリップボードの読み取りに失敗しました（未対応のブラウザか、権限が許可されていない可能性があります）');
-    }
-  };
   $('#cp-editor-overlay').addEventListener('click', (e) => {
     if (e.target === $('#cp-editor-overlay')) closeEditorSave();
   });
@@ -1394,33 +1144,12 @@ function unsubscribeRealtime() {
 
 // ============== アプリ本体 ==============
 const PALETTE = ['#35507a', '#7a3b4e', '#3f6b52', '#8a6a2f', '#5a4a7a', '#2f6a6b'];
-
-// 仮タイトル抽出用の単語リスト（AI不使用・単純な文字列一致。語幹で登録すると活用違いも拾える）
-const TITLE_KEYWORDS = [
-  // 視点
-  'POV',
-  // 時間帯
-  '夜', '深夜', '朝', '昼', '夕方', '明け方',
-  // 場所
-  '路地', '車内', 'ベッド', '室内', '屋外', '浴室', '玄関', '廃墟', '森', '海', '部屋', 'ホテル', 'フローリング', '和室', 'ラグ', '布団', '山', 'アリーナ',
-  // 人数・対象
-  '1人', '2人', '3人', '男', '女', '少女', '少年', '女子', '私',
-  // 行動
-  '連れ去', '拘束', '抵抗', '逃走', '監禁', '尾行', '撮影',
-  // 表情・感情
-  '恐怖', '涙', '汗', '興奮', '緊張', '苦痛', '絶望', '安堵', '嫌', '痛',
-  // 服装・身体
-  'レギンス', 'マスク', '脇',
-  // 状態・その他
-  '荷物', '縛', '裸足', '濡れ', '血', '目隠し', '大量', '光沢', '舐め', '食べ', 'クリーム', '塗る', 'ソフト', 'ソフトクリーム', 'チョコソフト', 'はちみつ', 'ハチミツ', '口の周り',
-];
 const $ = (sel) => document.querySelector(sel);
 
 let db = null;
 let encKey = null;
 let notebook = null;
 let currentView = null;
-let searchQuery = '';
 let editUndoMap = new Map();
 let imageUrlCache = new Map();
 
@@ -1614,7 +1343,7 @@ function renderView() {
   list.innerHTML = '';
 
   let items = [];
-  let sortMode = 'recentlyUsed'; // recentlyUsed(最近使った順) | dateOnly(更新日時順) | favoriteThenDate(お気に入り優先→更新日時順)
+  let dateOnlySort = false;
   if (currentView === '__trash__') {
     titleEl.textContent = 'ゴミ箱';
     addBtn.style.display = 'none';
@@ -1628,25 +1357,11 @@ function renderView() {
     titleEl.textContent = g ? g.name : '';
     addBtn.style.display = 'block';
     items = notebook.prompts.filter((p) => p.genreId === currentView && !p.trashed);
-    sortMode = (g && g.hasImage) ? 'dateOnly' : 'favoriteThenDate';
+    dateOnlySort = !!(g && g.hasImage);
   }
 
-  if (sortMode === 'dateOnly') {
-    items.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-  } else if (sortMode === 'favoriteThenDate') {
-    items.sort((a, b) => {
-      if (!!a.favorite !== !!b.favorite) return a.favorite ? -1 : 1;
-      return (b.updatedAt || '').localeCompare(a.updatedAt || '');
-    });
-  } else {
-    items.sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
-  }
-
-  if (searchQuery) {
-    const q = searchQuery.toLowerCase();
-    items = items.filter((p) => (p.title || '').toLowerCase().includes(q) || (p.text || '').toLowerCase().includes(q));
-  }
-
+  const key = dateOnlySort ? (p) => (p.updatedAt || '') : sortKey;
+  items.sort((a, b) => key(b).localeCompare(key(a)));
   $('#pn-empty-state').style.display = items.length ? 'none' : 'block';
   items.forEach((p) => list.appendChild(renderCard(p)));
 }
@@ -2012,7 +1727,6 @@ window.addEventListener('DOMContentLoaded', () => {
     e.target.value = '';
   });
   $('#pn-add-new-btn').onclick = () => openEditor(null);
-  $('#pn-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderView(); });
   $('#pn-genre-cancel-btn').onclick = closeGenreDialog;
   $('#pn-genre-confirm-btn').onclick = confirmAddGenre;
   $('#pn-image-modal').onclick = () => $('#pn-image-modal').classList.remove('active');
@@ -2080,691 +1794,22 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 本文を選択して「コピー」(スマホ)／右クリック(PC)した時だけ、その文字列をタイトルに追記する
-  const appendSelectionToTitle = (rawSel) => {
-    if (!editorHasImageGenre) return; // 画像生成用ジャンルのみで有効
-    let sel = (rawSel || '').replace(/\s+/g, ' ').trim();
+  // 本文を範囲選択すると、コピペしなくてもその文字列をタイトルに反映
+  const applySelectionToTitle = () => {
+    const ta = $('#pn-editor-text');
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    if (end <= start) return;
+    let sel = ta.value.slice(start, end).replace(/\s+/g, ' ').trim();
     if (!sel) return;
     if (sel.length > 60) sel = sel.slice(0, 60) + '…';
-    const titleEl = $('#pn-editor-title');
-    const current = titleEl.value.trim();
-    if (current && current.includes(sel)) return; // 同じ語句の重複追加を防ぐ
-    let next = current ? current + '・' + sel : sel;
-    if (next.length > 80) next = next.slice(0, 80) + '…';
-    titleEl.value = next;
+    $('#pn-editor-title').value = sel;
   };
-  const getEditorSelection = () => {
-    const ta = $('#pn-editor-text');
-    return ta.value.slice(ta.selectionStart, ta.selectionEnd);
-  };
-  $('#pn-editor-text').addEventListener('copy', () => appendSelectionToTitle(getEditorSelection()));
-  $('#pn-editor-text').addEventListener('contextmenu', () => appendSelectionToTitle(getEditorSelection()));
-
-  // 仮タイトル：単語リストに含まれる語句を本文から抽出して並べる（AI不使用・単純な文字列一致）
-  $('#pn-editor-tentative-title-btn').onclick = () => {
-    const text = $('#pn-editor-text').value;
-    const found = [];
-    for (const kw of TITLE_KEYWORDS) {
-      if (text.includes(kw) && !found.includes(kw)) found.push(kw);
-    }
-    if (!found.length) { alert('該当する語句が見つかりませんでした'); return; }
-    $('#pn-editor-title').value = found.join('、');
-  };
-
-  // 本文の現在のカーソル位置にテキストを挿入（選択範囲があれば置き換え）
-  const insertTextAtCursorPn = (text) => {
-    const ta = $('#pn-editor-text');
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
-    const pos = start + text.length;
-    ta.selectionStart = ta.selectionEnd = pos;
-    ta.focus();
-  };
-
-  // クリップボードから貼り付け（画像・テキストどちらも対応。押したら確認なしで即反映）
-  $('#pn-clipboard-paste-btn').onclick = async () => {
-    if (!navigator.clipboard) {
-      alert('お使いのブラウザはクリップボードからの貼り付けに対応していません');
-      return;
-    }
-    try {
-      if (navigator.clipboard.read) {
-        const clipItems = await navigator.clipboard.read();
-        for (const item of clipItems) {
-          const imgType = item.types.find((t) => t.startsWith('image/'));
-          if (imgType) {
-            const blob = await item.getType(imgType);
-            setPendingImage(new File([blob], 'clipboard-image.png', { type: imgType }));
-            return;
-          }
-        }
-        for (const item of clipItems) {
-          if (item.types.includes('text/plain')) {
-            const blob = await item.getType('text/plain');
-            const text = await blob.text();
-            if (text) { insertTextAtCursorPn(text); return; }
-          }
-        }
-      }
-      if (navigator.clipboard.readText) {
-        const text = await navigator.clipboard.readText();
-        if (text) { insertTextAtCursorPn(text); return; }
-      }
-      alert('クリップボードに貼り付けられる内容が見つかりませんでした');
-    } catch (e) {
-      console.error(e);
-      alert('クリップボードの読み取りに失敗しました（未対応のブラウザか、権限が許可されていない可能性があります）');
-    }
-  };
+  $('#pn-editor-text').addEventListener('select', applySelectionToTitle);
+  $('#pn-editor-text').addEventListener('mouseup', applySelectionToTitle);
+  $('#pn-editor-text').addEventListener('touchend', applySelectionToTitle);
+  $('#pn-editor-text').addEventListener('keyup', (e) => { if (e.shiftKey) applySelectionToTitle(); });
 });
 
-})();
-
-
-// ===================== 素材帳 (Material Stock) =====================
-(function initMaterialStockApp(){
-  const $ = (sel) => document.querySelector(sel);
-
-  // ============== Supabase テーブル設定（medasama-tools プロジェクト・専用テーブル） ==============
-  const MS_TABLE = 'material-stock';
-  const MS_IMAGES_TABLE = 'material-stock-images';
-  const MS_ROW_ID = 'stock';
-
-  // crypto関数（deriveKey/encryptJSON/decryptJSON/encryptBytes/decryptBytes等）・supabaseクライアントは
-  // 共有トップレベル（コピペ帳・プロンプト帳・素材帳 共通）で定義済みのものを使う
-
-  const CATEGORIES = ['モデル', '背景', 'その他'];
-
-  // ============== storage: IndexedDBにこのブラウザ内だけで保存 ==============
-  const DB_NAME = 'materialStockDB';
-  const DB_VERSION = 1;
-
-  function openDB() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
-        if (!db.objectStoreNames.contains('images')) db.createObjectStore('images', { keyPath: 'imageId' });
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-  function idbGet(db, store, key) {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(store, 'readonly');
-      const req = tx.objectStore(store).get(key);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-  function idbPut(db, store, value) {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(store, 'readwrite');
-      tx.objectStore(store).put(value);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-  function idbDelete(db, store, key) {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(store, 'readwrite');
-      tx.objectStore(store).delete(key);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-
-  // ============== storage: Supabase ==============
-  async function fetchRemoteStock() {
-    const { data, error } = await supabase
-      .from(MS_TABLE)
-      .select('id, salt, iv, ciphertext')
-      .eq('id', MS_ROW_ID)
-      .maybeSingle();
-    if (error) throw error;
-    return data;
-  }
-  async function pushRemoteStock(salt, ivB64, ciphertextB64) {
-    const { error } = await supabase.from(MS_TABLE).upsert({
-      id: MS_ROW_ID, salt, iv: ivB64, ciphertext: ciphertextB64, updated_at: new Date().toISOString(),
-    });
-    if (error) throw error;
-  }
-  async function fetchRemoteImage(imageId) {
-    const { data, error } = await supabase
-      .from(MS_IMAGES_TABLE)
-      .select('image_id, iv, mime, cipher_b64')
-      .eq('image_id', imageId)
-      .maybeSingle();
-    if (error) throw error;
-    return data;
-  }
-  async function pushRemoteImage(imageId, ivB64, mime, cipherB64) {
-    const { error } = await supabase.from(MS_IMAGES_TABLE).upsert({
-      image_id: imageId, iv: ivB64, mime, cipher_b64: cipherB64, updated_at: new Date().toISOString(),
-    });
-    if (error) throw error;
-  }
-  async function deleteRemoteImage(imageId) {
-    const { error } = await supabase.from(MS_IMAGES_TABLE).delete().eq('image_id', imageId);
-    if (error) throw error;
-  }
-
-  let realtimeChannel = null;
-  function subscribeRealtime() {
-    if (realtimeChannel) return;
-    realtimeChannel = supabase
-      .channel('material-stock-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: MS_TABLE, filter: `id=eq.${MS_ROW_ID}` }, async (payload) => {
-        if (!encKey || !payload.new) return;
-        try {
-          const decrypted = await decryptJSON(payload.new.iv, payload.new.ciphertext, encKey);
-          stock = decrypted;
-          if (!stock.items) stock.items = [];
-          await idbPut(db, 'meta', { key: 'stock', salt: payload.new.salt, iv: payload.new.iv, ciphertext: payload.new.ciphertext });
-          renderTabs();
-          renderGrid();
-        } catch (e) {
-          console.warn('他端末からの更新の復号に失敗しました', e);
-        }
-      })
-      .subscribe();
-  }
-  function unsubscribeRealtime() {
-    if (realtimeChannel) { supabase.removeChannel(realtimeChannel); realtimeChannel = null; }
-  }
-
-  // ============== アプリ本体 ==============
-  let db = null;
-  let encKey = null;
-  let stock = null;
-  let activeTab = 'すべて';
-  let favOnly = false;
-  const revealedIds = new Set(); // タップで表示した素材id（セッション限りで永続化しない）
-  const imageUrlCache = new Map();
-  const imageBlobCache = new Map();
-
-  function uid() { return crypto.randomUUID ? crypto.randomUUID() : 'id' + Date.now() + Math.random().toString(16).slice(2); }
-  function defaultStock() { return { items: [] }; }
-
-  let toastTimer;
-  function showToast(msg, actionLabel, actionFn) {
-    const t = $('#ms-toast');
-    t.innerHTML = '';
-    const span = document.createElement('span');
-    span.textContent = msg;
-    t.appendChild(span);
-    if (actionLabel && actionFn) {
-      const btn = document.createElement('button');
-      btn.className = 'ms-toast-action';
-      btn.textContent = actionLabel;
-      btn.onclick = (e) => { e.stopPropagation(); actionFn(); t.classList.remove('show'); clearTimeout(toastTimer); };
-      t.appendChild(btn);
-    }
-    t.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove('show'), actionLabel ? 4000 : 1700);
-  }
-
-  // ============== 画像: リサイズ・アップロード・復号読み込み ==============
-  function resizeImageBlob(fileOrBlob, maxDim) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          let { width, height } = img;
-          if (width > maxDim || height > maxDim) {
-            const scale = maxDim / Math.max(width, height);
-            width = Math.round(width * scale);
-            height = Math.round(height * scale);
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = width; canvas.height = height;
-          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-          canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.82);
-        };
-        img.onerror = reject;
-        img.src = reader.result;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(fileOrBlob);
-    });
-  }
-
-  async function uploadImage(blob) {
-    const buf = await blob.arrayBuffer();
-    const { ivB64, cipherBuffer } = await encryptBytes(buf, encKey);
-    const imageId = uid();
-    const mime = blob.type || 'image/jpeg';
-    await idbPut(db, 'images', { imageId, iv: ivB64, mime, cipher: cipherBuffer });
-    try { await pushRemoteImage(imageId, ivB64, mime, bufToB64(cipherBuffer)); }
-    catch (e) { console.warn('画像のSupabase同期に失敗しました（ローカルには保存済みです）', e); }
-    return { imageId, imageIv: ivB64, imageMime: mime };
-  }
-
-  async function loadImageBlob(it) {
-    if (!it.imageId) return null;
-    if (imageBlobCache.has(it.id)) return imageBlobCache.get(it.id);
-    try {
-      let rec = await idbGet(db, 'images', it.imageId);
-      let cipherBuf;
-      if (rec) {
-        cipherBuf = rec.cipher;
-      } else {
-        const remoteRec = await fetchRemoteImage(it.imageId);
-        if (!remoteRec) return null;
-        cipherBuf = b64ToBuf(remoteRec.cipher_b64);
-        await idbPut(db, 'images', { imageId: it.imageId, iv: remoteRec.iv, mime: remoteRec.mime, cipher: cipherBuf });
-      }
-      const plainBuf = await decryptBytes(it.imageIv, cipherBuf, encKey);
-      const blob = new Blob([plainBuf], { type: it.imageMime || 'image/jpeg' });
-      imageBlobCache.set(it.id, blob);
-      return blob;
-    } catch (e) {
-      console.error('画像の復号に失敗しました', e);
-      return null;
-    }
-  }
-  async function loadImageUrl(it) {
-    if (imageUrlCache.has(it.id)) return imageUrlCache.get(it.id);
-    const blob = await loadImageBlob(it);
-    if (!blob) return null;
-    const url = URL.createObjectURL(blob);
-    imageUrlCache.set(it.id, url);
-    return url;
-  }
-  async function deleteImage(it) {
-    if (!it.imageId) return;
-    await idbDelete(db, 'images', it.imageId);
-    try { await deleteRemoteImage(it.imageId); }
-    catch (e) { console.warn('画像のSupabase側削除に失敗しました', e); }
-    if (imageUrlCache.has(it.id)) { URL.revokeObjectURL(imageUrlCache.get(it.id)); imageUrlCache.delete(it.id); }
-    imageBlobCache.delete(it.id);
-  }
-
-  // ============== 読み込み・保存 ==============
-  async function loadOrCreateStock(key, salt) {
-    encKey = key;
-    db = await openDB();
-
-    let remoteRow = null;
-    try { remoteRow = await fetchRemoteStock(); }
-    catch (e) { console.warn('Supabaseに接続できませんでした。ローカルのデータで開きます。', e); }
-
-    if (remoteRow) {
-      stock = await decryptJSON(remoteRow.iv, remoteRow.ciphertext, key);
-      await idbPut(db, 'meta', { key: 'stock', salt, iv: remoteRow.iv, ciphertext: remoteRow.ciphertext });
-    } else {
-      const localMeta = await idbGet(db, 'meta', 'stock');
-      if (localMeta) {
-        stock = await decryptJSON(localMeta.iv, localMeta.ciphertext, key);
-        try { await pushRemoteStock(salt, localMeta.iv, localMeta.ciphertext); }
-        catch (e) { console.warn('Supabaseへの移行に失敗しました（ローカルでは開けています）', e); }
-      } else {
-        stock = defaultStock();
-        const { ivB64, ciphertextB64 } = await encryptJSON(stock, key);
-        await idbPut(db, 'meta', { key: 'stock', salt, iv: ivB64, ciphertext: ciphertextB64 });
-        try { await pushRemoteStock(salt, ivB64, ciphertextB64); }
-        catch (e) { console.warn('Supabaseへの保存に失敗しました（ローカルには保存済みです）', e); }
-      }
-    }
-    if (!stock.items) stock.items = [];
-
-    renderTabs();
-    renderGrid();
-    subscribeRealtime();
-  }
-  window.__msLoad = loadOrCreateStock;
-  window.__msShowLoadError = function () {
-    $('#ms-grid').innerHTML = '<div class="ms-empty-state">素材帳データの読み込みに失敗しました。🔒閉じる→再度開いてお試しください。それでも失敗する場合はSupabase側のデータをご確認ください。</div>';
-  };
-  window.__msReset = function () {
-    unsubscribeRealtime();
-    encKey = null; stock = null;
-    revealedIds.clear();
-    imageUrlCache.forEach((u) => URL.revokeObjectURL(u));
-    imageUrlCache.clear();
-    imageBlobCache.clear();
-  };
-
-  async function saveStock() {
-    const meta = await idbGet(db, 'meta', 'stock');
-    const { ivB64, ciphertextB64 } = await encryptJSON(stock, encKey);
-    await idbPut(db, 'meta', { key: 'stock', salt: meta ? meta.salt : null, iv: ivB64, ciphertext: ciphertextB64 });
-    try { await pushRemoteStock(meta ? meta.salt : null, ivB64, ciphertextB64); }
-    catch (e) { console.warn('Supabaseへの同期に失敗しました（ローカルには保存済みです）', e); }
-  }
-
-  // ============== タブ ==============
-  function renderTabs() {
-    const tabs = ['すべて', ...CATEGORIES];
-    const container = $('#ms-cat-tabs');
-    container.innerHTML = '';
-    tabs.forEach((t) => {
-      const el = document.createElement('div');
-      el.className = 'ms-tab' + (t === activeTab ? ' active' : '');
-      el.textContent = t;
-      el.onclick = () => { activeTab = t; renderTabs(); renderGrid(); };
-      container.appendChild(el);
-    });
-    const trashEl = document.createElement('div');
-    trashEl.className = 'ms-tab ms-trash-tab' + (activeTab === '__trash__' ? ' active' : '');
-    trashEl.textContent = '🗑 ゴミ箱';
-    trashEl.onclick = () => { activeTab = '__trash__'; renderTabs(); renderGrid(); };
-    container.appendChild(trashEl);
-  }
-
-  // ============== グリッド ==============
-  function renderGrid() {
-    const grid = $('#ms-grid');
-    $('#ms-open-add-btn').style.display = activeTab === '__trash__' ? 'none' : 'flex';
-
-    let list;
-    if (activeTab === '__trash__') {
-      list = stock.items.filter((it) => it.trashed);
-      list = [...list].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-    } else {
-      list = stock.items.filter((it) => !it.trashed && (activeTab === 'すべて' || it.category === activeTab));
-      if (favOnly) list = list.filter((it) => it.favorite);
-      list = [...list].sort((a, b) => (Number(!!b.favorite) - Number(!!a.favorite)) || (b.createdAt || '').localeCompare(a.createdAt || ''));
-    }
-
-    if (list.length === 0) {
-      const msg = activeTab === '__trash__' ? 'ゴミ箱は空です。' : 'まだ素材がありません。「＋ 追加」から登録してください。';
-      grid.innerHTML = `<div class="ms-empty-state">${msg}</div>`;
-      return;
-    }
-    grid.innerHTML = '';
-    list.forEach((it) => grid.appendChild(renderCard(it)));
-  }
-
-  function renderCard(it) {
-    const card = document.createElement('div');
-    card.className = 'ms-card';
-
-    const thumb = document.createElement('div');
-    const revealed = revealedIds.has(it.id);
-    thumb.className = 'ms-thumb' + (revealed ? ' revealed' : '');
-    if (revealed && imageUrlCache.has(it.id)) {
-      thumb.style.backgroundImage = `url(${imageUrlCache.get(it.id)})`;
-    }
-    const veil = document.createElement('div');
-    veil.className = 'ms-veil-icon';
-    veil.innerHTML = '🖼<span>タップで表示</span>';
-    thumb.appendChild(veil);
-    const badge = document.createElement('div');
-    badge.className = 'ms-cat-badge';
-    badge.textContent = it.category;
-    thumb.appendChild(badge);
-    thumb.onclick = async () => {
-      if (revealedIds.has(it.id)) {
-        revealedIds.delete(it.id);
-        renderGrid();
-        return;
-      }
-      const url = await loadImageUrl(it);
-      if (!url) { showToast('画像の読み込みに失敗しました'); return; }
-      revealedIds.add(it.id);
-      renderGrid();
-    };
-    card.appendChild(thumb);
-
-    const favBtn = document.createElement('button');
-    favBtn.className = 'ms-fav-btn' + (it.favorite ? ' on' : '');
-    favBtn.textContent = '★';
-    favBtn.onclick = async (e) => { e.stopPropagation(); it.favorite = !it.favorite; await saveStock(); renderGrid(); };
-    card.appendChild(favBtn);
-
-    const memo = document.createElement('div');
-    memo.className = 'ms-memo' + (it.memo ? '' : ' placeholder');
-    memo.textContent = it.memo || 'メモを追加';
-    memo.onclick = async () => {
-      const val = prompt('メモを入力', it.memo || '');
-      if (val !== null) {
-        it.memo = val.trim();
-        it.updatedAt = new Date().toISOString();
-        await saveStock();
-        renderGrid();
-      }
-    };
-    card.appendChild(memo);
-
-    const actions = document.createElement('div');
-    actions.className = 'ms-card-actions';
-
-    if (activeTab === '__trash__') {
-      const restoreBtn = document.createElement('button');
-      restoreBtn.className = 'ms-mini-btn';
-      restoreBtn.textContent = '↩ 戻す';
-      restoreBtn.onclick = async (e) => {
-        e.stopPropagation();
-        it.trashed = false;
-        it.updatedAt = new Date().toISOString();
-        await saveStock();
-        renderGrid();
-      };
-      actions.appendChild(restoreBtn);
-
-      const purgeBtn = document.createElement('button');
-      purgeBtn.className = 'ms-mini-btn del';
-      purgeBtn.textContent = '完全に削除';
-      purgeBtn.onclick = async (e) => {
-        e.stopPropagation();
-        if (!confirm('完全に削除します。元に戻せません。よろしいですか？')) return;
-        await deleteImage(it);
-        stock.items = stock.items.filter((x) => x.id !== it.id);
-        revealedIds.delete(it.id);
-        await saveStock();
-        renderGrid();
-      };
-      actions.appendChild(purgeBtn);
-
-      card.appendChild(actions);
-      return card;
-    }
-
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'ms-mini-btn';
-    copyBtn.textContent = '📋';
-    copyBtn.title = '画像をコピー';
-    copyBtn.onclick = async (e) => {
-      e.stopPropagation();
-      const blob = await loadImageBlob(it);
-      if (!blob) { showToast('画像の読み込みに失敗しました'); return; }
-      try {
-        if (!navigator.clipboard || !navigator.clipboard.write) throw new Error('unsupported');
-        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-        showToast('画像をコピーしました');
-        copyBtn.textContent = '✓'; copyBtn.classList.add('copied');
-        setTimeout(() => { copyBtn.textContent = '📋'; copyBtn.classList.remove('copied'); }, 1100);
-      } catch (err) {
-        console.error(err);
-        showToast('お使いのブラウザは画像コピーに対応していません');
-      }
-    };
-    actions.appendChild(copyBtn);
-
-    const shareBtn = document.createElement('button');
-    shareBtn.className = 'ms-mini-btn';
-    shareBtn.textContent = '↗';
-    shareBtn.title = '共有';
-    shareBtn.onclick = async (e) => {
-      e.stopPropagation();
-      const blob = await loadImageBlob(it);
-      if (!blob) { showToast('画像の読み込みに失敗しました'); return; }
-      const file = new File([blob], 'material.jpg', { type: blob.type });
-      try {
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file] });
-        } else {
-          throw new Error('unsupported');
-        }
-      } catch (err) {
-        console.error(err);
-        showToast('お使いの環境は共有に対応していません');
-      }
-    };
-    actions.appendChild(shareBtn);
-
-    const delBtn = document.createElement('button');
-    delBtn.className = 'ms-mini-btn del';
-    delBtn.textContent = '✕';
-    delBtn.title = 'ゴミ箱に移動';
-    delBtn.onclick = async (e) => {
-      e.stopPropagation();
-      it.trashed = true;
-      it.updatedAt = new Date().toISOString();
-      revealedIds.delete(it.id);
-      await saveStock();
-      renderGrid();
-      showToast('ゴミ箱に移動しました', '取り消す', async () => {
-        it.trashed = false;
-        it.updatedAt = new Date().toISOString();
-        await saveStock();
-        renderGrid();
-      });
-    };
-    actions.appendChild(delBtn);
-
-    card.appendChild(actions);
-    return card;
-  }
-
-  $('#ms-fav-filter-btn').addEventListener('click', () => {
-    favOnly = !favOnly;
-    $('#ms-fav-filter-btn').classList.toggle('active', favOnly);
-    renderGrid();
-  });
-
-  // ============== 追加モーダル ==============
-  let pendingImageBlob = null;
-  let pendingImagePreviewUrl = null;
-  let pendingCategory = CATEGORIES[0];
-
-  function openAdd() {
-    $('#ms-add-overlay').classList.add('open');
-    $('#ms-add-step1').style.display = 'block';
-    $('#ms-add-step2').style.display = 'none';
-  }
-  function closeAdd() {
-    $('#ms-add-overlay').classList.remove('open');
-    pendingImageBlob = null;
-    if (pendingImagePreviewUrl) { URL.revokeObjectURL(pendingImagePreviewUrl); pendingImagePreviewUrl = null; }
-    $('#ms-memo-input').value = '';
-  }
-
-  $('#ms-open-add-btn').addEventListener('click', openAdd);
-  $('#ms-close-add-btn').addEventListener('click', closeAdd);
-  $('#ms-add-overlay').addEventListener('click', (e) => { if (e.target === $('#ms-add-overlay')) closeAdd(); });
-
-  $('#ms-pick-file-btn').addEventListener('click', () => $('#ms-file-input').click());
-  $('#ms-file-input').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    await ingestImage(file);
-    e.target.value = '';
-  });
-
-  async function ingestImage(srcFileOrBlob) {
-    if (!srcFileOrBlob || !srcFileOrBlob.type || !srcFileOrBlob.type.startsWith('image/')) {
-      showToast('画像ファイルを指定してください');
-      return;
-    }
-    const beforeKb = Math.round(srcFileOrBlob.size / 1024);
-    const blob = await resizeImageBlob(srcFileOrBlob, 1024);
-    const afterKb = Math.round(blob.size / 1024);
-    pendingImageBlob = blob;
-    showAddStep2();
-    showToast(`自動リサイズしました（約${beforeKb}KB→約${afterKb}KB）`);
-  }
-
-  $('#ms-paste-img-btn').addEventListener('click', async () => {
-    try {
-      if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('unsupported');
-      const clip = await navigator.clipboard.read();
-      for (const item of clip) {
-        const type = item.types.find((t) => t.startsWith('image/'));
-        if (type) {
-          const srcBlob = await item.getType(type);
-          await ingestImage(srcBlob);
-          return;
-        }
-      }
-      showToast('クリップボードに画像が見つかりません');
-    } catch (err) {
-      showToast('クリップボードから読み取れませんでした');
-    }
-  });
-
-  // ドラッグ＆ドロップでも追加できるようにする（モーダル全体が対象）
-  const addModalEl = $('#ms-add-modal');
-  addModalEl.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    addModalEl.classList.add('ms-drag-over');
-  });
-  addModalEl.addEventListener('dragleave', () => addModalEl.classList.remove('ms-drag-over'));
-  addModalEl.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    addModalEl.classList.remove('ms-drag-over');
-    const file = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (!file) return;
-    await ingestImage(file);
-  });
-
-  function showAddStep2() {
-    $('#ms-add-step1').style.display = 'none';
-    $('#ms-add-step2').style.display = 'block';
-    if (pendingImagePreviewUrl) URL.revokeObjectURL(pendingImagePreviewUrl);
-    pendingImagePreviewUrl = URL.createObjectURL(pendingImageBlob);
-    $('#ms-add-preview').style.backgroundImage = `url(${pendingImagePreviewUrl})`;
-    pendingCategory = CATEGORIES[0];
-    renderCatChips();
-  }
-
-  function renderCatChips() {
-    const container = $('#ms-cat-chips');
-    container.innerHTML = '';
-    CATEGORIES.forEach((c) => {
-      const el = document.createElement('div');
-      el.className = 'ms-chip' + (c === pendingCategory ? ' on' : '');
-      el.textContent = c;
-      el.onclick = () => { pendingCategory = c; renderCatChips(); };
-      container.appendChild(el);
-    });
-  }
-
-  $('#ms-confirm-add-btn').addEventListener('click', async () => {
-    if (!pendingImageBlob) return;
-    if (!stock) {
-      showToast('素材帳データの読み込みに失敗しています。一度閉じて開き直してください');
-      return;
-    }
-    const btn = $('#ms-confirm-add-btn');
-    btn.disabled = true;
-    btn.textContent = '追加しています…';
-    try {
-      const { imageId, imageIv, imageMime } = await uploadImage(pendingImageBlob);
-      stock.items.push({
-        id: uid(), imageId, imageIv, imageMime,
-        memo: $('#ms-memo-input').value.trim(), category: pendingCategory, favorite: false,
-        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-      });
-      await saveStock();
-      closeAdd();
-      renderGrid();
-      showToast('素材を追加しました');
-    } catch (e) {
-      console.error(e);
-      showToast('追加に失敗しました');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'この内容で追加';
-    }
-  });
 })();
 
 
@@ -2772,15 +1817,11 @@ window.addEventListener('DOMContentLoaded', () => {
 (function initShell() {
   const $ = (sel) => document.querySelector(sel);
   let masterSalt = null;
-  let masterKeyRef = null;
-  let msLoaded = false;
-  let msLoading = false;
 
   function showShell() {
     $('#master-login-screen').style.display = 'none';
     $('#main-shell').style.display = 'block';
-    const saved = localStorage.getItem('combinedNotebookMode');
-    const savedMode = saved === 'prompt' ? 'prompt' : 'copy'; // 素材帳は自動復元の対象にしない
+    const savedMode = localStorage.getItem('combinedNotebookMode') === 'prompt' ? 'prompt' : 'copy';
     activateMode(savedMode);
   }
   function showLogin() {
@@ -2789,41 +1830,17 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#master-password-input').value = '';
   }
 
-  // 素材帳データは合言葉を解いた時点では読み込まない。実際にモードを開いた時に初めて読み込む（遅延読み込み）
-  async function ensureMaterialLoaded() {
-    if (msLoaded || msLoading || !masterKeyRef) return;
-    msLoading = true;
-    const grid = document.getElementById('ms-grid');
-    if (grid) grid.innerHTML = '<div class="ms-empty-state">読み込み中…</div>';
-    try {
-      await window.__msLoad(masterKeyRef, masterSalt);
-      msLoaded = true;
-    } catch (e) {
-      console.error('素材帳の読み込みに失敗しました', e);
-      if (window.__msShowLoadError) window.__msShowLoadError();
-    } finally {
-      msLoading = false;
-    }
-  }
-
   function activateMode(mode) {
     document.documentElement.setAttribute('data-mode', mode);
     $('#copy-app').classList.toggle('active', mode === 'copy');
     $('#prompt-app').classList.toggle('active', mode === 'prompt');
-    $('#material-app').classList.toggle('active', mode === 'material');
     $('#mode-copy-btn').classList.toggle('active', mode === 'copy');
     $('#mode-prompt-btn').classList.toggle('active', mode === 'prompt');
-    $('#mode-material-btn').classList.toggle('active', mode === 'material');
-    // 素材帳モードは「前回のモード」として記憶しない（リロード時に自動で開かれないようにするため）
-    if (mode !== 'material') localStorage.setItem('combinedNotebookMode', mode);
-    if (mode === 'material') ensureMaterialLoaded();
+    localStorage.setItem('combinedNotebookMode', mode);
   }
 
   async function unlockWithKey(key, salt) {
     masterSalt = salt;
-    masterKeyRef = key;
-    // コピペ帳・プロンプト帳だけをここで読み込む（失敗したら「合言葉が違います」として扱う、本来の判定基準）
-    // 素材帳は読み込まない：実際にモードを開くまで存在に気づかれないようにするため
     await Promise.all([
       window.__pnLoad(key, salt),
       window.__cpLoad(key, salt),
@@ -2870,12 +1887,6 @@ window.addEventListener('DOMContentLoaded', () => {
   function lockAll() {
     if (window.__cpReset) window.__cpReset();
     if (window.__pnReset) window.__pnReset();
-    if (window.__msReset) window.__msReset();
-    msLoaded = false;
-    msLoading = false;
-    masterKeyRef = null;
-    $('#mode-material-btn').classList.remove('revealed');
-    $('#eye-toggle-btn').classList.remove('active');
     showLogin();
   }
 
@@ -2891,15 +1902,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     $('#mode-copy-btn').onclick = () => activateMode('copy');
     $('#mode-prompt-btn').onclick = () => activateMode('prompt');
-    $('#mode-material-btn').onclick = () => activateMode('material');
-
-    // 素材帳ボタンの表示切り替え（👁）。この表示状態はどこにも保存せず、リロードのたびに必ず非表示に戻る
-    $('#eye-toggle-btn').onclick = () => {
-      const btn = $('#mode-material-btn');
-      const revealed = btn.classList.toggle('revealed');
-      $('#eye-toggle-btn').classList.toggle('active', revealed);
-    };
-
     $('#shell-lock-btn').onclick = lockAll;
     $('#shell-forget-btn').onclick = () => {
       if (confirm('この端末の記憶を消します。次回からまた合言葉の入力が必要になります。よろしいですか？')) forgetAndLock();
