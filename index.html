@@ -360,6 +360,7 @@ textarea, input { font-family: inherit; }
   color: var(--ms-text-dim); cursor: pointer; font-size: 13px;
 }
 .ms-source-close-btn:hover { color: var(--ms-text); }
+.ms-hint { font-size: 11px; color: var(--ms-text-dim); line-height: 1.6; margin: 8px 2px 0; }
 
 #material-app input[type=file] { display: none; }
 
@@ -565,6 +566,7 @@ textarea, input { font-family: inherit; }
         </div>
         <button class="ms-source-close-btn" id="ms-source-close-btn" title="この行を隠す">✕</button>
       </div>
+      <p class="ms-hint">Ctrl+V（スマホは長押し→貼り付け）での貼り付けや、画像ファイルのドラッグ＆ドロップにも対応しています</p>
     </div>
 
     <div id="ms-add-step2" style="display:none;">
@@ -2707,10 +2709,14 @@ window.addEventListener('DOMContentLoaded', () => {
           return;
         }
       }
-      showToast('クリップボードに画像が見つかりません');
+      showToast('クリップボードに画像が見つかりません（Ctrl+Vでもお試しください）');
     } catch (err) {
       console.error('[素材帳] クリップボード貼り付けに失敗:', err);
-      showToast('クリップボードから読み取れませんでした');
+      let msg = 'クリップボードから読み取れませんでした。Ctrl+V（スマホは長押し→貼り付け）でもお試しください';
+      if (err && err.name === 'NotAllowedError') {
+        msg = 'クリップボードの読み取りが許可されていません。ブラウザのサイト設定で権限をご確認いただくか、Ctrl+Vでの貼り付けをお試しください';
+      }
+      showToast(msg);
     }
   });
 
@@ -2732,7 +2738,11 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!$('#ms-add-overlay').classList.contains('open')) return; // モーダルを開いていない時のドロップは無視
     console.log('[素材帳] dropイベント発火(window). files:', e.dataTransfer.files);
     const file = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (!file) { console.warn('[素材帳] dataTransfer.filesが空でした'); return; }
+    if (!file) {
+      console.warn('[素材帳] dataTransfer.filesが空でした', e.dataTransfer && e.dataTransfer.types);
+      showToast('画像ファイルとして認識できませんでした。「写真を選ぶ」からもお試しください');
+      return;
+    }
     await ingestImage(file);
   });
 
