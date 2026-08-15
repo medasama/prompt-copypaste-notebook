@@ -512,7 +512,6 @@ textarea, input { font-family: inherit; }
     <div class="editor-topbar">
       <input type="text" id="pn-editor-title" placeholder="タイトル（任意）">
       <button id="pn-editor-tentative-title-btn" title="本文の語句から仮タイトルを作成">🪄</button>
-      <button id="pn-editor-paste-btn" title="クリップボードから貼り付け">📥</button>
       <button id="pn-editor-copy-btn" title="コピー">📋</button>
       <button id="pn-editor-fav-btn" title="お気に入り">☆</button>
       <button id="pn-editor-close-btn">✕</button>
@@ -1442,7 +1441,7 @@ const TITLE_KEYWORDS = [
   // 場所
   '路地', '車内', 'ベッド', '室内', '屋外', '浴室', '玄関', '廃墟', '森', '海', '部屋', 'ホテル', 'フローリング', '和室', 'ラグ', '布団', '山', 'アリーナ',
   // 人数・対象
-  '1人', '2人', '3人', '男', '少女', '少年', '女子', '私',
+  '1人', '2人', '3人', '男', '女', '少女', '少年', '女子', '私',
   // 行動
   '連れ去', '拘束', '抵抗', '逃走', '監禁', '尾行', '撮影',
   // 表情・感情
@@ -1950,17 +1949,8 @@ async function closeEditorSave() {
   if (!$('#pn-editor-overlay').classList.contains('active')) return;
   editorSaveInFlight = true;
   try {
-    let title = $('#pn-editor-title').value.trim();
+    const title = $('#pn-editor-title').value.trim();
     const text = $('#pn-editor-text').value.trim();
-
-    // タイトルが空欄で、画像生成用ジャンルの場合は自動で仮タイトルを生成する（ボタンを押さなくてもデフォルトで動作）
-    if (!title && editorHasImageGenre && text) {
-      const found = [];
-      for (const kw of TITLE_KEYWORDS) {
-        if (text.includes(kw) && !found.includes(kw)) found.push(kw);
-      }
-      if (found.length) title = found.join('、');
-    }
 
     if (!editingPromptId) {
       if (!text) { closeEditorUI(); return; }
@@ -2075,39 +2065,6 @@ window.addEventListener('DOMContentLoaded', () => {
     btn.textContent = '✓';
     btn.classList.add('copy-flash');
     setTimeout(() => { btn.textContent = '📋'; btn.classList.remove('copy-flash'); }, 1500);
-  };
-
-  $('#pn-editor-paste-btn').onclick = async () => {
-    if (!navigator.clipboard) {
-      alert('お使いのブラウザはクリップボードからの貼り付けに対応していません');
-      return;
-    }
-    try {
-      let text = '';
-      if (navigator.clipboard.readText) {
-        text = await navigator.clipboard.readText();
-      } else if (navigator.clipboard.read) {
-        const clipItems = await navigator.clipboard.read();
-        for (const item of clipItems) {
-          if (item.types.includes('text/plain')) {
-            const blob = await item.getType('text/plain');
-            text = await blob.text();
-            break;
-          }
-        }
-      }
-      if (!text) { alert('クリップボードにテキストが見つかりませんでした'); return; }
-      const ta = $('#pn-editor-text');
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
-      const pos = start + text.length;
-      ta.selectionStart = ta.selectionEnd = pos;
-      ta.focus();
-    } catch (e) {
-      console.error(e);
-      alert('クリップボードの読み取りに失敗しました（未対応のブラウザか、権限が許可されていない可能性があります）');
-    }
   };
 
   // 編集ポップアップ：閉じる操作＝自動保存
@@ -2364,7 +2321,6 @@ window.addEventListener('DOMContentLoaded', () => {
   let activeTab = 'すべて';
   let favOnly = false;
   const revealedIds = new Set(); // タップで表示した素材id（セッション限りで永続化しない）
-  let bulkRevealState = false; // 一括表示/非表示ボタンの現在の状態（新規追加した素材にも反映する）
   const imageUrlCache = new Map();
   const imageBlobCache = new Map();
 
@@ -2624,65 +2580,20 @@ window.addEventListener('DOMContentLoaded', () => {
       e.dataTransfer.effectAllowed = 'move';
     });
     card.addEventListener('dragover', (e) => {
-      const isInternal = e.dataTransfer.types.includes('text/x-ms-item-id');
-      const isExternalFiles = e.dataTransfer.types.includes('Files');
-      if (!isInternal && !isExternalFiles) return;
+      if (!e.dataTransfer.types.includes('text/x-ms-item-id')) return;
       e.preventDefault();
       e.stopPropagation();
       card.classList.add('ms-merge-target');
     });
     card.addEventListener('dragleave', () => card.classList.remove('ms-merge-target'));
-    card.addEventListener('drop', async (e) => {
-      const isInternal = e.dataTransfer.types.includes('text/x-ms-item-id');
-      if (isInternal) {
-        e.preventDefault();
-        e.stopPropagation();
-        card.classList.remove('ms-merge-target');
-        const sourceId = e.dataTransfer.getData('text/x-ms-item-id') || dragSourceItemId;
-        if (sourceId && sourceId !== itemId) mergeIntoGroup(sourceId, itemId);
-        return;
-      }
-      if (e.dataTransfer.files && e.dataTransfer.files.length) {
-        e.preventDefault();
-        e.stopPropagation();
-        card.classList.remove('ms-merge-target');
-        await addFilesDirectlyToGroup(e.dataTransfer.files, itemId);
-      }
+    card.addEventListener('drop', (e) => {
+      if (!e.dataTransfer.types.includes('text/x-ms-item-id')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      card.classList.remove('ms-merge-target');
+      const sourceId = e.dataTransfer.getData('text/x-ms-item-id') || dragSourceItemId;
+      if (sourceId && sourceId !== itemId) mergeIntoGroup(sourceId, itemId);
     });
-  }
-
-  // ファイル管理ソフト等から複数選択したファイルを、既存のモデル（グループ）カードへ直接ドロップして一括追加する
-  async function addFilesDirectlyToGroup(fileList, targetItemId) {
-    const target = stock.items.find((x) => x.id === targetItemId);
-    if (!target) return;
-    let gid = target.groupId;
-    if (!gid) { gid = uid(); target.groupId = gid; }
-    const files = Array.from(fileList).filter((f) => f && f.type && f.type.startsWith('image/'));
-    if (!files.length) { showToast('画像ファイルを指定してください'); return; }
-    showToast(`${files.length}枚をグループに追加しています…`);
-    const added = [];
-    for (const f of files) {
-      try {
-        const blob = await resizeImageBlob(f, 2048, 0.90);
-        const { imageId, imageIv, imageMime } = await uploadImage(blob);
-        const newItem = {
-          id: uid(), imageId, imageIv, imageMime, groupId: gid,
-          memo: '', category: target.category, favorite: false,
-          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        };
-        stock.items.push(newItem);
-        added.push(newItem);
-      } catch (err) { console.error('[素材帳] グループへの追加に失敗:', err); }
-    }
-    await saveStock();
-    if (bulkRevealState) {
-      for (const it of added) {
-        const url = await loadImageUrl(it);
-        if (url) revealedIds.add(it.id);
-      }
-    }
-    renderGrid();
-    showToast(`グループに${added.length}枚追加しました`);
   }
 
   function renderGroupCard(groupId, members) {
@@ -3003,7 +2914,6 @@ window.addEventListener('DOMContentLoaded', () => {
     const anyHidden = list.some((it) => !revealedIds.has(it.id));
     const btn = $('#ms-reveal-all-btn');
     if (anyHidden) {
-      bulkRevealState = true;
       btn.disabled = true;
       btn.textContent = '読み込み中…';
       for (const it of list) {
@@ -3015,7 +2925,6 @@ window.addEventListener('DOMContentLoaded', () => {
       btn.disabled = false;
       btn.textContent = '👁 一括表示/非表示';
     } else {
-      bulkRevealState = false;
       list.forEach((it) => revealedIds.delete(it.id));
     }
     renderGrid();
@@ -3083,35 +2992,6 @@ window.addEventListener('DOMContentLoaded', () => {
     await ingestImages([srcFileOrBlob]);
   }
 
-  // 貼り付け（クリップボードボタン・Ctrl+V）は確認画面を出さず自動で追加する
-  async function autoAddImage(srcFileOrBlob) {
-    if (!srcFileOrBlob || !srcFileOrBlob.type || !srcFileOrBlob.type.startsWith('image/')) {
-      showToast('画像ファイルを指定してください');
-      return;
-    }
-    if (!stock) { showToast('素材帳データの読み込みに失敗しています。一度閉じて開き直してください'); return; }
-    try {
-      const blob = await resizeImageBlob(srcFileOrBlob, 2048, 0.90);
-      const { imageId, imageIv, imageMime } = await uploadImage(blob);
-      const newItem = {
-        id: uid(), imageId, imageIv, imageMime, groupId: null,
-        memo: '', category: pendingCategory || CATEGORIES[0], favorite: false,
-        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-      };
-      stock.items.push(newItem);
-      await saveStock();
-      if (bulkRevealState) {
-        const url = await loadImageUrl(newItem);
-        if (url) revealedIds.add(newItem.id);
-      }
-      renderGrid();
-      showToast('素材を追加しました');
-    } catch (err) {
-      console.error('[素材帳] 自動追加に失敗:', err);
-      showToast('追加に失敗しました');
-    }
-  }
-
   async function tryPasteFromClipboardRead() {
     try {
       if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('このブラウザはnavigator.clipboard.readに対応していません');
@@ -3121,7 +3001,8 @@ window.addEventListener('DOMContentLoaded', () => {
         const type = item.types.find((t) => t.startsWith('image/'));
         if (type) {
           const srcBlob = await item.getType(type);
-          await autoAddImage(srcBlob);
+          if (!$('#ms-add-overlay').classList.contains('open')) openAdd();
+          await ingestImage(srcBlob);
           return;
         }
       }
@@ -3194,7 +3075,10 @@ window.addEventListener('DOMContentLoaded', () => {
         if (file) files.push(file);
       }
     }
-    for (const f of files) await autoAddImage(f);
+    if (files.length) {
+      if (!$('#ms-add-overlay').classList.contains('open')) openAdd();
+      await ingestImages(files);
+    }
   });
 
   function showAddStep2() {
@@ -3233,17 +3117,12 @@ window.addEventListener('DOMContentLoaded', () => {
     try {
       const blob = pendingQueue[pendingQueueIndex];
       const { imageId, imageIv, imageMime } = await uploadImage(blob);
-      const newItem = {
+      stock.items.push({
         id: uid(), imageId, imageIv, imageMime, groupId: null,
         memo: $('#ms-memo-input').value.trim(), category: pendingCategory, favorite: false,
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-      };
-      stock.items.push(newItem);
+      });
       await saveStock();
-      if (bulkRevealState) {
-        const url = await loadImageUrl(newItem);
-        if (url) revealedIds.add(newItem.id);
-      }
       renderGrid();
       pendingQueueIndex++;
       if (pendingQueueIndex < pendingQueue.length) {
