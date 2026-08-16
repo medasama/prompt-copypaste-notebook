@@ -1237,7 +1237,11 @@ function renderView() {
     items = notebook.items.filter((it) => it.genreId === currentView && !it.trashed);
   }
 
-  items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  items.sort((a, b) => {
+    const bKey = b.lastUsedAt || b.updatedAt || '';
+    const aKey = a.lastUsedAt || a.updatedAt || '';
+    return bKey.localeCompare(aKey);
+  });
 
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
@@ -1495,11 +1499,9 @@ async function closeEditorSave() {
   } else {
     const it = notebook.items.find((x) => x.id === editingItemId);
     if (it) {
-      const imageWillChange = !!pendingImageFile || (editorRemoveImage && !!it.imageId);
-      const changed = (it.title || '') !== title || it.text !== text || !!it.favorite !== !!editorFavorite || imageWillChange;
+      const changed = (it.title || '') !== title || it.text !== text;
       const prevSnapshot = editorOriginalSnapshot;
-      it.title = title; it.text = text; it.favorite = editorFavorite;
-      if (changed) it.updatedAt = new Date().toISOString();
+      it.title = title; it.text = text; it.favorite = editorFavorite; it.updatedAt = new Date().toISOString();
       if (pendingImageFile) {
         if (it.imageId) await deleteImage(it);
         const { imageId, imageIv, imageMime } = await uploadImage(pendingImageFile);
@@ -2039,7 +2041,7 @@ function renderView() {
   list.innerHTML = '';
 
   let items = [];
-  let sortMode = 'recentlyUsed'; // recentlyUsed(最近使った順) | dateOnly(更新日時順) | favoriteThenDate(お気に入り優先→作成日時順)
+  let sortMode = 'recentlyUsed'; // recentlyUsed(最近使った順) | dateOnly(更新日時順) | favoriteThenDate(お気に入り優先→更新日時順)
   if (currentView === '__trash__') {
     titleEl.textContent = 'ゴミ箱';
     addBtn.style.display = 'none';
@@ -2057,11 +2059,11 @@ function renderView() {
   }
 
   if (sortMode === 'dateOnly') {
-    items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    items.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   } else if (sortMode === 'favoriteThenDate') {
     items.sort((a, b) => {
       if (!!a.favorite !== !!b.favorite) return a.favorite ? -1 : 1;
-      return (b.createdAt || '').localeCompare(a.createdAt || '');
+      return (b.updatedAt || '').localeCompare(a.updatedAt || '');
     });
   } else {
     items.sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
@@ -2367,11 +2369,9 @@ async function closeEditorSave() {
     } else {
       const p = notebook.prompts.find((x) => x.id === editingPromptId);
       if (p) {
-        const imageWillChange = (editorRemoveImage && !!p.imageId) || !!pendingImageFile;
-        const changed = (p.title || '') !== title || p.text !== text || !!p.favorite !== !!editorFavorite || imageWillChange;
+        const changed = (p.title || '') !== title || p.text !== text;
         if (changed && editorOriginalSnapshot) editUndoMap.set(p.id, editorOriginalSnapshot);
-        p.title = title; p.text = text; p.favorite = editorFavorite;
-        if (changed) p.updatedAt = new Date().toISOString();
+        p.title = title; p.text = text; p.favorite = editorFavorite; p.updatedAt = new Date().toISOString();
 
         if (editorRemoveImage && p.imageId) {
           await deleteImage(p);

@@ -156,7 +156,6 @@ textarea, input { font-family: inherit; }
 .item-row:hover { background: var(--accent-soft); }
 .item-row:active { background: var(--rule); }
 .item-star { border: none; background: transparent; font-size: 15px; color: var(--rule-strong); padding: 2px 4px; flex-shrink: 0; line-height: 1; }
-.item-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--rule-strong); flex-shrink: 0; }
 .item-star.active { color: var(--gold); }
 .item-main { flex: 1; min-width: 0; }
 .item-title { font-size: 13.5px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -381,11 +380,6 @@ textarea, input { font-family: inherit; }
 }
 .ms-source-close-btn:hover { color: var(--ms-text); }
 .ms-hint { font-size: 11px; color: var(--ms-text-dim); line-height: 1.6; margin: 8px 2px 0; }
-.ms-paste-target-input {
-  width: 100%; height: 44px; margin-top: 8px; background: var(--ms-surface); border: 1px dashed var(--ms-border);
-  border-radius: 12px; color: var(--ms-text-dim); padding: 0 12px; font-size: 12.5px; text-align: center;
-}
-.ms-paste-target-input:focus { border-color: var(--ms-accent); color: var(--ms-text); }
 
 #material-app input[type=file] { display: none; }
 
@@ -479,23 +473,11 @@ textarea, input { font-family: inherit; }
   <div class="editor-panel" id="cp-editor-panel">
     <div class="editor-topbar">
       <input type="text" id="cp-editor-title" placeholder="タイトル（任意）">
-      <button id="cp-editor-paste-btn" title="クリップボードから貼り付け（画像優先）">📋</button>
+      <button id="cp-editor-paste-btn" title="クリップボードから貼り付け">📋</button>
       <button id="cp-editor-fav-btn" title="お気に入り">☆</button>
       <button id="cp-editor-close-btn">✕</button>
     </div>
     <textarea id="cp-editor-text" placeholder="コピペしたい内容を入力…"></textarea>
-    <div class="editor-image-area" id="cp-editor-image-area">
-      <div class="pending-image-preview" id="cp-pending-image-preview" style="display:none;">
-        <img id="cp-pending-image-thumb" alt="添付画像">
-        <span id="cp-pending-image-name"></span>
-        <button id="cp-pending-image-remove">✕ 画像を外す</button>
-      </div>
-      <label class="file-label" id="cp-editor-file-label">
-        📎 画像を添付
-        <input type="file" id="cp-editor-image-input" accept="image/*" style="display:none;">
-      </label>
-      <p class="paste-hint">画像は📋ボタン・Ctrl+V（スマホは本文欄を長押し→貼り付け）・ドラッグ＆ドロップのいずれでも添付できます</p>
-    </div>
   </div>
 </div>
 
@@ -628,8 +610,7 @@ textarea, input { font-family: inherit; }
         </div>
         <button class="ms-source-close-btn" id="ms-source-close-btn" title="この行を隠す">✕</button>
       </div>
-      <input type="text" id="ms-paste-target-input" class="ms-paste-target-input" placeholder="ここを長押し→「貼り付け」（画像専用）">
-      <p class="ms-hint">Ctrl+V（スマホは上の欄を長押し→貼り付け）での貼り付けや、画像ファイルのドラッグ＆ドロップにも対応しています</p>
+      <p class="ms-hint">Ctrl+V（スマホは長押し→貼り付け）での貼り付けや、画像ファイルのドラッグ＆ドロップにも対応しています</p>
     </div>
 
     <div id="ms-add-step2" style="display:none;">
@@ -848,14 +829,13 @@ const SUPABASE_URL = 'https://edfrjxjdzxutcjeayfac.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_GVtanlT_gDwSEQSsZPC_NQ_nEK-60x2';
 const NOTEBOOK_TABLE = 'copypaste-notebook';
 const NOTEBOOK_ROW_ID = 'notebook';
-const IMAGES_TABLE = 'copypaste-notebook-images';
 
 // supabaseクライアントは共有トップレベル（master_script.js）のものを使う
 let realtimeChannel = null;
 
 // ============== storage: IndexedDBにこのブラウザ内だけで保存（オフライン用キャッシュ） ==============
 const DB_NAME = 'copypasteNotebookDB';
-const DB_VERSION = 2;
+const DB_VERSION = 1;
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -863,7 +843,6 @@ function openDB() {
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
-      if (!db.objectStoreNames.contains('images')) db.createObjectStore('images', { keyPath: 'imageId' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -884,97 +863,6 @@ function idbPut(db, store, value) {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
-}
-function idbDelete(db, store, key) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(store, 'readwrite');
-    tx.objectStore(store).delete(key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-// ============== storage: 画像（Supabase・IndexedDB） ==============
-async function fetchRemoteImage(imageId) {
-  const { data, error } = await supabase
-    .from(IMAGES_TABLE)
-    .select('image_id, iv, mime, cipher_b64')
-    .eq('image_id', imageId)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
-}
-async function pushRemoteImage(imageId, ivB64, mime, cipherB64) {
-  const { error } = await supabase.from(IMAGES_TABLE).upsert({
-    image_id: imageId, iv: ivB64, mime, cipher_b64: cipherB64, updated_at: new Date().toISOString(),
-  });
-  if (error) throw error;
-}
-async function deleteRemoteImage(imageId) {
-  const { error } = await supabase.from(IMAGES_TABLE).delete().eq('image_id', imageId);
-  if (error) throw error;
-}
-
-const imageUrlCache = new Map();
-const imageBlobCache = new Map();
-
-async function uploadImage(file) {
-  const buf = await file.arrayBuffer();
-  const { ivB64, cipherBuffer } = await encryptBytes(buf, encKey);
-  const imageId = uid();
-  const mime = file.type || 'image/jpeg';
-  await idbPut(db, 'images', { imageId, iv: ivB64, mime, cipher: cipherBuffer });
-  try { await pushRemoteImage(imageId, ivB64, mime, bufToB64(cipherBuffer)); }
-  catch (e) { console.warn('画像のSupabase同期に失敗しました（ローカルには保存済みです）', e); }
-  return { imageId, imageIv: ivB64, imageMime: mime };
-}
-async function loadImageBlob(it) {
-  if (!it.imageId) return null;
-  if (imageBlobCache.has(it.id)) return imageBlobCache.get(it.id);
-  try {
-    let rec = await idbGet(db, 'images', it.imageId);
-    let cipherBuf;
-    if (rec) {
-      cipherBuf = rec.cipher;
-    } else {
-      const remoteRec = await fetchRemoteImage(it.imageId);
-      if (!remoteRec) return null;
-      cipherBuf = b64ToBuf(remoteRec.cipher_b64);
-      await idbPut(db, 'images', { imageId: it.imageId, iv: remoteRec.iv, mime: remoteRec.mime, cipher: cipherBuf });
-    }
-    const plainBuf = await decryptBytes(it.imageIv, cipherBuf, encKey);
-    const blob = new Blob([plainBuf], { type: it.imageMime || 'image/jpeg' });
-    imageBlobCache.set(it.id, blob);
-    return blob;
-  } catch (e) {
-    console.error('画像の復号に失敗しました', e);
-    return null;
-  }
-}
-async function loadImageUrl(it) {
-  if (imageUrlCache.has(it.id)) return imageUrlCache.get(it.id);
-  const blob = await loadImageBlob(it);
-  if (!blob) return null;
-  const url = URL.createObjectURL(blob);
-  imageUrlCache.set(it.id, url);
-  return url;
-}
-async function deleteImage(it) {
-  if (!it.imageId) return;
-  await idbDelete(db, 'images', it.imageId);
-  try { await deleteRemoteImage(it.imageId); }
-  catch (e) { console.warn('画像のSupabase側削除に失敗しました', e); }
-  if (imageUrlCache.has(it.id)) { URL.revokeObjectURL(imageUrlCache.get(it.id)); imageUrlCache.delete(it.id); }
-  imageBlobCache.delete(it.id);
-}
-async function blobToPngBlob(blob) {
-  if (blob.type === 'image/png') return blob;
-  const bitmap = await createImageBitmap(blob);
-  const canvas = document.createElement('canvas');
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
-  canvas.getContext('2d').drawImage(bitmap, 0, 0);
-  return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
 }
 
 // ============== storage: Supabase（PC・スマホ間で同期） ==============
@@ -1089,43 +977,11 @@ window.__cpReset = function () {
 
 // 合言葉変更用：新しい鍵・saltで丸ごと再暗号化する
 window.__cpReencrypt = async function (oldKey, newKey, newSalt) {
-  // フェーズ1: 画像を全部「旧鍵で復号→新鍵で再暗号化」し、結果をメモリ上に貯める
-  const imageUpdates = [];
-  for (const it of notebook.items) {
-    if (!it.imageId) continue;
-    let rec = await idbGet(db, 'images', it.imageId);
-    let cipherBuf, mime;
-    if (rec) { cipherBuf = rec.cipher; mime = rec.mime; }
-    else {
-      const remoteRec = await fetchRemoteImage(it.imageId);
-      if (!remoteRec) continue;
-      cipherBuf = b64ToBuf(remoteRec.cipher_b64); mime = remoteRec.mime;
-    }
-    const plainBuf = await decryptBytes(it.imageIv, cipherBuf, oldKey);
-    const { ivB64, cipherBuffer } = await encryptBytes(plainBuf, newKey);
-    imageUpdates.push({ itemRef: it, imageId: it.imageId, ivB64, mime, cipherBuffer });
-  }
-  // フェーズ2: ノート本体も新しい鍵で暗号化
-  const tempNotebook = JSON.parse(JSON.stringify(notebook));
-  imageUpdates.forEach((u) => {
-    const target = tempNotebook.items.find((x) => x.id === u.itemRef.id);
-    if (target) target.imageIv = u.ivB64;
-  });
-  const { ivB64: nbIv, ciphertextB64: nbCipher } = await encryptJSON(tempNotebook, newKey);
-
-  // フェーズ3: ここから実際に保存する（画像→ノートの順）
-  for (const u of imageUpdates) {
-    await idbPut(db, 'images', { imageId: u.imageId, iv: u.ivB64, mime: u.mime, cipher: u.cipherBuffer });
-    await pushRemoteImage(u.imageId, u.ivB64, u.mime, bufToB64(u.cipherBuffer));
-    u.itemRef.imageIv = u.ivB64;
-  }
-  await idbPut(db, 'meta', { key: 'notebook', salt: newSalt, iv: nbIv, ciphertext: nbCipher });
-  await pushRemoteNotebook(nbIv, nbCipher);
+  const { ivB64, ciphertextB64 } = await encryptJSON(notebook, newKey);
+  await idbPut(db, 'meta', { key: 'notebook', salt: newSalt, iv: ivB64, ciphertext: ciphertextB64 });
+  await pushRemoteNotebook(ivB64, ciphertextB64);
   encKey = newKey;
   cachedSalt = newSalt;
-  imageUrlCache.forEach((u) => URL.revokeObjectURL(u));
-  imageUrlCache.clear();
-  imageBlobCache.clear();
 };
 
 // ---------- 書き出し・読み込み ----------
@@ -1237,7 +1093,11 @@ function renderView() {
     items = notebook.items.filter((it) => it.genreId === currentView && !it.trashed);
   }
 
-  items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  items.sort((a, b) => {
+    const bKey = b.lastUsedAt || b.updatedAt || '';
+    const aKey = a.lastUsedAt || a.updatedAt || '';
+    return bKey.localeCompare(aKey);
+  });
 
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
@@ -1259,23 +1119,15 @@ function renderRow(item) {
   starBtn.onclick = async (e) => { e.stopPropagation(); item.favorite = !item.favorite; await saveNotebook(); renderView(); };
   row.appendChild(starBtn);
 
-  if (item.imageId) {
-    const thumb = document.createElement('img');
-    thumb.className = 'item-thumb';
-    thumb.alt = '';
-    loadImageUrl(item).then((url) => { if (url) thumb.src = url; });
-    row.appendChild(thumb);
-  }
-
   const main = document.createElement('div');
   main.className = 'item-main';
-  const fallback = item.text ? item.text.split('\n')[0].slice(0, 40) : (item.imageId ? '(画像)' : '(無題)');
+  const fallback = item.text ? item.text.split('\n')[0].slice(0, 40) : '(無題)';
   const titleEl = document.createElement('div');
   titleEl.className = 'item-title' + (item.title ? '' : ' placeholder');
   titleEl.textContent = item.title || fallback;
   const previewEl = document.createElement('div');
   previewEl.className = 'item-preview';
-  previewEl.textContent = item.text ? item.text.replace(/\n/g, ' ') : (item.imageId ? '🖼 画像' : '');
+  previewEl.textContent = (item.text || '').replace(/\n/g, ' ');
   main.appendChild(titleEl);
   main.appendChild(previewEl);
   row.appendChild(main);
@@ -1297,7 +1149,6 @@ function renderRow(item) {
     purgeBtn.onclick = async (e) => {
       e.stopPropagation();
       if (!confirm('完全に削除します。元に戻せません。よろしいですか？')) return;
-      if (item.imageId) await deleteImage(item);
       notebook.items = notebook.items.filter((x) => x.id !== item.id);
       await saveNotebook();
       renderView();
@@ -1350,25 +1201,7 @@ async function copyText(text) {
   }
 }
 
-async function copyItem(item) {
-  if (item.imageId) {
-    const blob = await loadImageBlob(item);
-    if (blob) {
-      try {
-        const pngBlob = await blobToPngBlob(blob);
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
-        showCopyToast(item.title || item.text || '🖼 画像をコピーしました');
-        item.lastUsedAt = new Date().toISOString();
-        await saveNotebook();
-        renderView();
-        return;
-      } catch (e) {
-        console.error('画像のコピーに失敗しました', e);
-        alert('お使いのブラウザは画像コピーに対応していません');
-        return;
-      }
-    }
-  }
+function copyItem(item) {
   copyText(item.text || '').then(async (ok) => {
     if (ok) {
       showCopyToast(item.text || '');
@@ -1413,9 +1246,6 @@ function showUndoToast(message, onUndo) {
 let editingItemId = null;
 let editorOriginalSnapshot = null;
 let editorFavorite = false;
-let pendingImageFile = null;
-let pendingImagePreviewUrl = null;
-let editorRemoveImage = false;
 
 function updateEditorFavBtn() {
   const btn = $('#cp-editor-fav-btn');
@@ -1423,50 +1253,14 @@ function updateEditorFavBtn() {
   btn.classList.toggle('active', editorFavorite);
 }
 
-function setPendingImage(file) {
-  if (!file || !file.type || !file.type.startsWith('image/')) return;
-  clearPendingImagePreviewUrl();
-  pendingImageFile = file;
-  editorRemoveImage = false;
-  pendingImagePreviewUrl = URL.createObjectURL(file);
-  $('#cp-pending-image-thumb').src = pendingImagePreviewUrl;
-  $('#cp-pending-image-name').textContent = file.name || '貼り付けた画像';
-  $('#cp-pending-image-preview').style.display = 'flex';
-}
-function clearPendingImagePreviewUrl() {
-  if (pendingImagePreviewUrl) { URL.revokeObjectURL(pendingImagePreviewUrl); pendingImagePreviewUrl = null; }
-}
-function clearPendingImage() {
-  pendingImageFile = null;
-  clearPendingImagePreviewUrl();
-  $('#cp-pending-image-preview').style.display = 'none';
-  $('#cp-editor-image-input').value = '';
-}
-function removeEditorImage() {
-  clearPendingImage();
-  editorRemoveImage = true;
-}
-
 function openEditor(item) {
   editingItemId = item ? item.id : null;
   editorFavorite = item ? !!item.favorite : false;
-  editorRemoveImage = false;
   updateEditorFavBtn();
-  clearPendingImage();
 
   $('#cp-editor-title').value = item ? (item.title || '') : '';
   $('#cp-editor-text').value = item ? item.text : '';
   editorOriginalSnapshot = item ? { title: item.title || '', text: item.text } : null;
-
-  if (item && item.imageId) {
-    loadImageUrl(item).then((url) => {
-      if (url) {
-        $('#cp-pending-image-thumb').src = url;
-        $('#cp-pending-image-name').textContent = '添付済みの画像';
-        $('#cp-pending-image-preview').style.display = 'flex';
-      }
-    });
-  }
 
   $('#cp-editor-overlay').classList.add('active');
   setTimeout(() => $('#cp-editor-text').focus(), 50);
@@ -1477,17 +1271,13 @@ async function closeEditorSave() {
   const text = $('#cp-editor-text').value.trim();
 
   if (!editingItemId) {
-    if (!text && !pendingImageFile) { closeEditorUI(); return; }
+    if (!text) { closeEditorUI(); return; }
     const g = currentGenre();
     if (!g) { closeEditorUI(); return; }
     const it = {
       id: uid(), genreId: g.id, title, text, favorite: editorFavorite, trashed: false,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
-    if (pendingImageFile) {
-      const { imageId, imageIv, imageMime } = await uploadImage(pendingImageFile);
-      it.imageId = imageId; it.imageIv = imageIv; it.imageMime = imageMime;
-    }
     notebook.items.push(it);
     await saveNotebook();
     closeEditorUI();
@@ -1495,19 +1285,9 @@ async function closeEditorSave() {
   } else {
     const it = notebook.items.find((x) => x.id === editingItemId);
     if (it) {
-      const imageWillChange = !!pendingImageFile || (editorRemoveImage && !!it.imageId);
-      const changed = (it.title || '') !== title || it.text !== text || !!it.favorite !== !!editorFavorite || imageWillChange;
+      const changed = (it.title || '') !== title || it.text !== text;
       const prevSnapshot = editorOriginalSnapshot;
-      it.title = title; it.text = text; it.favorite = editorFavorite;
-      if (changed) it.updatedAt = new Date().toISOString();
-      if (pendingImageFile) {
-        if (it.imageId) await deleteImage(it);
-        const { imageId, imageIv, imageMime } = await uploadImage(pendingImageFile);
-        it.imageId = imageId; it.imageIv = imageIv; it.imageMime = imageMime;
-      } else if (editorRemoveImage && it.imageId) {
-        await deleteImage(it);
-        delete it.imageId; delete it.imageIv; delete it.imageMime;
-      }
+      it.title = title; it.text = text; it.favorite = editorFavorite; it.updatedAt = new Date().toISOString();
       await saveNotebook();
       closeEditorUI();
       renderView();
@@ -1528,7 +1308,6 @@ function closeEditorUI() {
   $('#cp-editor-overlay').classList.remove('active');
   editingItemId = null;
   editorOriginalSnapshot = null;
-  clearPendingImage();
 }
 
 function openGenreDialog() {
@@ -1572,35 +1351,6 @@ window.addEventListener('DOMContentLoaded', () => {
   $('#cp-editor-fav-btn').onclick = () => { editorFavorite = !editorFavorite; updateEditorFavBtn(); };
   $('#cp-editor-close-btn').onclick = () => closeEditorSave();
 
-  $('#cp-editor-image-input').addEventListener('change', (e) => {
-    if (e.target.files && e.target.files[0]) setPendingImage(e.target.files[0]);
-  });
-  $('#cp-pending-image-remove').onclick = removeEditorImage;
-
-  const cpEditorPanel = $('#cp-editor-panel');
-  cpEditorPanel.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    cpEditorPanel.classList.add('drag-over');
-  });
-  cpEditorPanel.addEventListener('dragleave', () => cpEditorPanel.classList.remove('drag-over'));
-  cpEditorPanel.addEventListener('drop', (e) => {
-    e.preventDefault();
-    cpEditorPanel.classList.remove('drag-over');
-    const file = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (file) setPendingImage(file);
-  });
-  $('#cp-editor-text').addEventListener('paste', (e) => {
-    const items = e.clipboardData && e.clipboardData.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.type && item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) { setPendingImage(file); e.preventDefault(); }
-        break;
-      }
-    }
-  });
-
   // クリップボードから本文へ貼り付け（テキスト。押したら確認なしで即反映）
   $('#cp-editor-paste-btn').onclick = async () => {
     if (!navigator.clipboard) {
@@ -1608,20 +1358,6 @@ window.addEventListener('DOMContentLoaded', () => {
       return;
     }
     try {
-      // まず画像がないか確認（あれば画像を優先して添付）
-      if (navigator.clipboard.read) {
-        try {
-          const clipItems = await navigator.clipboard.read();
-          for (const item of clipItems) {
-            const imgType = item.types.find((t) => t.startsWith('image/'));
-            if (imgType) {
-              const blob = await item.getType(imgType);
-              setPendingImage(new File([blob], 'clipboard-image.png', { type: imgType }));
-              return;
-            }
-          }
-        } catch (e) { /* 画像の読み取りに失敗した場合はテキストとして試す */ }
-      }
       let text = '';
       if (navigator.clipboard.readText) {
         text = await navigator.clipboard.readText();
@@ -1635,7 +1371,7 @@ window.addEventListener('DOMContentLoaded', () => {
           }
         }
       }
-      if (!text) { alert('クリップボードに貼り付けられる内容が見つかりませんでした'); return; }
+      if (!text) { alert('クリップボードにテキストが見つかりませんでした'); return; }
       const ta = $('#cp-editor-text');
       const start = ta.selectionStart;
       const end = ta.selectionEnd;
@@ -2039,7 +1775,7 @@ function renderView() {
   list.innerHTML = '';
 
   let items = [];
-  let sortMode = 'recentlyUsed'; // recentlyUsed(最近使った順) | dateOnly(更新日時順) | favoriteThenDate(お気に入り優先→作成日時順)
+  let sortMode = 'recentlyUsed'; // recentlyUsed(最近使った順) | dateOnly(更新日時順) | favoriteThenDate(お気に入り優先→更新日時順)
   if (currentView === '__trash__') {
     titleEl.textContent = 'ゴミ箱';
     addBtn.style.display = 'none';
@@ -2057,11 +1793,11 @@ function renderView() {
   }
 
   if (sortMode === 'dateOnly') {
-    items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    items.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   } else if (sortMode === 'favoriteThenDate') {
     items.sort((a, b) => {
       if (!!a.favorite !== !!b.favorite) return a.favorite ? -1 : 1;
-      return (b.createdAt || '').localeCompare(a.createdAt || '');
+      return (b.updatedAt || '').localeCompare(a.updatedAt || '');
     });
   } else {
     items.sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
@@ -2367,11 +2103,9 @@ async function closeEditorSave() {
     } else {
       const p = notebook.prompts.find((x) => x.id === editingPromptId);
       if (p) {
-        const imageWillChange = (editorRemoveImage && !!p.imageId) || !!pendingImageFile;
-        const changed = (p.title || '') !== title || p.text !== text || !!p.favorite !== !!editorFavorite || imageWillChange;
+        const changed = (p.title || '') !== title || p.text !== text;
         if (changed && editorOriginalSnapshot) editUndoMap.set(p.id, editorOriginalSnapshot);
-        p.title = title; p.text = text; p.favorite = editorFavorite;
-        if (changed) p.updatedAt = new Date().toISOString();
+        p.title = title; p.text = text; p.favorite = editorFavorite; p.updatedAt = new Date().toISOString();
 
         if (editorRemoveImage && p.imageId) {
           await deleteImage(p);
@@ -3051,7 +2785,6 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderGrid() {
-    renderTabs(); // タブ一覧（新しいカテゴリの反映）も常に最新化する
     const grid = $('#ms-grid');
     $('#ms-open-add-btn').style.display = activeTab === '__trash__' ? 'none' : 'flex';
 
@@ -3532,9 +3265,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function renderEditItemCatChips() {
     const container = $('#ms-edit-item-cat-chips');
     container.innerHTML = '';
-    const known = getKnownCategories();
-    if (editItemCategory && !known.includes(editItemCategory)) known.push(editItemCategory); // 追加直後でまだどこにも保存されていない新規カテゴリも表示する
-    known.forEach((c) => {
+    getKnownCategories().forEach((c) => {
       const el = document.createElement('div');
       el.className = 'ms-chip' + (c === editItemCategory ? ' on' : '');
       el.textContent = c;
@@ -3546,7 +3277,6 @@ window.addEventListener('DOMContentLoaded', () => {
     const container = $('#ms-edit-item-subcat-chips');
     container.innerHTML = '';
     const known = getKnownSubCategories();
-    editItemSubCategories.forEach((c) => { if (!known.includes(c)) known.push(c); }); // 追加直後でまだどこにも保存されていない新規サブカテゴリも表示する
     if (!known.length) { container.style.display = 'none'; return; }
     container.style.display = 'flex';
     known.forEach((c) => {
@@ -3919,12 +3649,6 @@ window.addEventListener('DOMContentLoaded', () => {
     else if (addedCount > 1) showToast(`${addedCount}枚を追加しました`);
   });
 
-  // スマホでは編集可能な要素を長押ししないと「貼り付け」がOSメニューに出ないため、専用の入力欄を用意する
-  // （実際の画像抽出は上のdocumentレベルのリスナーがバブリングで処理し、ここではテキストを消すだけ）
-  $('#ms-paste-target-input').addEventListener('paste', () => {
-    setTimeout(() => { $('#ms-paste-target-input').value = ''; }, 0);
-  });
-
   function showAddStep2() {
     $('#ms-add-step2').style.display = 'block';
     const current = pendingQueue[pendingQueueIndex];
@@ -3940,9 +3664,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function renderCatChips() {
     const container = $('#ms-cat-chips');
     container.innerHTML = '';
-    const known = getKnownCategories();
-    if (pendingCategory && !known.includes(pendingCategory)) known.push(pendingCategory); // 追加直後でまだどこにも保存されていない新規カテゴリも表示する
-    known.forEach((c) => {
+    getKnownCategories().forEach((c) => {
       const el = document.createElement('div');
       el.className = 'ms-chip' + (c === pendingCategory ? ' on' : '');
       el.textContent = c;
