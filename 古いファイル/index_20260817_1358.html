@@ -3,10 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0iIzIwMjYyYiIvPgo8dGV4dCB4PSI1MCIgeT0iNzAiIGZvbnQtc2l6ZT0iNTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCfk4s8L3RleHQ+Cjwvc3ZnPg==">
-<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0iIzIwMjYyYiIvPgo8dGV4dCB4PSI1MCIgeT0iNzAiIGZvbnQtc2l6ZT0iNTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCfk4s8L3RleHQ+Cjwvc3ZnPg==">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="コピペ帳">
 <title>コピペ帳 / プロンプト帳</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
@@ -129,11 +125,6 @@ textarea, input { font-family: inherit; }
 .editor-panel textarea { flex: 1; width: 100%; border: none; resize: none; font-size: 17px; line-height: 1.9; outline: none; background: transparent; }
 .editor-image-area { margin-top: 14px; border-top: 1px solid var(--rule); padding-top: 14px; flex-shrink: 0; }
 .paste-hint { font-size: 11px; color: var(--ink-soft); margin-top: 8px; }
-@keyframes paste-target-flash {
-  0%, 100% { box-shadow: none; }
-  50% { box-shadow: 0 0 0 3px var(--accent-soft); }
-}
-.paste-target-flash { animation: paste-target-flash 0.5s ease-in-out 3; }
 .pending-image-preview { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; background: var(--paper); border: 1px solid var(--rule-strong); border-radius: var(--radius); padding: 6px 8px; }
 .pending-image-preview img { width: 40px; height: 40px; object-fit: cover; border-radius: var(--radius); cursor: zoom-in; }
 .pending-image-preview span { font-size: 12px; color: var(--ink-soft); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -395,11 +386,6 @@ textarea, input { font-family: inherit; }
   border-radius: 12px; color: var(--ms-text-dim); padding: 0 12px; font-size: 12.5px; text-align: center;
 }
 .ms-paste-target-input:focus { border-color: var(--ms-accent); color: var(--ms-text); }
-@keyframes ms-paste-target-flash {
-  0%, 100% { box-shadow: none; border-color: var(--ms-border); }
-  50% { box-shadow: 0 0 0 3px var(--ms-accent-dim); border-color: var(--ms-accent); }
-}
-.ms-paste-target-flash { animation: ms-paste-target-flash 0.5s ease-in-out 3; }
 
 #material-app input[type=file] { display: none; }
 
@@ -528,10 +514,6 @@ textarea, input { font-family: inherit; }
 <div class="copy-toast" id="cp-copy-toast">
   <div class="copy-toast-main">コピーしました</div>
   <div class="copy-toast-preview" id="cp-copy-toast-preview"></div>
-</div>
-
-<div class="modal-overlay" id="cp-image-modal">
-  <img id="cp-modal-image" src="" alt="拡大画像">
 </div>
   </div>
 
@@ -855,24 +837,6 @@ async function forgetCachedMasterKey() {
   } catch (e) { /* noop */ }
 }
 
-// クリップボードから画像を読み取る。iOS Safari等で「一度失敗しても、すぐもう一度試すと取れる」ことがあるため、
-// 短い間隔をあけて自動的に数回リトライしてから諦める（コピペ帳・プロンプト帳・素材帳 共通）
-async function readClipboardImageItem(maxAttempts = 3, delayMs = 350) {
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      const items = await navigator.clipboard.read();
-      for (const item of items) {
-        const type = item.types.find((t) => t.startsWith('image/'));
-        if (type) return { item, type };
-      }
-    } catch (e) {
-      if (i === maxAttempts - 1) throw e;
-    }
-    if (i < maxAttempts - 1) await new Promise((r) => setTimeout(r, delayMs));
-  }
-  return null;
-}
-
 /* ===================== コピペ帳 (CP) / プロンプト帳 (PN) の本体スクリプトはこの下に続く ===================== */
 
 // ===================== コピペ帳 (CP) =====================
@@ -1012,8 +976,6 @@ async function blobToPngBlob(blob) {
   canvas.getContext('2d').drawImage(bitmap, 0, 0);
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
 }
-
-function openImageModal(url) { $('#cp-modal-image').src = url; $('#cp-image-modal').classList.add('active'); }
 
 // ============== storage: Supabase（PC・スマホ間で同期） ==============
 async function fetchRemoteNotebook() {
@@ -1301,12 +1263,7 @@ function renderRow(item) {
     const thumb = document.createElement('img');
     thumb.className = 'item-thumb';
     thumb.alt = '';
-    let loadedUrl = null;
-    loadImageUrl(item).then((url) => { if (url) { thumb.src = url; loadedUrl = url; } });
-    thumb.onclick = (e) => {
-      e.stopPropagation();
-      if (loadedUrl) openImageModal(loadedUrl);
-    };
+    loadImageUrl(item).then((url) => { if (url) thumb.src = url; });
     row.appendChild(thumb);
   }
 
@@ -1466,42 +1423,14 @@ function updateEditorFavBtn() {
   btn.classList.toggle('active', editorFavorite);
 }
 
-function resizeImageBlob(fileOrBlob, maxDim, quality) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > maxDim || height > maxDim) {
-          const scale = maxDim / Math.max(width, height);
-          width = Math.round(width * scale);
-          height = Math.round(height * scale);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width; canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
-      };
-      img.onerror = reject;
-      img.src = reader.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(fileOrBlob);
-  });
-}
-
-async function setPendingImage(file) {
+function setPendingImage(file) {
   if (!file || !file.type || !file.type.startsWith('image/')) return;
   clearPendingImagePreviewUrl();
-  const originalName = file.name || '貼り付けた画像';
-  let resized = file;
-  try { resized = await resizeImageBlob(file, 2048, 0.90); } catch (e) { console.warn('画像のリサイズに失敗、元画像のまま添付します', e); }
-  pendingImageFile = resized;
+  pendingImageFile = file;
   editorRemoveImage = false;
-  pendingImagePreviewUrl = URL.createObjectURL(resized);
+  pendingImagePreviewUrl = URL.createObjectURL(file);
   $('#cp-pending-image-thumb').src = pendingImagePreviewUrl;
-  $('#cp-pending-image-name').textContent = originalName;
+  $('#cp-pending-image-name').textContent = file.name || '貼り付けた画像';
   $('#cp-pending-image-preview').style.display = 'flex';
 }
 function clearPendingImagePreviewUrl() {
@@ -1641,7 +1570,6 @@ window.addEventListener('DOMContentLoaded', () => {
   };
 
   $('#cp-editor-fav-btn').onclick = () => { editorFavorite = !editorFavorite; updateEditorFavBtn(); };
-  $('#cp-image-modal').onclick = () => $('#cp-image-modal').classList.remove('active');
   $('#cp-editor-close-btn').onclick = () => closeEditorSave();
 
   $('#cp-editor-image-input').addEventListener('change', (e) => {
@@ -1661,27 +1589,14 @@ window.addEventListener('DOMContentLoaded', () => {
     const file = e.dataTransfer.files && e.dataTransfer.files[0];
     if (file) setPendingImage(file);
   });
-  document.addEventListener('paste', (e) => {
-    if (!$('#cp-editor-overlay').classList.contains('active')) return;
+  $('#cp-editor-text').addEventListener('paste', (e) => {
     const items = e.clipboardData && e.clipboardData.items;
     if (!items) return;
     for (const item of items) {
       if (item.type && item.type.startsWith('image/')) {
         const file = item.getAsFile();
         if (file) { setPendingImage(file); e.preventDefault(); }
-        return;
-      }
-    }
-    // 画像でなければテキストとして本文欄へ挿入する（本文欄にフォーカスしていなくても効くように）
-    if (e.target !== $('#cp-editor-text')) {
-      const text = e.clipboardData.getData('text/plain');
-      if (text) {
-        const ta = $('#cp-editor-text');
-        const start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
-        const end = ta.selectionEnd != null ? ta.selectionEnd : ta.value.length;
-        ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
-        ta.selectionStart = ta.selectionEnd = start + text.length;
-        e.preventDefault();
+        break;
       }
     }
   });
@@ -1693,14 +1608,17 @@ window.addEventListener('DOMContentLoaded', () => {
       return;
     }
     try {
-      // まず画像がないか確認（あれば画像を優先して添付。iOS等での一時的な失敗に備え自動リトライする）
+      // まず画像がないか確認（あれば画像を優先して添付）
       if (navigator.clipboard.read) {
         try {
-          const found = await readClipboardImageItem();
-          if (found) {
-            const blob = await found.item.getType(found.type);
-            setPendingImage(new File([blob], 'clipboard-image.png', { type: found.type }));
-            return;
+          const clipItems = await navigator.clipboard.read();
+          for (const item of clipItems) {
+            const imgType = item.types.find((t) => t.startsWith('image/'));
+            if (imgType) {
+              const blob = await item.getType(imgType);
+              setPendingImage(new File([blob], 'clipboard-image.png', { type: imgType }));
+              return;
+            }
           }
         } catch (e) { /* 画像の読み取りに失敗した場合はテキストとして試す */ }
       }
@@ -1717,15 +1635,7 @@ window.addEventListener('DOMContentLoaded', () => {
           }
         }
       }
-      if (!text) {
-        alert('画像・テキストが見つかりませんでした。本文欄を長押し→「貼り付け」でお試しください');
-        const target = $('#cp-editor-text');
-        target.focus();
-        target.classList.remove('paste-target-flash');
-        void target.offsetWidth;
-        target.classList.add('paste-target-flash');
-        return;
-      }
+      if (!text) { alert('クリップボードに貼り付けられる内容が見つかりませんでした'); return; }
       const ta = $('#cp-editor-text');
       const start = ta.selectionStart;
       const end = ta.selectionEnd;
@@ -2355,42 +2265,14 @@ function openImageModal(url) { $('#pn-modal-image').src = url; $('#pn-image-moda
 let pendingImageFile = null;
 let pendingImagePreviewUrl = null;
 
-function resizeImageBlob(fileOrBlob, maxDim, quality) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > maxDim || height > maxDim) {
-          const scale = maxDim / Math.max(width, height);
-          width = Math.round(width * scale);
-          height = Math.round(height * scale);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width; canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
-      };
-      img.onerror = reject;
-      img.src = reader.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(fileOrBlob);
-  });
-}
-
-async function setPendingImage(file) {
+function setPendingImage(file) {
   if (!file || !file.type || !file.type.startsWith('image/')) return;
   clearPendingImagePreviewUrl();
-  const originalName = file.name || '貼り付けた画像';
-  let resized = file;
-  try { resized = await resizeImageBlob(file, 2048, 0.90); } catch (e) { console.warn('画像のリサイズに失敗、元画像のまま添付します', e); }
-  pendingImageFile = resized;
+  pendingImageFile = file;
   editorRemoveImage = false;
-  pendingImagePreviewUrl = URL.createObjectURL(resized);
+  pendingImagePreviewUrl = URL.createObjectURL(file);
   $('#pn-pending-image-thumb').src = pendingImagePreviewUrl;
-  $('#pn-pending-image-name').textContent = originalName;
+  $('#pn-pending-image-name').textContent = file.name || '貼り付けた画像';
   $('#pn-pending-image-preview').style.display = 'flex';
 }
 function clearPendingImagePreviewUrl() {
@@ -2654,27 +2536,15 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   // 画像：貼り付け（Ctrl+V / Cmd+V）
-  document.addEventListener('paste', (e) => {
-    if (!$('#pn-editor-overlay').classList.contains('active')) return;
+  $('#pn-editor-text').addEventListener('paste', (e) => {
+    if (!editorHasImageGenre) return;
     const items = e.clipboardData && e.clipboardData.items;
-    if (items && editorHasImageGenre) {
-      for (const item of items) {
-        if (item.type && item.type.startsWith('image/')) {
-          const file = item.getAsFile();
-          if (file) { setPendingImage(file); e.preventDefault(); return; }
-        }
-      }
-    }
-    // 画像でなければテキストとして本文欄へ挿入する（本文欄にフォーカスしていなくても効くように）
-    if (e.target !== $('#pn-editor-text')) {
-      const text = e.clipboardData.getData('text/plain');
-      if (text) {
-        const ta = $('#pn-editor-text');
-        const start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
-        const end = ta.selectionEnd != null ? ta.selectionEnd : ta.value.length;
-        ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
-        ta.selectionStart = ta.selectionEnd = start + text.length;
-        e.preventDefault();
+    if (!items) return;
+    for (const item of items) {
+      if (item.type && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) { setPendingImage(file); e.preventDefault(); }
+        break;
       }
     }
   });
@@ -2729,15 +2599,15 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     try {
       if (navigator.clipboard.read) {
-        try {
-          const found = await readClipboardImageItem();
-          if (found) {
-            const blob = await found.item.getType(found.type);
-            setPendingImage(new File([blob], 'clipboard-image.png', { type: found.type }));
+        const clipItems = await navigator.clipboard.read();
+        for (const item of clipItems) {
+          const imgType = item.types.find((t) => t.startsWith('image/'));
+          if (imgType) {
+            const blob = await item.getType(imgType);
+            setPendingImage(new File([blob], 'clipboard-image.png', { type: imgType }));
             return;
           }
-        } catch (e) { /* 画像の読み取りに失敗した場合はテキストとして試す */ }
-        const clipItems = await navigator.clipboard.read();
+        }
         for (const item of clipItems) {
           if (item.types.includes('text/plain')) {
             const blob = await item.getType('text/plain');
@@ -2750,12 +2620,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const text = await navigator.clipboard.readText();
         if (text) { insertTextAtCursorPn(text); return; }
       }
-      alert('画像・テキストが見つかりませんでした。本文欄を長押し→「貼り付け」でお試しください');
-      const pasteTarget = $('#pn-editor-text');
-      pasteTarget.focus();
-      pasteTarget.classList.remove('paste-target-flash');
-      void pasteTarget.offsetWidth;
-      pasteTarget.classList.add('paste-target-flash');
+      alert('クリップボードに貼り付けられる内容が見つかりませんでした');
     } catch (e) {
       console.error(e);
       alert('クリップボードの読み取りに失敗しました（未対応のブラウザか、権限が許可されていない可能性があります）');
@@ -3734,12 +3599,7 @@ window.addEventListener('DOMContentLoaded', () => {
     await saveStock();
     closeEditItemModal();
     renderGrid();
-    if (editingGroupId && $('#ms-group-modal-overlay').classList.contains('open')) {
-      currentGroupId = editingGroupId;
-      renderGroupModal();
-    } else if (currentGroupId) {
-      renderGroupModal();
-    }
+    if (currentGroupId) renderGroupModal();
   });
 
   function renderGroupMemberCard(it) {
@@ -3967,29 +3827,18 @@ window.addEventListener('DOMContentLoaded', () => {
   async function tryPasteFromClipboardRead() {
     try {
       if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('このブラウザはnavigator.clipboard.readに対応していません');
+      const clip = await navigator.clipboard.read();
+      console.log('[素材帳] クリップボードの内容:', clip.map((i) => i.types));
       let addedCount = 0;
-      const maxAttempts = 3;
-      for (let attempt = 0; attempt < maxAttempts && addedCount === 0; attempt++) {
-        const clip = await navigator.clipboard.read();
-        console.log('[素材帳] クリップボードの内容:', clip.map((i) => i.types));
-        for (const item of clip) {
-          const type = item.types.find((t) => t.startsWith('image/'));
-          if (type) {
-            const srcBlob = await item.getType(type);
-            if (await autoAddImage(srcBlob, true)) addedCount++;
-          }
+      for (const item of clip) {
+        const type = item.types.find((t) => t.startsWith('image/'));
+        if (type) {
+          const srcBlob = await item.getType(type);
+          if (await autoAddImage(srcBlob, true)) addedCount++;
         }
-        if (addedCount === 0 && attempt < maxAttempts - 1) await new Promise((r) => setTimeout(r, 350));
       }
       if (addedCount === 0) {
-        showToast('画像が見つかりません。下の欄を長押し→「貼り付け」でお試しください');
-        const target = $('#ms-paste-target-input');
-        if (target) {
-          target.focus();
-          target.classList.remove('ms-paste-target-flash');
-          void target.offsetWidth; // アニメーションを再トリガーするための強制リフロー
-          target.classList.add('ms-paste-target-flash');
-        }
+        showToast('クリップボードに画像が見つかりません（Ctrl+Vでもお試しください）');
       } else if (addedCount === 1) {
         showToast('素材を追加しました');
       } else {
