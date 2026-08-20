@@ -87,7 +87,6 @@ textarea, input { font-family: inherit; }
 
 .tabs { width: 168px; flex-shrink: 0; padding: 78px 0 20px; display: flex; flex-direction: column; gap: 6px; }
 .tab-btn { border: none; padding: 10px 14px; text-align: left; font-size: 13px; font-weight: 500; color: #fff; border-radius: 0 20px 20px 0; margin-right: 14px; box-shadow: var(--shadow); opacity: 0.72; transition: opacity 0.15s, transform 0.15s; }
-.tab-btn.tab-drag-over { outline: 3px dashed #fff; outline-offset: 2px; opacity: 1; }
 .tab-btn:hover { opacity: 0.9; transform: translateX(2px); }
 .tab-btn.active { opacity: 1; margin-right: 0; transform: translateX(0); }
 .tab-btn.trash-tab { background: var(--ink-soft) !important; margin-top: 18px; }
@@ -129,15 +128,6 @@ textarea, input { font-family: inherit; }
 .editor-topbar button.copy-flash { color: #3f7a52; }
 .editor-panel textarea { flex: 1; width: 100%; border: none; resize: none; font-size: 17px; line-height: 1.9; outline: none; background: transparent; }
 .editor-image-area { margin-top: 14px; border-top: 1px solid var(--rule); padding-top: 14px; flex-shrink: 0; }
-.genre-move-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; flex-shrink: 0; }
-.genre-move-label { font-size: 11px; color: var(--ink-soft); flex-shrink: 0; }
-.genre-move-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.genre-move-chip {
-  font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--rule-strong);
-  background: var(--paper); color: var(--ink-soft); cursor: pointer;
-}
-.genre-move-chip.current { background: var(--accent); border-color: var(--accent); color: #fff; cursor: default; }
-.genre-move-chip.drag-over { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .paste-hint { font-size: 11px; color: var(--ink-soft); margin-top: 8px; }
 @keyframes paste-target-flash {
   0%, 100% { box-shadow: none; }
@@ -503,8 +493,7 @@ textarea, input { font-family: inherit; }
   <div class="editor-panel" id="cp-editor-panel">
     <div class="editor-topbar">
       <input type="text" id="cp-editor-title" placeholder="タイトル（任意）">
-      <button id="cp-editor-paste-btn" title="クリップボードから貼り付け（画像優先）">📥</button>
-      <button id="cp-editor-copy-btn" title="コピー">📋</button>
+      <button id="cp-editor-paste-btn" title="クリップボードから貼り付け（画像優先）">📋</button>
       <button id="cp-editor-fav-btn" title="お気に入り">☆</button>
       <button id="cp-editor-close-btn">✕</button>
     </div>
@@ -587,10 +576,6 @@ textarea, input { font-family: inherit; }
       <button id="pn-editor-close-btn">✕</button>
     </div>
     <textarea id="pn-editor-text" placeholder="プロンプトを入力…"></textarea>
-    <div class="genre-move-row" id="pn-genre-move-row">
-      <span class="genre-move-label">ジャンル：</span>
-      <div class="genre-move-chips" id="pn-genre-move-chips"></div>
-    </div>
     <div class="editor-image-area" id="pn-editor-image-area" style="display:none;">
       <div class="pending-image-preview" id="pn-pending-image-preview" style="display:none;">
         <img id="pn-pending-image-thumb" alt="添付画像">
@@ -1655,28 +1640,6 @@ window.addEventListener('DOMContentLoaded', () => {
     renderView();
   };
 
-  $('#cp-editor-copy-btn').onclick = async () => {
-    const btn = $('#cp-editor-copy-btn');
-    try {
-      let blob = pendingImageFile;
-      if (!blob && !editorRemoveImage && editingItemId) {
-        const it = notebook.items.find((x) => x.id === editingItemId);
-        if (it && it.imageId) blob = await loadImageBlob(it);
-      }
-      if (blob) {
-        const pngBlob = await blobToPngBlob(blob);
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
-      } else {
-        await navigator.clipboard.writeText($('#cp-editor-text').value);
-      }
-      btn.textContent = '✓';
-      btn.classList.add('copy-flash');
-      setTimeout(() => { btn.textContent = '📋'; btn.classList.remove('copy-flash'); }, 1500);
-    } catch (e) {
-      console.error('編集画面からのコピーに失敗しました', e);
-      alert('コピーに失敗しました');
-    }
-  };
   $('#cp-editor-fav-btn').onclick = () => { editorFavorite = !editorFavorite; updateEditorFavBtn(); };
   $('#cp-image-modal').onclick = () => $('#cp-image-modal').classList.remove('active');
   $('#cp-editor-close-btn').onclick = () => closeEditorSave();
@@ -2132,31 +2095,6 @@ function renderTabs() {
     btn.style.background = g.color;
     btn.textContent = g.name;
     btn.onclick = () => { clearPendingImage(); currentView = g.id; renderTabs(); renderView(); };
-    btn.addEventListener('dragover', (e) => {
-      if (!e.dataTransfer.types.includes('text/x-pn-prompt-id')) return;
-      e.preventDefault();
-      btn.classList.add('tab-drag-over');
-    });
-    btn.addEventListener('dragleave', () => btn.classList.remove('tab-drag-over'));
-    btn.addEventListener('drop', async (e) => {
-      if (!e.dataTransfer.types.includes('text/x-pn-prompt-id')) return;
-      e.preventDefault();
-      btn.classList.remove('tab-drag-over');
-      const promptId = e.dataTransfer.getData('text/x-pn-prompt-id');
-      const p = notebook.prompts.find((x) => x.id === promptId);
-      if (!p || p.genreId === g.id) return;
-      const oldGenreId = p.genreId;
-      p.genreId = g.id;
-      p.updatedAt = new Date().toISOString();
-      await saveNotebook();
-      renderView();
-      showUndoToast(`「${g.name}」に移動しました`, async () => {
-        p.genreId = oldGenreId;
-        p.updatedAt = new Date().toISOString();
-        await saveNotebook();
-        renderView();
-      });
-    });
     container.appendChild(btn);
   });
 
@@ -2246,13 +2184,6 @@ function renderCard(p) {
   const card = document.createElement('div');
   card.className = 'prompt-card';
   card.onclick = () => openEditor(p);
-  if (currentView !== '__trash__' && currentView !== '__fav__') {
-    card.draggable = true;
-    card.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData('text/x-pn-prompt-id', p.id);
-      e.dataTransfer.effectAllowed = 'move';
-    });
-  }
 
   const body = document.createElement('div');
   body.className = 'card-body';
@@ -2482,41 +2413,6 @@ let editorOriginalSnapshot = null;
 let editorHasImageGenre = false;
 let editorRemoveImage = false;
 let editorFavorite = false;
-let editorGenreId = null;
-
-function renderGenreMoveChips() {
-  const container = $('#pn-genre-move-chips');
-  container.innerHTML = '';
-  notebook.genres.forEach((g) => {
-    const el = document.createElement('div');
-    el.className = 'genre-move-chip' + (g.id === editorGenreId ? ' current' : '');
-    el.textContent = g.name;
-    if (g.id !== editorGenreId) {
-      el.onclick = async () => {
-        const p = notebook.prompts.find((x) => x.id === editingPromptId);
-        if (!p) return;
-        const oldGenreId = p.genreId;
-        p.genreId = g.id;
-        p.updatedAt = new Date().toISOString();
-        editorGenreId = g.id;
-        editorHasImageGenre = !!g.hasImage;
-        $('#pn-editor-image-area').style.display = editorHasImageGenre ? 'block' : 'none';
-        await saveNotebook();
-        renderGenreMoveChips();
-        renderView();
-        showUndoToast(`「${g.name}」に移動しました`, async () => {
-          p.genreId = oldGenreId;
-          p.updatedAt = new Date().toISOString();
-          await saveNotebook();
-          editorGenreId = oldGenreId;
-          renderGenreMoveChips();
-          renderView();
-        });
-      };
-    }
-    container.appendChild(el);
-  });
-}
 
 function updateEditorFavBtn() {
   const btn = $('#pn-editor-fav-btn');
@@ -2528,7 +2424,6 @@ function openEditor(p) {
   editingPromptId = p ? p.id : null;
   const g = p ? genreOf(p) : currentGenre();
   editorHasImageGenre = !!(g && g.hasImage);
-  editorGenreId = g ? g.id : null;
   editorRemoveImage = false;
   editorFavorite = p ? !!p.favorite : false;
   updateEditorFavBtn();
@@ -2537,13 +2432,6 @@ function openEditor(p) {
   $('#pn-editor-title').value = p ? (p.title || '') : '';
   $('#pn-editor-text').value = p ? p.text : '';
   editorOriginalSnapshot = p ? { title: p.title || '', text: p.text } : null;
-
-  if (p) {
-    $('#pn-genre-move-row').style.display = 'flex';
-    renderGenreMoveChips();
-  } else {
-    $('#pn-genre-move-row').style.display = 'none';
-  }
 
   $('#pn-editor-image-area').style.display = editorHasImageGenre ? 'block' : 'none';
   if (editorHasImageGenre && p && p.imageId) {
@@ -3009,7 +2897,7 @@ window.addEventListener('DOMContentLoaded', () => {
   let db = null;
   let encKey = null;
   let stock = null;
-  let activeTab = 'モデル'; // 最初に開いた時は「モデル」タブを表示
+  let activeTab = 'すべて';
   let favOnly = false;
   let searchQuery = '';
   let subFilterValue = ''; // 選んでいる大分類の中でのサブカテゴリ絞り込み
@@ -3316,35 +3204,18 @@ window.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // グループ化されたアイテムは1枚のタイルにまとめて表示エントリを組み立てる
+    // グループ化されたアイテムは1枚のタイルにまとめる
     const seenGroups = new Set();
-    const entries = [];
     list.forEach((it) => {
       if (it.groupId) {
         if (seenGroups.has(it.groupId)) return;
         seenGroups.add(it.groupId);
         const members = stock.items.filter((x) => x.groupId === it.groupId && !x.trashed)
           .sort((a, b) => (Number(!!b.favorite) - Number(!!a.favorite)) || (b.createdAt || '').localeCompare(a.createdAt || ''));
-        entries.push({ type: 'group', groupId: it.groupId, members });
+        grid.appendChild(renderGroupCard(it.groupId, members));
       } else {
-        entries.push({ type: 'item', item: it });
+        grid.appendChild(renderCard(it));
       }
-    });
-
-    // 複数写真（2枚以上）のモデルは、枚数が多い順に上へ。それ以外は元の並び（お気に入り→作成日時）を維持
-    entries.sort((a, b) => {
-      const aCount = a.type === 'group' ? a.members.length : 1;
-      const bCount = b.type === 'group' ? b.members.length : 1;
-      const aBig = aCount >= 2;
-      const bBig = bCount >= 2;
-      if (aBig !== bBig) return aBig ? -1 : 1;
-      if (aBig && bBig) return bCount - aCount;
-      return 0; // 元の並び順を維持（安定ソート）
-    });
-
-    entries.forEach((entry) => {
-      if (entry.type === 'group') grid.appendChild(renderGroupCard(entry.groupId, entry.members));
-      else grid.appendChild(renderCard(entry.item));
     });
   }
 
