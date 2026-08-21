@@ -97,14 +97,9 @@ textarea, input { font-family: inherit; }
 .tab-add-row button:hover { background: var(--paper-card); }
 
 .main { flex: 1; padding: 40px 48px; max-width: 860px; min-width: 0; }
-.main-header { display: flex; align-items: baseline; justify-content: flex-end; margin-bottom: 14px; flex-wrap: wrap; gap: 8px 14px; }
+.main-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 8px 14px; }
+.main-header h2 { font-family: 'Shippori Mincho', serif; font-size: 22px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
-.fab-add-btn {
-  display: none; position: fixed; right: 18px; bottom: 24px; width: 54px; height: 54px; border-radius: 50%;
-  background: var(--accent); color: #fff; border: none; font-size: 26px; line-height: 1; box-shadow: 0 6px 18px rgba(0,0,0,0.28);
-  z-index: 150; align-items: center; justify-content: center;
-}
-.fab-add-btn:active { transform: scale(0.94); }
 .lock-btn { border: none; background: transparent; color: var(--ink-soft); font-size: 12px; text-decoration: underline; cursor: pointer; white-space: nowrap; }
 .edit-mode-btn { border: 1px solid var(--rule-strong); background: var(--paper-card); color: var(--ink); font-size: 12px; padding: 6px 12px; border-radius: 14px; white-space: nowrap; }
 .edit-mode-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -236,6 +231,7 @@ textarea, input { font-family: inherit; }
 
   .main { padding: 14px 14px; }
   .main-header { margin-bottom: 10px; gap: 4px 10px; }
+  .main-header h2 { font-size: 16px; max-width: 55vw; }
   .header-actions { gap: 8px; }
   #cp-export-btn, #cp-import-label, #pn-export-btn, #pn-import-label { display: none; }
 
@@ -481,6 +477,7 @@ textarea, input { font-family: inherit; }
 
   <div class="main">
     <div class="main-header">
+      <h2 id="cp-current-genre-title">よく使う</h2>
       <div class="header-actions">
         <button class="edit-mode-btn" id="cp-edit-mode-btn">✎ 編集</button>
         <button class="lock-btn" id="cp-export-btn">⬇ 書き出し</button>
@@ -495,7 +492,6 @@ textarea, input { font-family: inherit; }
       <input type="text" class="search-input" id="cp-search-input" placeholder="🔍 検索">
     </div>
 
-    <button class="fab-add-btn" id="cp-fab-add-btn" title="新規追加">＋</button>
     <div class="sheet" id="cp-item-sheet">
       <div id="cp-item-list"></div>
     </div>
@@ -561,6 +557,7 @@ textarea, input { font-family: inherit; }
 
   <div class="main">
     <div class="main-header">
+      <h2 id="pn-current-genre-title">業務用</h2>
       <div class="header-actions">
         <button class="lock-btn" id="pn-export-btn">⬇ 書き出し</button>
         <label class="lock-btn file-label" id="pn-import-label">⬆ 読み込み
@@ -573,8 +570,6 @@ textarea, input { font-family: inherit; }
       <button class="add-new-btn" id="pn-add-new-btn">＋ 新しいプロンプトを追加</button>
       <input type="text" class="search-input" id="pn-search-input" placeholder="🔍 検索">
     </div>
-
-    <button class="fab-add-btn" id="pn-fab-add-btn" title="新規追加">＋</button>
 
     <div id="pn-prompt-list"></div>
     <div class="empty-state" id="pn-empty-state" style="display:none;">まだプロンプトがありません</div>
@@ -1272,8 +1267,8 @@ function renderTabs() {
 function currentGenre() { return notebook.genres.find((g) => g.id === currentView) || null; }
 
 function renderView() {
+  const titleEl = $('#cp-current-genre-title');
   const addBtn = $('#cp-add-new-btn');
-  const fab = $('#cp-fab-add-btn');
   const sheet = $('#cp-item-sheet');
   const list = $('#cp-item-list');
   list.innerHTML = '';
@@ -1281,16 +1276,17 @@ function renderView() {
 
   let items = [];
   if (currentView === '__trash__') {
+    titleEl.textContent = 'ゴミ箱';
     addBtn.style.display = 'none';
-    if (fab) fab.style.display = 'none';
     items = notebook.items.filter((it) => it.trashed);
   } else if (currentView === '__fav__') {
+    titleEl.textContent = 'お気に入り';
     addBtn.style.display = 'none';
-    if (fab) fab.style.display = 'none';
     items = notebook.items.filter((it) => it.favorite && !it.trashed);
   } else {
+    const g = currentGenre();
+    titleEl.textContent = g ? g.name : '';
     addBtn.style.display = 'block';
-    if (fab) fab.style.display = 'flex';
     items = notebook.items.filter((it) => it.genreId === currentView && !it.trashed);
   }
 
@@ -1647,7 +1643,6 @@ window.addEventListener('DOMContentLoaded', () => {
     e.target.value = '';
   });
   $('#cp-add-new-btn').onclick = () => openEditor(null);
-  $('#cp-fab-add-btn').onclick = () => openEditor(null);
   $('#cp-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderView(); });
   $('#cp-genre-cancel-btn').onclick = closeGenreDialog;
   $('#cp-genre-confirm-btn').onclick = confirmAddGenre;
@@ -2190,25 +2185,25 @@ function currentGenre() { return notebook.genres.find((g) => g.id === currentVie
 function genreOf(p) { return notebook.genres.find((g) => g.id === p.genreId); }
 
 function renderView() {
+  const titleEl = $('#pn-current-genre-title');
   const addBtn = $('#pn-add-new-btn');
-  const fab = $('#pn-fab-add-btn');
   const list = $('#pn-prompt-list');
   list.innerHTML = '';
 
   let items = [];
   let sortMode = 'recentlyUsed'; // recentlyUsed(最近使った順) | dateOnly(更新日時順) | favoriteThenDate(お気に入り優先→作成日時順)
   if (currentView === '__trash__') {
+    titleEl.textContent = 'ゴミ箱';
     addBtn.style.display = 'none';
-    if (fab) fab.style.display = 'none';
     items = notebook.prompts.filter((p) => p.trashed);
   } else if (currentView === '__fav__') {
+    titleEl.textContent = 'お気に入り';
     addBtn.style.display = 'none';
-    if (fab) fab.style.display = 'none';
     items = notebook.prompts.filter((p) => p.favorite && !p.trashed);
   } else {
     const g = currentGenre();
+    titleEl.textContent = g ? g.name : '';
     addBtn.style.display = 'block';
-    if (fab) fab.style.display = 'flex';
     items = notebook.prompts.filter((p) => p.genreId === currentView && !p.trashed);
     sortMode = (g && g.hasImage) ? 'dateOnly' : 'favoriteThenDate';
   }
@@ -2683,7 +2678,6 @@ window.addEventListener('DOMContentLoaded', () => {
     e.target.value = '';
   });
   $('#pn-add-new-btn').onclick = () => openEditor(null);
-  $('#pn-fab-add-btn').onclick = () => openEditor(null);
   $('#pn-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderView(); });
   $('#pn-genre-cancel-btn').onclick = closeGenreDialog;
   $('#pn-genre-confirm-btn').onclick = confirmAddGenre;
@@ -3026,21 +3020,6 @@ window.addEventListener('DOMContentLoaded', () => {
   let dragSourceItemIds = null; // 複数選択ドラッグ時の一時保持
 
   const imageUrlCache = new Map();
-  const dataUrlCache = new Map(); // 別ウィンドウ・別アプリへのドラッグ持ち出し用（data URLはウィンドウをまたいでも解決できる）
-
-  async function ensureDataUrlCached(item) {
-    if (dataUrlCache.has(item.id)) return dataUrlCache.get(item.id);
-    const blob = await loadImageBlob(item);
-    if (!blob) return null;
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-    dataUrlCache.set(item.id, dataUrl);
-    return dataUrl;
-  }
   const imageBlobCache = new Map();
 
   function uid() { return crypto.randomUUID ? crypto.randomUUID() : 'id' + Date.now() + Math.random().toString(16).slice(2); }
@@ -3430,16 +3409,7 @@ window.addEventListener('DOMContentLoaded', () => {
         e.dataTransfer.setData('text/x-ms-item-id', itemId);
         console.log('[素材帳][診断] 単体ドラッグ開始. id:', itemId, ' selectionMode:', selectionMode, ' selectedItemIds:', [...selectedItemIds]);
       }
-      // 画像が既に表示済み（data URL変換済み）なら、別ウィンドウ・別アプリへそのままドラッグして貼り付けられるようにする
-      const dataUrl = dataUrlCache.get(itemId);
-      if (dataUrl) {
-        const it = stock.items.find((x) => x.id === itemId);
-        const mime = (it && it.imageMime) || 'image/jpeg';
-        const ext = mime.split('/')[1] || 'jpg';
-        e.dataTransfer.setData('DownloadURL', `${mime}:material_${itemId.slice(0, 8)}.${ext}:${dataUrl}`);
-        e.dataTransfer.setData('text/uri-list', dataUrl);
-      }
-      e.dataTransfer.effectAllowed = 'copyMove';
+      e.dataTransfer.effectAllowed = 'move';
     });
     card.addEventListener('dragover', (e) => {
       const isInternal = e.dataTransfer.types.includes('text/x-ms-item-id') || e.dataTransfer.types.includes('text/x-ms-item-ids');
@@ -3559,7 +3529,6 @@ window.addEventListener('DOMContentLoaded', () => {
         const url = await loadImageUrl(cover);
         if (!url) { showToast('画像の読み込みに失敗しました'); return; }
         revealedIds.add(cover.id);
-        ensureDataUrlCached(cover).catch(() => {});
         renderGrid();
         return;
       }
@@ -3628,7 +3597,6 @@ window.addEventListener('DOMContentLoaded', () => {
       const url = await loadImageUrl(it);
       if (!url) { showToast('画像の読み込みに失敗しました'); return; }
       revealedIds.add(it.id);
-      ensureDataUrlCached(it).catch(() => {});
       renderGrid();
     };
     card.appendChild(thumb);
