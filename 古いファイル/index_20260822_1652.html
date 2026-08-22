@@ -47,15 +47,6 @@ button { font-family: inherit; cursor: pointer; }
 textarea, input { font-family: inherit; }
 
 /* ============== モード切替バー（共通・中立色） ============== */
-#shared-center-toast {
-  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9);
-  background: rgba(20, 24, 27, 0.92); color: #fff; font-size: 16px; font-weight: 600;
-  padding: 18px 30px; border-radius: 16px; z-index: 900; pointer-events: none;
-  opacity: 0; transition: opacity 0.18s ease, transform 0.18s ease; white-space: nowrap;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-}
-#shared-center-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-
 .mode-bar {
   position: sticky; top: 0; z-index: 500;
   background: #20262b; height: 46px;
@@ -174,15 +165,6 @@ textarea, input { font-family: inherit; }
 .dialog-overlay { position: fixed; inset: 0; background: rgba(34, 48, 56, 0.5); display: none; align-items: center; justify-content: center; z-index: 90; }
 .dialog-overlay.active { display: flex; }
 .dialog { background: var(--paper-card); border-radius: var(--radius); padding: 24px; width: 300px; max-width: calc(100vw - 32px); box-shadow: var(--shadow); }
-.gs-empty { padding: 24px 4px; text-align: center; color: var(--ink-soft); font-size: 13px; }
-.gs-result-row {
-  padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--rule); margin-bottom: 8px; cursor: pointer;
-  background: var(--paper);
-}
-.gs-result-row:hover { background: var(--accent-soft); }
-.gs-result-meta { font-size: 11px; color: var(--ink-soft); margin-bottom: 3px; }
-.gs-result-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
-.gs-result-preview { font-size: 12px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dialog h3 { margin: 0 0 14px; font-family: 'Shippori Mincho', serif; font-size: 16px; }
 .dialog input[type="text"], .dialog input[type="password"] { width: 100%; padding: 8px 10px; border: 1px solid var(--rule-strong); border-radius: var(--radius); margin-bottom: 12px; font-size: 14px; }
 .dialog label.checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 16px; color: var(--ink-soft); }
@@ -484,7 +466,6 @@ textarea, input { font-family: inherit; }
     <button class="mode-btn" id="mode-copy-btn">📋 コピペ帳</button>
     <button class="mode-btn" id="mode-prompt-btn">🗒 プロンプト帳</button>
     <button class="mode-btn" id="mode-material-btn">🖼 素材帳</button>
-    <button class="eye-toggle-btn" id="global-search-btn" title="全体検索">🔍</button>
     <button class="eye-toggle-btn" id="eye-toggle-btn" title="隠しモードを表示">👁</button>
     <a href="https://gemini.google.com/app" target="_blank" rel="noopener" class="eye-toggle-btn" title="Geminiを開く">✨ Gemini</a>
   </div>
@@ -748,18 +729,6 @@ textarea, input { font-family: inherit; }
   </div>
 </div>
 
-<!-- 全体検索モーダル（コピペ帳・プロンプト帳を全ジャンル横断） -->
-<div class="dialog-overlay" id="global-search-overlay">
-  <div class="dialog" id="global-search-dialog" style="width:92vw; max-width:480px; max-height:78vh; display:flex; flex-direction:column;">
-    <h3>全体検索</h3>
-    <input type="text" id="global-search-input" placeholder="🔍 コピペ帳・プロンプト帳を横断して検索">
-    <div id="global-search-results" style="overflow-y:auto; flex:1; margin-top:12px;"></div>
-    <div class="dialog-actions">
-      <button class="cancel" id="global-search-close-btn">閉じる</button>
-    </div>
-  </div>
-</div>
-
 <!-- 合言葉変更モーダル（3ツール共通） -->
 <div class="dialog-overlay" id="change-pass-overlay">
   <div class="dialog" id="change-pass-dialog" style="width:320px;">
@@ -904,23 +873,6 @@ async function forgetCachedMasterKey() {
     const authDb = await openAuthDB();
     await authIdbDelete(authDb, CACHED_KEY_STORAGE_KEY);
   } catch (e) { /* noop */ }
-}
-
-// 画面中央に大きく一瞬だけ出る成功通知（コピー成功など、見逃したくない結果の合図に使う。3ツール共通）
-let centerToastTimer = null;
-function showCenterToast(msg) {
-  let el = document.getElementById('shared-center-toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'shared-center-toast';
-    document.body.appendChild(el);
-  }
-  el.textContent = msg;
-  el.classList.remove('show');
-  void el.offsetWidth; // アニメーション再トリガー用の強制リフロー
-  el.classList.add('show');
-  clearTimeout(centerToastTimer);
-  centerToastTimer = setTimeout(() => el.classList.remove('show'), 1100);
 }
 
 // クリップボードから画像を読み取る。iOS Safari等で「一度失敗しても、すぐもう一度試すと取れる」ことがあるため、
@@ -1194,28 +1146,6 @@ window.__cpReset = function () {
 };
 
 // 合言葉変更用：新しい鍵・saltで丸ごと再暗号化する
-// 全体検索用：全ジャンル・全アイテムの検索対象一覧を返す
-window.__cpGetSearchIndex = function () {
-  if (!notebook) return [];
-  return notebook.items
-    .filter((it) => !it.trashed)
-    .map((it) => {
-      const g = notebook.genres.find((x) => x.id === it.genreId);
-      return {
-        id: it.id,
-        title: it.title || '',
-        text: it.text || '',
-        genreName: g ? g.name : '',
-        hasImage: !!it.imageId,
-      };
-    });
-};
-// 全体検索の結果からタップ1つでコピーする
-window.__cpCopyById = function (id) {
-  const it = notebook && notebook.items.find((x) => x.id === id);
-  if (it) copyItem(it);
-};
-
 window.__cpReencrypt = async function (oldKey, newKey, newSalt) {
   // フェーズ1: 画像を全部「旧鍵で復号→新鍵で再暗号化」し、結果をメモリ上に貯める
   const imageUpdates = [];
@@ -1482,32 +1412,24 @@ async function copyText(text) {
   }
 }
 
-function copyItem(item) {
+async function copyItem(item) {
   if (item.imageId) {
-    if (!navigator.clipboard || !navigator.clipboard.write) {
-      alert('お使いのブラウザは画像コピーに対応していません');
-      return;
+    const blob = await loadImageBlob(item);
+    if (blob) {
+      try {
+        const pngBlob = await blobToPngBlob(blob);
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+        showCopyToast(item.title || item.text || '🖼 画像をコピーしました');
+        item.lastUsedAt = new Date().toISOString();
+        await saveNotebook();
+        renderView();
+        return;
+      } catch (e) {
+        console.error('画像のコピーに失敗しました', e);
+        alert('お使いのブラウザは画像コピーに対応していません');
+        return;
+      }
     }
-    // clipboard.write自体はタップした瞬間に同期的に呼ぶ（Safari等はここが遅れると失敗しやすいため）。
-    // 画像の読み込み・変換はClipboardItemに渡すPromiseの中で行う
-    navigator.clipboard.write([
-      new ClipboardItem({
-        'image/png': (async () => {
-          const blob = await loadImageBlob(item);
-          if (!blob) throw new Error('画像の読み込みに失敗しました');
-          return await blobToPngBlob(blob);
-        })(),
-      }),
-    ]).then(async () => {
-      showCenterToast('✓ コピーしました');
-      item.lastUsedAt = new Date().toISOString();
-      await saveNotebook();
-      renderView();
-    }).catch((e) => {
-      console.error('画像のコピーに失敗しました', e);
-      showCopyToast('コピーに失敗しました。もう一度お試しください');
-    });
-    return;
   }
   copyText(item.text || '').then(async (ok) => {
     if (ok) {
@@ -1738,39 +1660,26 @@ window.addEventListener('DOMContentLoaded', () => {
     renderView();
   };
 
-  $('#cp-editor-copy-btn').onclick = () => {
+  $('#cp-editor-copy-btn').onclick = async () => {
     const btn = $('#cp-editor-copy-btn');
-    let hasImage = false;
-    let imageBlobPromise = null;
-    if (pendingImageFile) {
-      hasImage = true;
-      imageBlobPromise = Promise.resolve(pendingImageFile);
-    } else if (!editorRemoveImage && editingItemId) {
-      const it = notebook.items.find((x) => x.id === editingItemId);
-      if (it && it.imageId) { hasImage = true; imageBlobPromise = loadImageBlob(it); }
-    }
-
-    const onSuccess = () => {
-      showCenterToast('✓ コピーしました');
+    try {
+      let blob = pendingImageFile;
+      if (!blob && !editorRemoveImage && editingItemId) {
+        const it = notebook.items.find((x) => x.id === editingItemId);
+        if (it && it.imageId) blob = await loadImageBlob(it);
+      }
+      if (blob) {
+        const pngBlob = await blobToPngBlob(blob);
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+      } else {
+        await navigator.clipboard.writeText($('#cp-editor-text').value);
+      }
       btn.textContent = '✓';
       btn.classList.add('copy-flash');
       setTimeout(() => { btn.textContent = '📋'; btn.classList.remove('copy-flash'); }, 1500);
-    };
-    const onFail = (e) => { console.error('編集画面からのコピーに失敗しました', e); alert('コピーに失敗しました'); };
-
-    if (hasImage) {
-      // clipboard.write自体は押した瞬間に同期的に呼ぶ（Safari等はここが遅れると失敗しやすいため）
-      navigator.clipboard.write([
-        new ClipboardItem({
-          'image/png': (async () => {
-            const blob = await imageBlobPromise;
-            if (!blob) throw new Error('画像の読み込みに失敗しました');
-            return await blobToPngBlob(blob);
-          })(),
-        }),
-      ]).then(onSuccess).catch(onFail);
-    } else {
-      navigator.clipboard.writeText($('#cp-editor-text').value).then(onSuccess).catch(onFail);
+    } catch (e) {
+      console.error('編集画面からのコピーに失敗しました', e);
+      alert('コピーに失敗しました');
     }
   };
   $('#cp-editor-fav-btn').onclick = () => { editorFavorite = !editorFavorite; updateEditorFavBtn(); };
@@ -2114,33 +2023,6 @@ window.__pnReset = function () {
 // 合言葉変更用：画像を含めて丸ごと再暗号化する。
 // フェーズ1/2は計算のみ（何も送信しない）、フェーズ3で初めて保存する。
 // 途中で失敗した場合、フェーズ3に入る前ならリモート側は一切変更されていない。
-// 全体検索用：全ジャンル・全プロンプトの検索対象一覧を返す
-window.__pnGetSearchIndex = function () {
-  if (!notebook) return [];
-  return notebook.prompts
-    .filter((p) => !p.trashed)
-    .map((p) => {
-      const g = notebook.genres.find((x) => x.id === p.genreId);
-      return {
-        id: p.id,
-        title: p.title || '',
-        text: p.text || '',
-        genreName: g ? g.name : '',
-        hasImage: !!p.imageId,
-      };
-    });
-};
-// 全体検索の結果からタップ1つでコピーする（本文テキストをコピー。一覧のコピーボタンと同じ挙動）
-window.__pnCopyById = async function (id) {
-  const p = notebook && notebook.prompts.find((x) => x.id === id);
-  if (!p) return;
-  await navigator.clipboard.writeText(p.text);
-  p.lastCopiedAt = new Date().toISOString();
-  await saveNotebook();
-  showCenterToast('✓ コピーしました');
-  if (currentView === p.genreId) renderView();
-};
-
 window.__pnReencrypt = async function (oldKey, newKey, newSalt) {
   // フェーズ1: 画像を全部「旧鍵で復号→新鍵で再暗号化」し、結果をメモリ上に貯める
   const imageUpdates = [];
@@ -3801,30 +3683,21 @@ window.addEventListener('DOMContentLoaded', () => {
     copyBtn.className = 'ms-mini-btn';
     copyBtn.textContent = '📋';
     copyBtn.title = '画像をコピー';
-    copyBtn.onclick = (e) => {
+    copyBtn.onclick = async (e) => {
       e.stopPropagation();
-      if (!navigator.clipboard || !navigator.clipboard.write) {
-        showToast('お使いのブラウザは画像コピーに対応していません');
-        return;
-      }
-      // clipboard.write自体はクリックした瞬間に同期的に呼ぶ（Safari等はここが遅れると失敗しやすいため）。
-      // 画像の読み込み・変換はClipboardItemに渡すPromiseの中で行う
-      navigator.clipboard.write([
-        new ClipboardItem({
-          'image/png': (async () => {
-            const blob = await loadImageBlob(it);
-            if (!blob) throw new Error('画像の読み込みに失敗しました');
-            return await blobToPngBlob(blob);
-          })(),
-        }),
-      ]).then(() => {
-        showCenterToast('✓ コピーしました');
+      const blob = await loadImageBlob(it);
+      if (!blob) { showToast('画像の読み込みに失敗しました'); return; }
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.write) throw new Error('unsupported');
+        const pngBlob = await blobToPngBlob(blob);
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+        showToast('画像をコピーしました');
         copyBtn.textContent = '✓'; copyBtn.classList.add('copied');
         setTimeout(() => { copyBtn.textContent = '📋'; copyBtn.classList.remove('copied'); }, 1100);
-      }).catch((err) => {
+      } catch (err) {
         console.error('[素材帳] 画像コピーに失敗:', err);
-        showToast('コピーに失敗しました。もう一度お試しください');
-      });
+        showToast('お使いのブラウザは画像コピーに対応していません');
+      }
     };
     actions.appendChild(copyBtn);
 
@@ -4058,26 +3931,18 @@ window.addEventListener('DOMContentLoaded', () => {
     copyBtn.className = 'ms-mini-btn';
     copyBtn.textContent = '📋';
     copyBtn.title = '画像をコピー';
-    copyBtn.onclick = (e) => {
+    copyBtn.onclick = async (e) => {
       e.stopPropagation();
-      if (!navigator.clipboard || !navigator.clipboard.write) {
-        showToast('お使いのブラウザは画像コピーに対応していません');
-        return;
-      }
-      navigator.clipboard.write([
-        new ClipboardItem({
-          'image/png': (async () => {
-            const blob = await loadImageBlob(it);
-            if (!blob) throw new Error('画像の読み込みに失敗しました');
-            return await blobToPngBlob(blob);
-          })(),
-        }),
-      ]).then(() => {
-        showCenterToast('✓ コピーしました');
-      }).catch((err) => {
+      const blob = await loadImageBlob(it);
+      if (!blob) { showToast('画像の読み込みに失敗しました'); return; }
+      try {
+        const pngBlob = await blobToPngBlob(blob);
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+        showToast('画像をコピーしました');
+      } catch (err) {
         console.error('[素材帳] 画像コピーに失敗:', err);
-        showToast('コピーに失敗しました。もう一度お試しください');
-      });
+        showToast('お使いのブラウザは画像コピーに対応していません');
+      }
     };
     actions.appendChild(copyBtn);
 
@@ -4568,53 +4433,6 @@ window.addEventListener('DOMContentLoaded', () => {
     lockAll();
   }
 
-  // ============== 全体検索（コピペ帳・プロンプト帳を全ジャンル横断） ==============
-  function escapeHtmlGs(s) {
-    const div = document.createElement('div');
-    div.textContent = s;
-    return div.innerHTML;
-  }
-  function openGlobalSearch() {
-    $('#global-search-input').value = '';
-    $('#global-search-results').innerHTML = '<div class="gs-empty">キーワードを入力してください</div>';
-    $('#global-search-overlay').classList.add('active');
-    setTimeout(() => $('#global-search-input').focus(), 50);
-  }
-  function closeGlobalSearch() {
-    $('#global-search-overlay').classList.remove('active');
-  }
-  function renderGlobalSearchResults(query) {
-    const container = $('#global-search-results');
-    container.innerHTML = '';
-    if (!query) { container.innerHTML = '<div class="gs-empty">キーワードを入力してください</div>'; return; }
-    const q = query.toLowerCase();
-    const cpItems = (window.__cpGetSearchIndex ? window.__cpGetSearchIndex() : [])
-      .filter((it) => it.title.toLowerCase().includes(q) || it.text.toLowerCase().includes(q))
-      .map((it) => ({ ...it, app: 'cp' }));
-    const pnItems = (window.__pnGetSearchIndex ? window.__pnGetSearchIndex() : [])
-      .filter((it) => it.title.toLowerCase().includes(q) || it.text.toLowerCase().includes(q))
-      .map((it) => ({ ...it, app: 'pn' }));
-    const all = [...cpItems, ...pnItems];
-    if (!all.length) { container.innerHTML = '<div class="gs-empty">見つかりませんでした</div>'; return; }
-    all.forEach((it) => {
-      const row = document.createElement('div');
-      row.className = 'gs-result-row';
-      const appLabel = it.app === 'cp' ? '📋 コピペ帳' : '🗒 プロンプト帳';
-      const preview = (it.text || '').replace(/\n/g, ' ').slice(0, 60);
-      row.innerHTML = `
-        <div class="gs-result-meta">${appLabel}${it.genreName ? ' ・ ' + escapeHtmlGs(it.genreName) : ''}${it.hasImage ? ' 🖼' : ''}</div>
-        <div class="gs-result-title">${escapeHtmlGs(it.title || preview || '(無題)')}</div>
-        ${it.title ? `<div class="gs-result-preview">${escapeHtmlGs(preview)}</div>` : ''}
-      `;
-      row.onclick = () => {
-        if (it.app === 'cp' && window.__cpCopyById) window.__cpCopyById(it.id);
-        else if (it.app === 'pn' && window.__pnCopyById) window.__pnCopyById(it.id);
-        closeGlobalSearch();
-      };
-      container.appendChild(row);
-    });
-  }
-
   // ============== 合言葉の変更 ==============
   async function keysRawEqual(keyA, keyB) {
     const a = bufToB64(await crypto.subtle.exportKey('raw', keyA));
@@ -4715,11 +4533,6 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#change-pass-cancel-btn').onclick = closeChangePassDialog;
     $('#change-pass-overlay').addEventListener('click', (e) => { if (e.target === $('#change-pass-overlay')) closeChangePassDialog(); });
     $('#change-pass-submit-btn').onclick = submitChangePassphrase;
-
-    $('#global-search-btn').onclick = openGlobalSearch;
-    $('#global-search-close-btn').onclick = closeGlobalSearch;
-    $('#global-search-overlay').addEventListener('click', (e) => { if (e.target === $('#global-search-overlay')) closeGlobalSearch(); });
-    $('#global-search-input').addEventListener('input', (e) => renderGlobalSearchResults(e.target.value.trim()));
 
     const ok = await tryAutoUnlock();
     if (!ok) showLogin();
