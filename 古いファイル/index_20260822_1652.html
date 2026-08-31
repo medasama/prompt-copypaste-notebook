@@ -47,15 +47,6 @@ button { font-family: inherit; cursor: pointer; }
 textarea, input { font-family: inherit; }
 
 /* ============== モード切替バー（共通・中立色） ============== */
-#shared-center-toast {
-  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9);
-  background: rgba(20, 24, 27, 0.92); color: #fff; font-size: 16px; font-weight: 600;
-  padding: 18px 30px; border-radius: 16px; z-index: 900; pointer-events: none;
-  opacity: 0; transition: opacity 0.18s ease, transform 0.18s ease; white-space: nowrap;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-}
-#shared-center-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-
 .mode-bar {
   position: sticky; top: 0; z-index: 500;
   background: #20262b; height: 46px;
@@ -124,10 +115,6 @@ textarea, input { font-family: inherit; }
 .list-toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: stretch; }
 .list-toolbar .add-new-btn { flex: 1 1 200px; margin-bottom: 0; }
 .search-input { flex: 1 1 160px; padding: 12px 14px; border: 1px solid var(--rule-strong); border-radius: var(--radius); background: var(--paper-card); font-size: 13.5px; color: var(--ink); box-shadow: var(--shadow); outline: none; }
-.sort-mode-select {
-  flex: 0 0 auto; padding: 10px 10px; border: 1px solid var(--rule-strong); border-radius: var(--radius);
-  background: var(--paper-card); font-size: 12.5px; color: var(--ink); box-shadow: var(--shadow);
-}
 .search-input::placeholder { color: var(--ink-soft); }
 .search-input:focus { border-color: var(--accent); }
 
@@ -166,15 +153,6 @@ textarea, input { font-family: inherit; }
 .pending-image-preview img { width: 40px; height: 40px; object-fit: cover; border-radius: var(--radius); cursor: zoom-in; }
 .pending-image-preview span { font-size: 12px; color: var(--ink-soft); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pending-image-preview button { border: none; background: transparent; color: var(--danger); font-size: 13px; }
-.pending-image-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-.pending-image-grid:empty { margin-bottom: 0; }
-.pending-image-cell { position: relative; width: 64px; height: 64px; }
-.pending-image-cell img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--rule-strong); cursor: zoom-in; }
-.pending-image-cell button {
-  position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%;
-  border: none; background: var(--danger); color: #fff; font-size: 11px; line-height: 1; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-}
 .file-label { font-size: 12px; color: var(--ink-soft); cursor: pointer; }
 
 .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: var(--radius); font-size: 13px; display: flex; gap: 14px; align-items: center; box-shadow: var(--shadow); z-index: 400; }
@@ -187,34 +165,6 @@ textarea, input { font-family: inherit; }
 .dialog-overlay { position: fixed; inset: 0; background: rgba(34, 48, 56, 0.5); display: none; align-items: center; justify-content: center; z-index: 90; }
 .dialog-overlay.active { display: flex; }
 .dialog { background: var(--paper-card); border-radius: var(--radius); padding: 24px; width: 300px; max-width: calc(100vw - 32px); box-shadow: var(--shadow); }
-.gs-empty { padding: 24px 4px; text-align: center; color: var(--ink-soft); font-size: 13px; }
-.gs-result-row {
-  padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--rule); margin-bottom: 8px; cursor: pointer;
-  background: var(--paper);
-}
-.gs-result-row:hover { background: var(--accent-soft); }
-.gs-result-meta { font-size: 11px; color: var(--ink-soft); margin-bottom: 3px; }
-.gs-result-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
-.gs-result-preview { font-size: 12px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.keep-import-toolbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
-.keep-import-toolbar button { font-size: 11px; padding: 6px 10px; }
-.keep-import-row {
-  display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid var(--rule);
-}
-.keep-import-check { flex-shrink: 0; }
-.keep-import-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
-.keep-import-text { flex: 1; min-width: 0; }
-.keep-import-title { font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.keep-import-preview { font-size: 11.5px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.keep-import-dest { font-size: 12px; flex-shrink: 0; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--rule-strong); background: var(--paper); }
-.keep-import-group-header {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  background: var(--accent-soft); border-radius: 8px; padding: 6px 10px; margin: 10px 0 4px; font-size: 12px; color: var(--ink);
-}
-.keep-import-group-header button {
-  font-size: 11px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--accent); background: var(--paper); color: var(--accent); cursor: pointer;
-}
 .dialog h3 { margin: 0 0 14px; font-family: 'Shippori Mincho', serif; font-size: 16px; }
 .dialog input[type="text"], .dialog input[type="password"] { width: 100%; padding: 8px 10px; border: 1px solid var(--rule-strong); border-radius: var(--radius); margin-bottom: 12px; font-size: 14px; }
 .dialog label.checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 16px; color: var(--ink-soft); }
@@ -254,9 +204,6 @@ textarea, input { font-family: inherit; }
 .prompt-card .card-body { display: flex; gap: 10px; cursor: pointer; }
 .prompt-card .thumb { width: 44px; height: 44px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--rule-strong); cursor: zoom-in; flex-shrink: 0; }
 .card-text { flex: 1; min-width: 0; }
-.card-genre-badge {
-  display: inline-block; font-size: 10px; color: #fff; padding: 2px 8px; border-radius: 999px; margin-bottom: 4px;
-}
 .card-title { font-weight: 700; font-size: 13.5px; margin-bottom: 2px; }
 .card-title.placeholder { color: var(--ink-soft); font-weight: 500; }
 .card-preview { font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
@@ -519,7 +466,6 @@ textarea, input { font-family: inherit; }
     <button class="mode-btn" id="mode-copy-btn">📋 コピペ帳</button>
     <button class="mode-btn" id="mode-prompt-btn">🗒 プロンプト帳</button>
     <button class="mode-btn" id="mode-material-btn">🖼 素材帳</button>
-    <button class="eye-toggle-btn" id="global-search-btn" title="全体検索">🔍</button>
     <button class="eye-toggle-btn" id="eye-toggle-btn" title="隠しモードを表示">👁</button>
     <a href="https://gemini.google.com/app" target="_blank" rel="noopener" class="eye-toggle-btn" title="Geminiを開く">✨ Gemini</a>
   </div>
@@ -547,11 +493,6 @@ textarea, input { font-family: inherit; }
     <div class="list-toolbar">
       <button class="add-new-btn" id="cp-add-new-btn">＋ 新規追加</button>
       <input type="text" class="search-input" id="cp-search-input" placeholder="🔍 検索">
-      <select class="sort-mode-select" id="cp-sort-mode-select">
-        <option value="created">並び替え：追加順</option>
-        <option value="frequency">並び替え：よく使う順</option>
-        <option value="similar">並び替え：似ている順</option>
-      </select>
     </div>
 
     <button class="fab-add-btn" id="cp-fab-add-btn" title="新規追加">＋</button>
@@ -573,12 +514,16 @@ textarea, input { font-family: inherit; }
     </div>
     <textarea id="cp-editor-text" placeholder="コピペしたい内容を入力…"></textarea>
     <div class="editor-image-area" id="cp-editor-image-area">
-      <div class="pending-image-grid" id="cp-pending-image-grid"></div>
+      <div class="pending-image-preview" id="cp-pending-image-preview" style="display:none;">
+        <img id="cp-pending-image-thumb" alt="添付画像">
+        <span id="cp-pending-image-name"></span>
+        <button id="cp-pending-image-remove">✕ 画像を外す</button>
+      </div>
       <label class="file-label" id="cp-editor-file-label">
-        📎 画像を添付（複数選択可）
-        <input type="file" id="cp-editor-image-input" accept="image/*" multiple style="display:none;">
+        📎 画像を添付
+        <input type="file" id="cp-editor-image-input" accept="image/*" style="display:none;">
       </label>
-      <p class="paste-hint">画像は📋ボタン・Ctrl+V（スマホは本文欄を長押し→貼り付け）・ドラッグ＆ドロップのいずれでも複数枚まとめて添付できます</p>
+      <p class="paste-hint">画像は📋ボタン・Ctrl+V（スマホは本文欄を長押し→貼り付け）・ドラッグ＆ドロップのいずれでも添付できます</p>
     </div>
   </div>
 </div>
@@ -627,11 +572,6 @@ textarea, input { font-family: inherit; }
     <div class="list-toolbar">
       <button class="add-new-btn" id="pn-add-new-btn">＋ 新しいプロンプトを追加</button>
       <input type="text" class="search-input" id="pn-search-input" placeholder="🔍 検索">
-      <select class="sort-mode-select" id="pn-sort-mode-select">
-        <option value="created">並び替え：追加順</option>
-        <option value="frequency">並び替え：よく使う順</option>
-        <option value="similar">並び替え：似ている順</option>
-      </select>
     </div>
 
     <button class="fab-add-btn" id="pn-fab-add-btn" title="新規追加">＋</button>
@@ -786,50 +726,6 @@ textarea, input { font-family: inherit; }
     <button class="mode-shell-btn" id="shell-lock-btn">🔒 閉じる</button>
     <button class="mode-shell-btn" id="shell-forget-btn">🔑 記憶を消す</button>
     <button class="mode-shell-btn" id="shell-change-pass-btn">🔐 合言葉を変更</button>
-    <button class="mode-shell-btn" id="shell-keep-import-btn">📥 Keep取込</button>
-  </div>
-</div>
-
-<!-- 全体検索モーダル（コピペ帳・プロンプト帳を全ジャンル横断） -->
-<div class="dialog-overlay" id="global-search-overlay">
-  <div class="dialog" id="global-search-dialog" style="width:92vw; max-width:480px; max-height:78vh; display:flex; flex-direction:column;">
-    <h3>全体検索</h3>
-    <input type="text" id="global-search-input" placeholder="🔍 コピペ帳・プロンプト帳を横断して検索">
-    <div id="global-search-results" style="overflow-y:auto; flex:1; margin-top:12px;"></div>
-    <div class="dialog-actions">
-      <button class="cancel" id="global-search-close-btn">閉じる</button>
-    </div>
-  </div>
-</div>
-
-<!-- Google Keep一括取り込みモーダル -->
-<div class="dialog-overlay" id="keep-import-overlay">
-  <div class="dialog" id="keep-import-dialog" style="width:94vw; max-width:640px; max-height:86vh; display:flex; flex-direction:column;">
-    <h3>Google Keepから取り込み</h3>
-    <div id="keep-import-step1">
-      <p style="font-size:12px; color:var(--ink-soft); line-height:1.7; margin-top:0;">
-        Google Takeout（takeout.google.com）でKeepのデータをエクスポートし、ダウンロードしたZIPファイルを選んでください。
-      </p>
-      <label class="file-label" style="display:inline-block; padding:10px 16px; border:1px solid var(--rule-strong); border-radius:10px; cursor:pointer;">
-        📦 ZIPファイルを選ぶ
-        <input type="file" id="keep-import-zip-input" accept=".zip" style="display:none;">
-      </label>
-      <div id="keep-import-loading" style="display:none; margin-top:14px; font-size:13px; color:var(--ink-soft);">読み込み中…</div>
-    </div>
-    <div id="keep-import-step2" style="display:none; flex:1; min-height:0; flex-direction:column;">
-      <div class="keep-import-toolbar">
-        <span id="keep-import-count" style="font-size:12px; color:var(--ink-soft);"></span>
-        <button class="lock-btn" id="keep-import-all-prompt-btn">選択分→プロンプト帳</button>
-        <button class="lock-btn" id="keep-import-all-material-btn">選択分→素材帳</button>
-        <button class="lock-btn" id="keep-import-all-skip-btn">全解除</button>
-      </div>
-      <div id="keep-import-list" style="overflow-y:auto; flex:1; margin-top:8px;"></div>
-      <div id="keep-import-progress" style="font-size:12px; color:var(--ink-soft); min-height:16px; margin-top:8px;"></div>
-    </div>
-    <div class="dialog-actions">
-      <button class="cancel" id="keep-import-close-btn">閉じる</button>
-      <button class="confirm" id="keep-import-execute-btn" style="display:none;">選択した内容を取り込む</button>
-    </div>
   </div>
 </div>
 
@@ -854,7 +750,6 @@ textarea, input { font-family: inherit; }
 
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import JSZip from 'https://esm.sh/jszip@3.10.1';
 
 // ============== Supabase（共通クライアント） ==============
 const SUPABASE_URL = 'https://edfrjxjdzxutcjeayfac.supabase.co';
@@ -980,23 +875,6 @@ async function forgetCachedMasterKey() {
   } catch (e) { /* noop */ }
 }
 
-// 画面中央に大きく一瞬だけ出る成功通知（コピー成功など、見逃したくない結果の合図に使う。3ツール共通）
-let centerToastTimer = null;
-function showCenterToast(msg) {
-  let el = document.getElementById('shared-center-toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'shared-center-toast';
-    document.body.appendChild(el);
-  }
-  el.textContent = msg;
-  el.classList.remove('show');
-  void el.offsetWidth; // アニメーション再トリガー用の強制リフロー
-  el.classList.add('show');
-  clearTimeout(centerToastTimer);
-  centerToastTimer = setTimeout(() => el.classList.remove('show'), 1100);
-}
-
 // クリップボードから画像を読み取る。iOS Safari等で「一度失敗しても、すぐもう一度試すと取れる」ことがあるため、
 // 短い間隔をあけて自動的に数回リトライしてから諦める（コピペ帳・プロンプト帳・素材帳 共通）
 async function readClipboardImageItem(maxAttempts = 3, delayMs = 350) {
@@ -1013,60 +891,6 @@ async function readClipboardImageItem(maxAttempts = 3, delayMs = 350) {
     if (i < maxAttempts - 1) await new Promise((r) => setTimeout(r, delayMs));
   }
   return null;
-}
-
-// 文字bigram(2文字ずつの組)によるJaccard類似度。日本語でも単語分割なしでそこそこ使える簡易判定
-// （コピペ帳・プロンプト帳の「似ている順」表示・Google Keep取込の重複検出で共通利用）
-function textBigrams(s) {
-  const norm = (s || '').replace(/\s+/g, '').toLowerCase();
-  const set = new Set();
-  for (let i = 0; i < norm.length - 1; i++) set.add(norm.slice(i, i + 2));
-  if (!set.size && norm.length) set.add(norm);
-  return set;
-}
-function jaccardSim(setA, setB) {
-  if (!setA.size || !setB.size) return 0;
-  const [small, large] = setA.size < setB.size ? [setA, setB] : [setB, setA];
-  let inter = 0;
-  small.forEach((x) => { if (large.has(x)) inter++; });
-  const union = setA.size + setB.size - inter;
-  return union ? inter / union : 0;
-}
-// 似ている者同士をグループ化する（Union-Find）。件数が多すぎる場合は重くなるため判定自体をスキップする
-// notes は {id, title?, text?} を含むオブジェクトの配列
-function computeSimilarityGroups(notes, threshold = 0.55) {
-  const n = notes.length;
-  if (n > 1500) return notes.map((note, i) => ({ ...note, groupId: i, groupSize: 1 }));
-  const bigramSets = notes.map((note) => textBigrams((note.title || '') + ' ' + (note.text || '')));
-  const parent = notes.map((_, i) => i);
-  function find(x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
-  function union(a, b) { const ra = find(a); const rb = find(b); if (ra !== rb) parent[ra] = rb; }
-  for (let i = 0; i < n; i++) {
-    if (bigramSets[i].size < 3) continue; // 短すぎる内容（本文なし等）は判定対象外
-    for (let j = i + 1; j < n; j++) {
-      if (bigramSets[j].size < 3) continue;
-      if (jaccardSim(bigramSets[i], bigramSets[j]) >= threshold) union(i, j);
-    }
-  }
-  const sizeByRoot = {};
-  notes.forEach((_, i) => { const r = find(i); sizeByRoot[r] = (sizeByRoot[r] || 0) + 1; });
-  return notes.map((note, i) => ({ ...note, groupId: find(i), groupSize: sizeByRoot[find(i)] }));
-}
-// 既にソート済みの一覧に対して、似ているものだけを隣接させる（見出しは付けない、控えめな並べ替え）
-function reorderBySimilarity(items, threshold = 0.55) {
-  const grouped = computeSimilarityGroups(items, threshold);
-  const visited = new Set();
-  const result = [];
-  grouped.forEach((item) => {
-    if (visited.has(item.id)) return;
-    grouped.forEach((other) => {
-      if (other.groupId === item.groupId && !visited.has(other.id)) {
-        visited.add(other.id);
-        result.push(other);
-      }
-    });
-  });
-  return result;
 }
 
 /* ===================== コピペ帳 (CP) / プロンプト帳 (PN) の本体スクリプトはこの下に続く ===================== */
@@ -1150,68 +974,54 @@ async function deleteRemoteImage(imageId) {
 const imageUrlCache = new Map();
 const imageBlobCache = new Map();
 
-// アイテムが持つ画像一覧を返す（新しい複数画像形式・古い単一画像形式のどちらにも対応）
-function itemImages(it) {
-  if (Array.isArray(it.images)) return it.images;
-  if (it.imageId) return [{ imageId: it.imageId, imageIv: it.imageIv, imageMime: it.imageMime }];
-  return [];
-}
-
-async function uploadImageBlob(fileOrBlob) {
-  const buf = await fileOrBlob.arrayBuffer();
+async function uploadImage(file) {
+  const buf = await file.arrayBuffer();
   const { ivB64, cipherBuffer } = await encryptBytes(buf, encKey);
   const imageId = uid();
-  const mime = fileOrBlob.type || 'image/jpeg';
+  const mime = file.type || 'image/jpeg';
   await idbPut(db, 'images', { imageId, iv: ivB64, mime, cipher: cipherBuffer });
   try { await pushRemoteImage(imageId, ivB64, mime, bufToB64(cipherBuffer)); }
   catch (e) { console.warn('画像のSupabase同期に失敗しました（ローカルには保存済みです）', e); }
   return { imageId, imageIv: ivB64, imageMime: mime };
 }
-async function loadImageBlobById(imageId, imageIv, imageMime) {
-  if (!imageId) return null;
-  if (imageBlobCache.has(imageId)) return imageBlobCache.get(imageId);
+async function loadImageBlob(it) {
+  if (!it.imageId) return null;
+  if (imageBlobCache.has(it.id)) return imageBlobCache.get(it.id);
   try {
-    let rec = await idbGet(db, 'images', imageId);
+    let rec = await idbGet(db, 'images', it.imageId);
     let cipherBuf;
     if (rec) {
       cipherBuf = rec.cipher;
     } else {
-      const remoteRec = await fetchRemoteImage(imageId);
+      const remoteRec = await fetchRemoteImage(it.imageId);
       if (!remoteRec) return null;
       cipherBuf = b64ToBuf(remoteRec.cipher_b64);
-      await idbPut(db, 'images', { imageId, iv: remoteRec.iv, mime: remoteRec.mime, cipher: cipherBuf });
+      await idbPut(db, 'images', { imageId: it.imageId, iv: remoteRec.iv, mime: remoteRec.mime, cipher: cipherBuf });
     }
-    const plainBuf = await decryptBytes(imageIv, cipherBuf, encKey);
-    const blob = new Blob([plainBuf], { type: imageMime || 'image/jpeg' });
-    imageBlobCache.set(imageId, blob);
+    const plainBuf = await decryptBytes(it.imageIv, cipherBuf, encKey);
+    const blob = new Blob([plainBuf], { type: it.imageMime || 'image/jpeg' });
+    imageBlobCache.set(it.id, blob);
     return blob;
   } catch (e) {
     console.error('画像の復号に失敗しました', e);
     return null;
   }
 }
-async function loadImageUrlById(imageId, imageIv, imageMime) {
-  if (!imageId) return null;
-  if (imageUrlCache.has(imageId)) return imageUrlCache.get(imageId);
-  const blob = await loadImageBlobById(imageId, imageIv, imageMime);
+async function loadImageUrl(it) {
+  if (imageUrlCache.has(it.id)) return imageUrlCache.get(it.id);
+  const blob = await loadImageBlob(it);
   if (!blob) return null;
   const url = URL.createObjectURL(blob);
-  imageUrlCache.set(imageId, url);
+  imageUrlCache.set(it.id, url);
   return url;
 }
-async function deleteImageById(imageId) {
-  if (!imageId) return;
-  await idbDelete(db, 'images', imageId);
-  try { await deleteRemoteImage(imageId); }
+async function deleteImage(it) {
+  if (!it.imageId) return;
+  await idbDelete(db, 'images', it.imageId);
+  try { await deleteRemoteImage(it.imageId); }
   catch (e) { console.warn('画像のSupabase側削除に失敗しました', e); }
-  if (imageUrlCache.has(imageId)) { URL.revokeObjectURL(imageUrlCache.get(imageId)); imageUrlCache.delete(imageId); }
-  imageBlobCache.delete(imageId);
-}
-// アイテムの1枚目の画像（一覧のサムネイル表示用）
-async function loadImageUrl(it) {
-  const imgs = itemImages(it);
-  if (!imgs.length) return null;
-  return loadImageUrlById(imgs[0].imageId, imgs[0].imageIv, imgs[0].imageMime);
+  if (imageUrlCache.has(it.id)) { URL.revokeObjectURL(imageUrlCache.get(it.id)); imageUrlCache.delete(it.id); }
+  imageBlobCache.delete(it.id);
 }
 async function blobToPngBlob(blob) {
   if (blob.type === 'image/png') return blob;
@@ -1279,7 +1089,6 @@ let notebook = null;
 let currentView = null;
 let editMode = false;
 let searchQuery = '';
-let userSortMode = 'created'; // created(追加順) | frequency(よく使う順) | similar(似ている順)
 let copyToastTimer = null;
 
 function uid() {
@@ -1337,57 +1146,28 @@ window.__cpReset = function () {
 };
 
 // 合言葉変更用：新しい鍵・saltで丸ごと再暗号化する
-// 全体検索用：全ジャンル・全アイテムの検索対象一覧を返す
-window.__cpGetSearchIndex = function () {
-  if (!notebook) return [];
-  return notebook.items
-    .filter((it) => !it.trashed)
-    .map((it) => {
-      const g = notebook.genres.find((x) => x.id === it.genreId);
-      return {
-        id: it.id,
-        title: it.title || '',
-        text: it.text || '',
-        genreName: g ? g.name : '',
-        hasImage: itemImages(it).length > 0,
-      };
-    });
-};
-// 全体検索の結果からタップ1つでコピーする
-window.__cpCopyById = function (id) {
-  const it = notebook && notebook.items.find((x) => x.id === id);
-  if (it) copyItem(it);
-};
-
 window.__cpReencrypt = async function (oldKey, newKey, newSalt) {
   // フェーズ1: 画像を全部「旧鍵で復号→新鍵で再暗号化」し、結果をメモリ上に貯める
   const imageUpdates = [];
   for (const it of notebook.items) {
-    const imgs = itemImages(it);
-    for (const img of imgs) {
-      let rec = await idbGet(db, 'images', img.imageId);
-      let cipherBuf, mime;
-      if (rec) { cipherBuf = rec.cipher; mime = rec.mime; }
-      else {
-        const remoteRec = await fetchRemoteImage(img.imageId);
-        if (!remoteRec) continue;
-        cipherBuf = b64ToBuf(remoteRec.cipher_b64); mime = remoteRec.mime;
-      }
-      const plainBuf = await decryptBytes(img.imageIv, cipherBuf, oldKey);
-      const { ivB64, cipherBuffer } = await encryptBytes(plainBuf, newKey);
-      imageUpdates.push({ itemId: it.id, imageId: img.imageId, ivB64, mime, cipherBuffer });
+    if (!it.imageId) continue;
+    let rec = await idbGet(db, 'images', it.imageId);
+    let cipherBuf, mime;
+    if (rec) { cipherBuf = rec.cipher; mime = rec.mime; }
+    else {
+      const remoteRec = await fetchRemoteImage(it.imageId);
+      if (!remoteRec) continue;
+      cipherBuf = b64ToBuf(remoteRec.cipher_b64); mime = remoteRec.mime;
     }
+    const plainBuf = await decryptBytes(it.imageIv, cipherBuf, oldKey);
+    const { ivB64, cipherBuffer } = await encryptBytes(plainBuf, newKey);
+    imageUpdates.push({ itemRef: it, imageId: it.imageId, ivB64, mime, cipherBuffer });
   }
   // フェーズ2: ノート本体も新しい鍵で暗号化
   const tempNotebook = JSON.parse(JSON.stringify(notebook));
   imageUpdates.forEach((u) => {
-    const target = tempNotebook.items.find((x) => x.id === u.itemId);
-    if (!target) return;
-    const targetImgs = itemImages(target);
-    const match = targetImgs.find((im) => im.imageId === u.imageId);
-    if (match) match.imageIv = u.ivB64;
-    if (Array.isArray(target.images)) target.images = targetImgs;
-    else if (target.imageId === u.imageId) target.imageIv = u.ivB64;
+    const target = tempNotebook.items.find((x) => x.id === u.itemRef.id);
+    if (target) target.imageIv = u.ivB64;
   });
   const { ivB64: nbIv, ciphertextB64: nbCipher } = await encryptJSON(tempNotebook, newKey);
 
@@ -1395,14 +1175,7 @@ window.__cpReencrypt = async function (oldKey, newKey, newSalt) {
   for (const u of imageUpdates) {
     await idbPut(db, 'images', { imageId: u.imageId, iv: u.ivB64, mime: u.mime, cipher: u.cipherBuffer });
     await pushRemoteImage(u.imageId, u.ivB64, u.mime, bufToB64(u.cipherBuffer));
-    const realItem = notebook.items.find((x) => x.id === u.itemId);
-    if (realItem) {
-      const realImgs = itemImages(realItem);
-      const match = realImgs.find((im) => im.imageId === u.imageId);
-      if (match) match.imageIv = u.ivB64;
-      if (Array.isArray(realItem.images)) realItem.images = realImgs;
-      else if (realItem.imageId === u.imageId) realItem.imageIv = u.ivB64;
-    }
+    u.itemRef.imageIv = u.ivB64;
   }
   await idbPut(db, 'meta', { key: 'notebook', salt: newSalt, iv: nbIv, ciphertext: nbCipher });
   await pushRemoteNotebook(nbIv, nbCipher);
@@ -1507,12 +1280,7 @@ function renderView() {
   sheet.classList.toggle('edit-mode', editMode);
 
   let items = [];
-  const isSearching = !!searchQuery;
-  if (isSearching) {
-    addBtn.style.display = 'none';
-    if (fab) fab.style.display = 'none';
-    items = notebook.items.filter((it) => !it.trashed);
-  } else if (currentView === '__trash__') {
+  if (currentView === '__trash__') {
     addBtn.style.display = 'none';
     if (fab) fab.style.display = 'none';
     items = notebook.items.filter((it) => it.trashed);
@@ -1526,26 +1294,17 @@ function renderView() {
     items = notebook.items.filter((it) => it.genreId === currentView && !it.trashed);
   }
 
-  if (userSortMode === 'frequency') {
-    items.sort((a, b) => (b.useCount || 0) - (a.useCount || 0) || (b.createdAt || '').localeCompare(a.createdAt || ''));
-  } else {
-    items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  }
+  items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
     items = items.filter((it) => (it.title || '').toLowerCase().includes(q) || (it.text || '').toLowerCase().includes(q));
   }
-
-  if (userSortMode === 'similar' && !searchQuery) {
-    items = reorderBySimilarity(items);
-  }
-
   $('#cp-empty-state').style.display = items.length ? 'none' : 'block';
-  items.forEach((it) => list.appendChild(renderRow(it, isSearching)));
+  items.forEach((it) => list.appendChild(renderRow(it)));
 }
 
-function renderRow(item, showGenreBadge) {
+function renderRow(item) {
   const row = document.createElement('div');
   row.className = 'item-row';
   row.onclick = () => handleRowTap(item);
@@ -1557,10 +1316,7 @@ function renderRow(item, showGenreBadge) {
   starBtn.onclick = async (e) => { e.stopPropagation(); item.favorite = !item.favorite; await saveNotebook(); renderView(); };
   row.appendChild(starBtn);
 
-  const imgs = itemImages(item);
-  if (imgs.length) {
-    const thumbWrap = document.createElement('div');
-    thumbWrap.className = 'item-thumb-wrap';
+  if (item.imageId) {
     const thumb = document.createElement('img');
     thumb.className = 'item-thumb';
     thumb.alt = '';
@@ -1570,35 +1326,18 @@ function renderRow(item, showGenreBadge) {
       e.stopPropagation();
       if (loadedUrl) openImageModal(loadedUrl);
     };
-    thumbWrap.appendChild(thumb);
-    if (imgs.length > 1) {
-      const badge = document.createElement('span');
-      badge.className = 'item-thumb-count';
-      badge.textContent = `×${imgs.length}`;
-      thumbWrap.appendChild(badge);
-    }
-    row.appendChild(thumbWrap);
+    row.appendChild(thumb);
   }
 
   const main = document.createElement('div');
   main.className = 'item-main';
-  if (showGenreBadge) {
-    const g = notebook.genres.find((x) => x.id === item.genreId);
-    if (g) {
-      const badge = document.createElement('div');
-      badge.className = 'card-genre-badge';
-      badge.style.background = g.color || 'var(--accent)';
-      badge.textContent = g.name;
-      main.appendChild(badge);
-    }
-  }
-  const fallback = item.text ? item.text.split('\n')[0].slice(0, 40) : (imgs.length ? (imgs.length > 1 ? `(画像 ×${imgs.length})` : '(画像)') : '(無題)');
+  const fallback = item.text ? item.text.split('\n')[0].slice(0, 40) : (item.imageId ? '(画像)' : '(無題)');
   const titleEl = document.createElement('div');
   titleEl.className = 'item-title' + (item.title ? '' : ' placeholder');
   titleEl.textContent = item.title || fallback;
   const previewEl = document.createElement('div');
   previewEl.className = 'item-preview';
-  previewEl.textContent = item.text ? item.text.replace(/\n/g, ' ') : (imgs.length ? (imgs.length > 1 ? `🖼 画像 ×${imgs.length}` : '🖼 画像') : '');
+  previewEl.textContent = item.text ? item.text.replace(/\n/g, ' ') : (item.imageId ? '🖼 画像' : '');
   main.appendChild(titleEl);
   main.appendChild(previewEl);
   row.appendChild(main);
@@ -1620,7 +1359,7 @@ function renderRow(item, showGenreBadge) {
     purgeBtn.onclick = async (e) => {
       e.stopPropagation();
       if (!confirm('完全に削除します。元に戻せません。よろしいですか？')) return;
-      for (const img of itemImages(item)) await deleteImageById(img.imageId);
+      if (item.imageId) await deleteImage(item);
       notebook.items = notebook.items.filter((x) => x.id !== item.id);
       await saveNotebook();
       renderView();
@@ -1673,39 +1412,29 @@ async function copyText(text) {
   }
 }
 
-function copyItem(item) {
-  const imgs = itemImages(item);
-  if (imgs.length) {
-    if (!navigator.clipboard || !navigator.clipboard.write) {
-      alert('お使いのブラウザは画像コピーに対応していません');
-      return;
+async function copyItem(item) {
+  if (item.imageId) {
+    const blob = await loadImageBlob(item);
+    if (blob) {
+      try {
+        const pngBlob = await blobToPngBlob(blob);
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+        showCopyToast(item.title || item.text || '🖼 画像をコピーしました');
+        item.lastUsedAt = new Date().toISOString();
+        await saveNotebook();
+        renderView();
+        return;
+      } catch (e) {
+        console.error('画像のコピーに失敗しました', e);
+        alert('お使いのブラウザは画像コピーに対応していません');
+        return;
+      }
     }
-    // clipboard.write自体はタップした瞬間に同期的に呼ぶ（Safari等はここが遅れると失敗しやすいため）。
-    // 画像の読み込み・変換はClipboardItemに渡すPromiseの中で行う
-    const clipboardItems = imgs.map((img) => new ClipboardItem({
-      'image/png': (async () => {
-        const blob = await loadImageBlobById(img.imageId, img.imageIv, img.imageMime);
-        if (!blob) throw new Error('画像の読み込みに失敗しました');
-        return await blobToPngBlob(blob);
-      })(),
-    }));
-    navigator.clipboard.write(clipboardItems).then(async () => {
-      showCenterToast(imgs.length > 1 ? `✓ ${imgs.length}枚コピーしました` : '✓ コピーしました');
-      item.lastUsedAt = new Date().toISOString();
-      item.useCount = (item.useCount || 0) + 1;
-      await saveNotebook();
-      renderView();
-    }).catch((e) => {
-      console.error('画像のコピーに失敗しました', e);
-      showCopyToast('コピーに失敗しました。貼り付け先が複数画像に対応していない可能性もあります');
-    });
-    return;
   }
   copyText(item.text || '').then(async (ok) => {
     if (ok) {
       showCopyToast(item.text || '');
       item.lastUsedAt = new Date().toISOString();
-      item.useCount = (item.useCount || 0) + 1;
       await saveNotebook();
       renderView();
     } else {
@@ -1746,8 +1475,9 @@ function showUndoToast(message, onUndo) {
 let editingItemId = null;
 let editorOriginalSnapshot = null;
 let editorFavorite = false;
-let pendingNewImages = []; // 新規に添付した画像 [{file, previewUrl}]
-let existingEditorImages = []; // 編集中アイテムが元々持っている画像 [{imageId, imageIv, imageMime, previewUrl, kept}]
+let pendingImageFile = null;
+let pendingImagePreviewUrl = null;
+let editorRemoveImage = false;
 
 function updateEditorFavBtn() {
   const btn = $('#cp-editor-fav-btn');
@@ -1780,81 +1510,52 @@ function resizeImageBlob(fileOrBlob, maxDim, quality) {
   });
 }
 
-function renderPendingImageGrid() {
-  const grid = $('#cp-pending-image-grid');
-  grid.innerHTML = '';
-  existingEditorImages.forEach((img) => {
-    if (!img.kept) return;
-    const cell = document.createElement('div');
-    cell.className = 'pending-image-cell';
-    const imgEl = document.createElement('img');
-    imgEl.src = img.previewUrl || '';
-    imgEl.onclick = () => { if (img.previewUrl) openImageModal(img.previewUrl); };
-    const removeBtn = document.createElement('button');
-    removeBtn.textContent = '✕';
-    removeBtn.title = 'この画像を外す';
-    removeBtn.onclick = () => { img.kept = false; renderPendingImageGrid(); };
-    cell.appendChild(imgEl);
-    cell.appendChild(removeBtn);
-    grid.appendChild(cell);
-  });
-  pendingNewImages.forEach((img, idx) => {
-    const cell = document.createElement('div');
-    cell.className = 'pending-image-cell';
-    const imgEl = document.createElement('img');
-    imgEl.src = img.previewUrl;
-    imgEl.onclick = () => openImageModal(img.previewUrl);
-    const removeBtn = document.createElement('button');
-    removeBtn.textContent = '✕';
-    removeBtn.title = 'この画像を外す';
-    removeBtn.onclick = () => {
-      URL.revokeObjectURL(img.previewUrl);
-      pendingNewImages.splice(idx, 1);
-      renderPendingImageGrid();
-    };
-    cell.appendChild(imgEl);
-    cell.appendChild(removeBtn);
-    grid.appendChild(cell);
-  });
+async function setPendingImage(file) {
+  if (!file || !file.type || !file.type.startsWith('image/')) return;
+  clearPendingImagePreviewUrl();
+  const originalName = file.name || '貼り付けた画像';
+  let resized = file;
+  try { resized = await resizeImageBlob(file, 2048, 0.90); } catch (e) { console.warn('画像のリサイズに失敗、元画像のまま添付します', e); }
+  pendingImageFile = resized;
+  editorRemoveImage = false;
+  pendingImagePreviewUrl = URL.createObjectURL(resized);
+  $('#cp-pending-image-thumb').src = pendingImagePreviewUrl;
+  $('#cp-pending-image-name').textContent = originalName;
+  $('#cp-pending-image-preview').style.display = 'flex';
 }
-
-// 画像を1枚（または複数枚まとめて）添付欄に追加する。デフォルトで複数枚まとめての追加に対応
-async function addPendingImages(fileList) {
-  const files = Array.from(fileList).filter((f) => f && f.type && f.type.startsWith('image/'));
-  for (const file of files) {
-    let resized = file;
-    try { resized = await resizeImageBlob(file, 2048, 0.90); } catch (e) { console.warn('画像のリサイズに失敗、元画像のまま添付します', e); }
-    const previewUrl = URL.createObjectURL(resized);
-    pendingNewImages.push({ file: resized, previewUrl });
-  }
-  renderPendingImageGrid();
+function clearPendingImagePreviewUrl() {
+  if (pendingImagePreviewUrl) { URL.revokeObjectURL(pendingImagePreviewUrl); pendingImagePreviewUrl = null; }
 }
-
-function clearAllPendingImages() {
-  pendingNewImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-  pendingNewImages = [];
-  existingEditorImages = [];
+function clearPendingImage() {
+  pendingImageFile = null;
+  clearPendingImagePreviewUrl();
+  $('#cp-pending-image-preview').style.display = 'none';
   $('#cp-editor-image-input').value = '';
-  $('#cp-pending-image-grid').innerHTML = '';
+}
+function removeEditorImage() {
+  clearPendingImage();
+  editorRemoveImage = true;
 }
 
-async function openEditor(item) {
+function openEditor(item) {
   editingItemId = item ? item.id : null;
   editorFavorite = item ? !!item.favorite : false;
+  editorRemoveImage = false;
   updateEditorFavBtn();
-  clearAllPendingImages();
+  clearPendingImage();
 
   $('#cp-editor-title').value = item ? (item.title || '') : '';
   $('#cp-editor-text').value = item ? item.text : '';
   editorOriginalSnapshot = item ? { title: item.title || '', text: item.text } : null;
 
-  if (item) {
-    const imgs = itemImages(item);
-    for (const img of imgs) {
-      const url = await loadImageUrlById(img.imageId, img.imageIv, img.imageMime);
-      existingEditorImages.push({ imageId: img.imageId, imageIv: img.imageIv, imageMime: img.imageMime, previewUrl: url, kept: true });
-    }
-    renderPendingImageGrid();
+  if (item && item.imageId) {
+    loadImageUrl(item).then((url) => {
+      if (url) {
+        $('#cp-pending-image-thumb').src = url;
+        $('#cp-pending-image-name').textContent = '添付済みの画像';
+        $('#cp-pending-image-preview').style.display = 'flex';
+      }
+    });
   }
 
   $('#cp-editor-overlay').classList.add('active');
@@ -1864,22 +1565,19 @@ async function openEditor(item) {
 async function closeEditorSave() {
   const title = $('#cp-editor-title').value.trim();
   const text = $('#cp-editor-text').value.trim();
-  const keptExisting = existingEditorImages.filter((img) => img.kept).map((img) => ({ imageId: img.imageId, imageIv: img.imageIv, imageMime: img.imageMime }));
-  const removedExisting = existingEditorImages.filter((img) => !img.kept);
 
   if (!editingItemId) {
-    if (!text && !pendingNewImages.length) { closeEditorUI(); return; }
+    if (!text && !pendingImageFile) { closeEditorUI(); return; }
     const g = currentGenre();
     if (!g) { closeEditorUI(); return; }
-    const uploaded = [];
-    for (const pending of pendingNewImages) {
-      uploaded.push(await uploadImageBlob(pending.file));
-    }
     const it = {
       id: uid(), genreId: g.id, title, text, favorite: editorFavorite, trashed: false,
-      images: uploaded,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
+    if (pendingImageFile) {
+      const { imageId, imageIv, imageMime } = await uploadImage(pendingImageFile);
+      it.imageId = imageId; it.imageIv = imageIv; it.imageMime = imageMime;
+    }
     notebook.items.push(it);
     await saveNotebook();
     closeEditorUI();
@@ -1887,20 +1585,19 @@ async function closeEditorSave() {
   } else {
     const it = notebook.items.find((x) => x.id === editingItemId);
     if (it) {
-      const imageChanged = pendingNewImages.length > 0 || removedExisting.length > 0;
-      const changed = (it.title || '') !== title || it.text !== text || !!it.favorite !== !!editorFavorite || imageChanged;
+      const imageWillChange = !!pendingImageFile || (editorRemoveImage && !!it.imageId);
+      const changed = (it.title || '') !== title || it.text !== text || !!it.favorite !== !!editorFavorite || imageWillChange;
       const prevSnapshot = editorOriginalSnapshot;
       it.title = title; it.text = text; it.favorite = editorFavorite;
       if (changed) it.updatedAt = new Date().toISOString();
-
-      for (const img of removedExisting) await deleteImageById(img.imageId);
-      const uploaded = [];
-      for (const pending of pendingNewImages) {
-        uploaded.push(await uploadImageBlob(pending.file));
+      if (pendingImageFile) {
+        if (it.imageId) await deleteImage(it);
+        const { imageId, imageIv, imageMime } = await uploadImage(pendingImageFile);
+        it.imageId = imageId; it.imageIv = imageIv; it.imageMime = imageMime;
+      } else if (editorRemoveImage && it.imageId) {
+        await deleteImage(it);
+        delete it.imageId; delete it.imageIv; delete it.imageMime;
       }
-      it.images = [...keptExisting, ...uploaded];
-      delete it.imageId; delete it.imageIv; delete it.imageMime; // 旧・単一画像形式のフィールドは使わなくなったので削除
-
       await saveNotebook();
       closeEditorUI();
       renderView();
@@ -1921,7 +1618,7 @@ function closeEditorUI() {
   $('#cp-editor-overlay').classList.remove('active');
   editingItemId = null;
   editorOriginalSnapshot = null;
-  clearAllPendingImages();
+  clearPendingImage();
 }
 
 function openGenreDialog() {
@@ -1952,7 +1649,6 @@ window.addEventListener('DOMContentLoaded', () => {
   $('#cp-add-new-btn').onclick = () => openEditor(null);
   $('#cp-fab-add-btn').onclick = () => openEditor(null);
   $('#cp-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderView(); });
-  $('#cp-sort-mode-select').addEventListener('change', (e) => { userSortMode = e.target.value; renderView(); });
   $('#cp-genre-cancel-btn').onclick = closeGenreDialog;
   $('#cp-genre-confirm-btn').onclick = confirmAddGenre;
 
@@ -1964,34 +1660,26 @@ window.addEventListener('DOMContentLoaded', () => {
     renderView();
   };
 
-  $('#cp-editor-copy-btn').onclick = () => {
+  $('#cp-editor-copy-btn').onclick = async () => {
     const btn = $('#cp-editor-copy-btn');
-    // 現在プレビューに出ている画像（既存で保持中のもの＋新規添付分）を全部コピー対象にする
-    const blobPromises = [
-      ...existingEditorImages.filter((img) => img.kept).map((img) => loadImageBlobById(img.imageId, img.imageIv, img.imageMime)),
-      ...pendingNewImages.map((img) => Promise.resolve(img.file)),
-    ];
-
-    const onSuccess = (count) => {
-      showCenterToast(count > 1 ? `✓ ${count}枚コピーしました` : '✓ コピーしました');
+    try {
+      let blob = pendingImageFile;
+      if (!blob && !editorRemoveImage && editingItemId) {
+        const it = notebook.items.find((x) => x.id === editingItemId);
+        if (it && it.imageId) blob = await loadImageBlob(it);
+      }
+      if (blob) {
+        const pngBlob = await blobToPngBlob(blob);
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+      } else {
+        await navigator.clipboard.writeText($('#cp-editor-text').value);
+      }
       btn.textContent = '✓';
       btn.classList.add('copy-flash');
       setTimeout(() => { btn.textContent = '📋'; btn.classList.remove('copy-flash'); }, 1500);
-    };
-    const onFail = (e) => { console.error('編集画面からのコピーに失敗しました', e); alert('コピーに失敗しました'); };
-
-    if (blobPromises.length) {
-      // clipboard.write自体は押した瞬間に同期的に呼ぶ（Safari等はここが遅れると失敗しやすいため）
-      const clipboardItems = blobPromises.map((p) => new ClipboardItem({
-        'image/png': (async () => {
-          const blob = await p;
-          if (!blob) throw new Error('画像の読み込みに失敗しました');
-          return await blobToPngBlob(blob);
-        })(),
-      }));
-      navigator.clipboard.write(clipboardItems).then(() => onSuccess(blobPromises.length)).catch(onFail);
-    } else {
-      navigator.clipboard.writeText($('#cp-editor-text').value).then(() => onSuccess(1)).catch(onFail);
+    } catch (e) {
+      console.error('編集画面からのコピーに失敗しました', e);
+      alert('コピーに失敗しました');
     }
   };
   $('#cp-editor-fav-btn').onclick = () => { editorFavorite = !editorFavorite; updateEditorFavBtn(); };
@@ -1999,8 +1687,9 @@ window.addEventListener('DOMContentLoaded', () => {
   $('#cp-editor-close-btn').onclick = () => closeEditorSave();
 
   $('#cp-editor-image-input').addEventListener('change', (e) => {
-    if (e.target.files && e.target.files.length) addPendingImages(e.target.files);
+    if (e.target.files && e.target.files[0]) setPendingImage(e.target.files[0]);
   });
+  $('#cp-pending-image-remove').onclick = removeEditorImage;
 
   const cpEditorPanel = $('#cp-editor-panel');
   cpEditorPanel.addEventListener('dragover', (e) => {
@@ -2011,20 +1700,20 @@ window.addEventListener('DOMContentLoaded', () => {
   cpEditorPanel.addEventListener('drop', (e) => {
     e.preventDefault();
     cpEditorPanel.classList.remove('drag-over');
-    if (e.dataTransfer.files && e.dataTransfer.files.length) addPendingImages(e.dataTransfer.files);
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) setPendingImage(file);
   });
   document.addEventListener('paste', (e) => {
     if (!$('#cp-editor-overlay').classList.contains('active')) return;
     const items = e.clipboardData && e.clipboardData.items;
     if (!items) return;
-    const files = [];
     for (const item of items) {
       if (item.type && item.type.startsWith('image/')) {
         const file = item.getAsFile();
-        if (file) files.push(file);
+        if (file) { setPendingImage(file); e.preventDefault(); }
+        return;
       }
     }
-    if (files.length) { addPendingImages(files); e.preventDefault(); return; }
     // 画像でなければテキストとして本文欄へ挿入する（本文欄にフォーカスしていなくても効くように）
     if (e.target !== $('#cp-editor-text')) {
       const text = e.clipboardData.getData('text/plain');
@@ -2046,23 +1735,15 @@ window.addEventListener('DOMContentLoaded', () => {
       return;
     }
     try {
-      // まず画像がないか確認（複数あれば全部まとめて添付。iOS等での一時的な失敗に備え自動リトライする）
+      // まず画像がないか確認（あれば画像を優先して添付。iOS等での一時的な失敗に備え自動リトライする）
       if (navigator.clipboard.read) {
         try {
-          let foundImages = [];
-          const maxAttempts = 3;
-          for (let attempt = 0; attempt < maxAttempts && !foundImages.length; attempt++) {
-            const clipItems = await navigator.clipboard.read();
-            for (const item of clipItems) {
-              const type = item.types.find((t) => t.startsWith('image/'));
-              if (type) {
-                const blob = await item.getType(type);
-                foundImages.push(new File([blob], 'clipboard-image.png', { type }));
-              }
-            }
-            if (!foundImages.length && attempt < maxAttempts - 1) await new Promise((r) => setTimeout(r, 350));
+          const found = await readClipboardImageItem();
+          if (found) {
+            const blob = await found.item.getType(found.type);
+            setPendingImage(new File([blob], 'clipboard-image.png', { type: found.type }));
+            return;
           }
-          if (foundImages.length) { await addPendingImages(foundImages); return; }
         } catch (e) { /* 画像の読み取りに失敗した場合はテキストとして試す */ }
       }
       let text = '';
@@ -2256,7 +1937,6 @@ let encKey = null;
 let notebook = null;
 let currentView = null;
 let searchQuery = '';
-let userSortMode = 'created'; // created(追加順) | frequency(よく使う順) | similar(似ている順)
 let editUndoMap = new Map();
 let imageUrlCache = new Map();
 
@@ -2343,58 +2023,6 @@ window.__pnReset = function () {
 // 合言葉変更用：画像を含めて丸ごと再暗号化する。
 // フェーズ1/2は計算のみ（何も送信しない）、フェーズ3で初めて保存する。
 // 途中で失敗した場合、フェーズ3に入る前ならリモート側は一切変更されていない。
-// 全体検索用：全ジャンル・全プロンプトの検索対象一覧を返す
-window.__pnGetSearchIndex = function () {
-  if (!notebook) return [];
-  return notebook.prompts
-    .filter((p) => !p.trashed)
-    .map((p) => {
-      const g = notebook.genres.find((x) => x.id === p.genreId);
-      return {
-        id: p.id,
-        title: p.title || '',
-        text: p.text || '',
-        genreName: g ? g.name : '',
-        hasImage: !!p.imageId,
-      };
-    });
-};
-// 全体検索の結果からタップ1つでコピーする（本文テキストをコピー。一覧のコピーボタンと同じ挙動）
-window.__pnCopyById = async function (id) {
-  const p = notebook && notebook.prompts.find((x) => x.id === id);
-  if (!p) return;
-  await navigator.clipboard.writeText(p.text);
-  p.lastCopiedAt = new Date().toISOString();
-  p.useCount = (p.useCount || 0) + 1;
-  await saveNotebook();
-  showCenterToast('✓ コピーしました');
-  if (currentView === p.genreId) renderView();
-};
-
-// 外部（Google Keep等）からの一括取り込み用：1件分を追加する
-// 画像付きの場合は「画像対応ジャンル」に、テキストのみの場合は「画像非対応ジャンル」に自動で振り分ける
-window.__pnImportOne = async function ({ title, text, imageBlob }) {
-  if (!notebook) return;
-  const g = imageBlob
-    ? (notebook.genres.find((x) => x.hasImage) || notebook.genres[0])
-    : (notebook.genres.find((x) => !x.hasImage) || notebook.genres[0]);
-  if (!g) return;
-  const p = {
-    id: uid(), genreId: g.id, title: title || '', text: text || '', favorite: false, trashed: false,
-    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-  };
-  if (imageBlob && g.hasImage) {
-    try {
-      const resized = await resizeImageBlob(imageBlob, 2048, 0.90);
-      const { imageId, imageIv, imageMime } = await uploadImage(resized);
-      p.imageId = imageId; p.imageIv = imageIv; p.imageMime = imageMime;
-    } catch (e) { console.warn('[プロンプト帳] 取り込み画像の処理に失敗:', e); }
-  }
-  notebook.prompts.push(p);
-  await saveNotebook();
-  if (currentView === g.id) renderView();
-};
-
 window.__pnReencrypt = async function (oldKey, newKey, newSalt) {
   // フェーズ1: 画像を全部「旧鍵で復号→新鍵で再暗号化」し、結果をメモリ上に貯める
   const imageUpdates = [];
@@ -2568,16 +2196,8 @@ function renderView() {
   list.innerHTML = '';
 
   let items = [];
-  const isSearching = !!searchQuery;
-  let useUserSort = false; // 通常のジャンル一覧・検索時はユーザーが選んだ並び替えを使う
-
-  if (isSearching) {
-    // 検索中は今のジャンルタブに関係なく、全ジャンルを横断して対象にする
-    addBtn.style.display = 'none';
-    if (fab) fab.style.display = 'none';
-    items = notebook.prompts.filter((p) => !p.trashed);
-    useUserSort = true;
-  } else if (currentView === '__trash__') {
+  let sortMode = 'recentlyUsed'; // recentlyUsed(最近使った順) | dateOnly(更新日時順) | favoriteThenDate(お気に入り優先→作成日時順)
+  if (currentView === '__trash__') {
     addBtn.style.display = 'none';
     if (fab) fab.style.display = 'none';
     items = notebook.prompts.filter((p) => p.trashed);
@@ -2586,18 +2206,20 @@ function renderView() {
     if (fab) fab.style.display = 'none';
     items = notebook.prompts.filter((p) => p.favorite && !p.trashed);
   } else {
+    const g = currentGenre();
     addBtn.style.display = 'block';
     if (fab) fab.style.display = 'flex';
     items = notebook.prompts.filter((p) => p.genreId === currentView && !p.trashed);
-    useUserSort = true;
+    sortMode = (g && g.hasImage) ? 'dateOnly' : 'favoriteThenDate';
   }
 
-  if (useUserSort) {
-    if (userSortMode === 'frequency') {
-      items.sort((a, b) => (b.useCount || 0) - (a.useCount || 0) || (b.createdAt || '').localeCompare(a.createdAt || ''));
-    } else {
-      items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-    }
+  if (sortMode === 'dateOnly') {
+    items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  } else if (sortMode === 'favoriteThenDate') {
+    items.sort((a, b) => {
+      if (!!a.favorite !== !!b.favorite) return a.favorite ? -1 : 1;
+      return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
   } else {
     items.sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
   }
@@ -2607,12 +2229,8 @@ function renderView() {
     items = items.filter((p) => (p.title || '').toLowerCase().includes(q) || (p.text || '').toLowerCase().includes(q));
   }
 
-  if (useUserSort && userSortMode === 'similar' && !searchQuery) {
-    items = reorderBySimilarity(items);
-  }
-
   $('#pn-empty-state').style.display = items.length ? 'none' : 'block';
-  items.forEach((p) => list.appendChild(renderCard(p, isSearching)));
+  items.forEach((p) => list.appendChild(renderCard(p)));
 }
 
 function sortKey(p) {
@@ -2629,11 +2247,11 @@ function formatDate(iso) {
   return `${mm}/${dd} ${hh}:${mi}`;
 }
 
-function renderCard(p, showGenreBadge) {
+function renderCard(p) {
   const card = document.createElement('div');
   card.className = 'prompt-card';
   card.onclick = () => openEditor(p);
-  if (currentView !== '__trash__' && currentView !== '__fav__' && !showGenreBadge) {
+  if (currentView !== '__trash__' && currentView !== '__fav__') {
     card.draggable = true;
     card.addEventListener('dragstart', (e) => {
       e.dataTransfer.setData('text/x-pn-prompt-id', p.id);
@@ -2660,13 +2278,6 @@ function renderCard(p, showGenreBadge) {
 
   const textWrap = document.createElement('div');
   textWrap.className = 'card-text';
-  if (showGenreBadge && g) {
-    const badge = document.createElement('div');
-    badge.className = 'card-genre-badge';
-    badge.style.background = g.color || 'var(--accent)';
-    badge.textContent = g.name;
-    textWrap.appendChild(badge);
-  }
   const titleEl = document.createElement('div');
   const fallbackTitle = p.text ? p.text.split('\n')[0].slice(0, 30) : '(無題)';
   titleEl.className = 'card-title' + (p.title ? '' : ' placeholder');
@@ -2694,7 +2305,6 @@ function renderCard(p, showGenreBadge) {
     e.stopPropagation();
     await navigator.clipboard.writeText(p.text);
     p.lastCopiedAt = new Date().toISOString();
-    p.useCount = (p.useCount || 0) + 1;
     await saveNotebook();
     copyBtn.textContent = '✓ コピーしました';
     copyBtn.classList.add('copy-flash');
@@ -3075,7 +2685,6 @@ window.addEventListener('DOMContentLoaded', () => {
   $('#pn-add-new-btn').onclick = () => openEditor(null);
   $('#pn-fab-add-btn').onclick = () => openEditor(null);
   $('#pn-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderView(); });
-  $('#pn-sort-mode-select').addEventListener('change', (e) => { userSortMode = e.target.value; renderView(); });
   $('#pn-genre-cancel-btn').onclick = closeGenreDialog;
   $('#pn-genre-confirm-btn').onclick = confirmAddGenre;
   $('#pn-image-modal').onclick = () => $('#pn-image-modal').classList.remove('active');
@@ -3086,7 +2695,7 @@ window.addEventListener('DOMContentLoaded', () => {
     await navigator.clipboard.writeText($('#pn-editor-text').value);
     if (editingPromptId) {
       const p = notebook.prompts.find((x) => x.id === editingPromptId);
-      if (p) { p.lastCopiedAt = new Date().toISOString(); p.useCount = (p.useCount || 0) + 1; await saveNotebook(); }
+      if (p) { p.lastCopiedAt = new Date().toISOString(); await saveNotebook(); }
     }
     btn.textContent = '✓';
     btn.classList.add('copy-flash');
@@ -3590,20 +3199,6 @@ window.addEventListener('DOMContentLoaded', () => {
   };
 
   // 合言葉変更用：画像を含めて丸ごと再暗号化する（フェーズ1/2は計算のみ、フェーズ3で保存）
-  // 外部（Google Keep等）からの一括取り込み用：1件分の画像を追加する
-  window.__msImportOne = async function ({ imageBlob, memo }) {
-    if (!stock || !imageBlob) return;
-    const blob = await resizeImageBlob(imageBlob, 2048, 0.90);
-    const { imageId, imageIv, imageMime } = await uploadImage(blob);
-    stock.items.push({
-      id: uid(), imageId, imageIv, imageMime, groupId: null,
-      memo: memo || '', category: CATEGORIES[0], favorite: false,
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    });
-    await saveStock();
-    renderGrid();
-  };
-
   window.__msReencrypt = async function (oldKey, newKey, newSalt) {
     const imageUpdates = [];
     for (const it of stock.items) {
@@ -4088,30 +3683,21 @@ window.addEventListener('DOMContentLoaded', () => {
     copyBtn.className = 'ms-mini-btn';
     copyBtn.textContent = '📋';
     copyBtn.title = '画像をコピー';
-    copyBtn.onclick = (e) => {
+    copyBtn.onclick = async (e) => {
       e.stopPropagation();
-      if (!navigator.clipboard || !navigator.clipboard.write) {
-        showToast('お使いのブラウザは画像コピーに対応していません');
-        return;
-      }
-      // clipboard.write自体はクリックした瞬間に同期的に呼ぶ（Safari等はここが遅れると失敗しやすいため）。
-      // 画像の読み込み・変換はClipboardItemに渡すPromiseの中で行う
-      navigator.clipboard.write([
-        new ClipboardItem({
-          'image/png': (async () => {
-            const blob = await loadImageBlob(it);
-            if (!blob) throw new Error('画像の読み込みに失敗しました');
-            return await blobToPngBlob(blob);
-          })(),
-        }),
-      ]).then(() => {
-        showCenterToast('✓ コピーしました');
+      const blob = await loadImageBlob(it);
+      if (!blob) { showToast('画像の読み込みに失敗しました'); return; }
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.write) throw new Error('unsupported');
+        const pngBlob = await blobToPngBlob(blob);
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+        showToast('画像をコピーしました');
         copyBtn.textContent = '✓'; copyBtn.classList.add('copied');
         setTimeout(() => { copyBtn.textContent = '📋'; copyBtn.classList.remove('copied'); }, 1100);
-      }).catch((err) => {
+      } catch (err) {
         console.error('[素材帳] 画像コピーに失敗:', err);
-        showToast('コピーに失敗しました。もう一度お試しください');
-      });
+        showToast('お使いのブラウザは画像コピーに対応していません');
+      }
     };
     actions.appendChild(copyBtn);
 
@@ -4345,26 +3931,18 @@ window.addEventListener('DOMContentLoaded', () => {
     copyBtn.className = 'ms-mini-btn';
     copyBtn.textContent = '📋';
     copyBtn.title = '画像をコピー';
-    copyBtn.onclick = (e) => {
+    copyBtn.onclick = async (e) => {
       e.stopPropagation();
-      if (!navigator.clipboard || !navigator.clipboard.write) {
-        showToast('お使いのブラウザは画像コピーに対応していません');
-        return;
-      }
-      navigator.clipboard.write([
-        new ClipboardItem({
-          'image/png': (async () => {
-            const blob = await loadImageBlob(it);
-            if (!blob) throw new Error('画像の読み込みに失敗しました');
-            return await blobToPngBlob(blob);
-          })(),
-        }),
-      ]).then(() => {
-        showCenterToast('✓ コピーしました');
-      }).catch((err) => {
+      const blob = await loadImageBlob(it);
+      if (!blob) { showToast('画像の読み込みに失敗しました'); return; }
+      try {
+        const pngBlob = await blobToPngBlob(blob);
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+        showToast('画像をコピーしました');
+      } catch (err) {
         console.error('[素材帳] 画像コピーに失敗:', err);
-        showToast('コピーに失敗しました。もう一度お試しください');
-      });
+        showToast('お使いのブラウザは画像コピーに対応していません');
+      }
     };
     actions.appendChild(copyBtn);
 
@@ -4855,245 +4433,6 @@ window.addEventListener('DOMContentLoaded', () => {
     lockAll();
   }
 
-  // ============== 全体検索（コピペ帳・プロンプト帳を全ジャンル横断） ==============
-  function escapeHtmlGs(s) {
-    const div = document.createElement('div');
-    div.textContent = s;
-    return div.innerHTML;
-  }
-  function openGlobalSearch() {
-    $('#global-search-input').value = '';
-    $('#global-search-results').innerHTML = '<div class="gs-empty">キーワードを入力してください</div>';
-    $('#global-search-overlay').classList.add('active');
-    setTimeout(() => $('#global-search-input').focus(), 50);
-  }
-  function closeGlobalSearch() {
-    $('#global-search-overlay').classList.remove('active');
-  }
-  function renderGlobalSearchResults(query) {
-    const container = $('#global-search-results');
-    container.innerHTML = '';
-    if (!query) { container.innerHTML = '<div class="gs-empty">キーワードを入力してください</div>'; return; }
-    const q = query.toLowerCase();
-    const cpItems = (window.__cpGetSearchIndex ? window.__cpGetSearchIndex() : [])
-      .filter((it) => it.title.toLowerCase().includes(q) || it.text.toLowerCase().includes(q))
-      .map((it) => ({ ...it, app: 'cp' }));
-    const pnItems = (window.__pnGetSearchIndex ? window.__pnGetSearchIndex() : [])
-      .filter((it) => it.title.toLowerCase().includes(q) || it.text.toLowerCase().includes(q))
-      .map((it) => ({ ...it, app: 'pn' }));
-    const all = [...cpItems, ...pnItems];
-    if (!all.length) { container.innerHTML = '<div class="gs-empty">見つかりませんでした</div>'; return; }
-    all.forEach((it) => {
-      const row = document.createElement('div');
-      row.className = 'gs-result-row';
-      const appLabel = it.app === 'cp' ? '📋 コピペ帳' : '🗒 プロンプト帳';
-      const preview = (it.text || '').replace(/\n/g, ' ').slice(0, 60);
-      row.innerHTML = `
-        <div class="gs-result-meta">${appLabel}${it.genreName ? ' ・ ' + escapeHtmlGs(it.genreName) : ''}${it.hasImage ? ' 🖼' : ''}</div>
-        <div class="gs-result-title">${escapeHtmlGs(it.title || preview || '(無題)')}</div>
-        ${it.title ? `<div class="gs-result-preview">${escapeHtmlGs(preview)}</div>` : ''}
-      `;
-      row.onclick = () => {
-        if (it.app === 'cp' && window.__cpCopyById) window.__cpCopyById(it.id);
-        else if (it.app === 'pn' && window.__pnCopyById) window.__pnCopyById(it.id);
-        closeGlobalSearch();
-      };
-      container.appendChild(row);
-    });
-  }
-
-  // ============== Google Keepからの一括取り込み ==============
-  let keepImportNotes = [];
-
-  function keepUid() { return crypto.randomUUID ? crypto.randomUUID() : 'id' + Date.now() + Math.random().toString(16).slice(2); }
-
-  function openKeepImportDialog() {
-    keepImportNotes = [];
-    $('#keep-import-step1').style.display = 'block';
-    $('#keep-import-step2').style.display = 'none';
-    $('#keep-import-execute-btn').style.display = 'none';
-    $('#keep-import-zip-input').value = '';
-    $('#keep-import-loading').style.display = 'none';
-    $('#keep-import-progress').textContent = '';
-    $('#keep-import-overlay').classList.add('active');
-  }
-  function closeKeepImportDialog() {
-    $('#keep-import-overlay').classList.remove('active');
-  }
-
-  async function handleKeepZipFile(file) {
-    $('#keep-import-loading').style.display = 'block';
-    try {
-      const zip = await JSZip.loadAsync(file);
-      const jsonNames = Object.keys(zip.files).filter((name) => name.toLowerCase().endsWith('.json') && !zip.files[name].dir);
-      const notes = [];
-      for (const name of jsonNames) {
-        try {
-          const content = await zip.files[name].async('string');
-          const data = JSON.parse(content);
-          if (data.isTrashed) continue;
-          let text = data.textContent || '';
-          if (!text && Array.isArray(data.listContent)) {
-            text = data.listContent.map((li) => li.text).filter(Boolean).join('\n');
-          }
-          const title = data.title || '';
-          let imageBlob = null;
-          if (Array.isArray(data.attachments) && data.attachments.length) {
-            const att = data.attachments[0];
-            const path = att.filePath || '';
-            const baseDir = name.substring(0, name.lastIndexOf('/') + 1);
-            const targetName = path.split('/').pop();
-            const candidates = [path, baseDir + path, baseDir + targetName];
-            let fileEntry = candidates.map((c) => zip.files[c]).find(Boolean);
-            if (!fileEntry && targetName) {
-              const foundKey = Object.keys(zip.files).find((k) => k.endsWith('/' + targetName) || k === targetName);
-              if (foundKey) fileEntry = zip.files[foundKey];
-            }
-            if (fileEntry) {
-              const buf = await fileEntry.async('arraybuffer');
-              imageBlob = new Blob([buf], { type: att.mimetype || 'image/jpeg' });
-            }
-          }
-          if (!text && !imageBlob) continue;
-          const destination = imageBlob && text ? 'pn' : (imageBlob ? 'ms' : 'pn');
-          notes.push({ id: keepUid(), title, text, imageBlob, destination, selected: true });
-        } catch (e) { console.warn('[Keep取込] メモの解析に失敗:', name, e); }
-      }
-      if (!notes.length) {
-        alert('取り込めるメモが見つかりませんでした。Google Takeoutからダウンロードした正しいZIPファイルかご確認ください。');
-        return;
-      }
-      keepImportNotes = notes;
-      renderKeepImportList();
-    } catch (e) {
-      console.error(e);
-      alert('ZIPファイルの読み込みに失敗しました。');
-    } finally {
-      $('#keep-import-loading').style.display = 'none';
-    }
-  }
-
-  function renderKeepImportRow(note) {
-    const row = document.createElement('div');
-    row.className = 'keep-import-row';
-
-    const checkLabel = document.createElement('label');
-    checkLabel.className = 'keep-import-check';
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = note.selected;
-    checkbox.onchange = () => { note.selected = checkbox.checked; };
-    checkLabel.appendChild(checkbox);
-    row.appendChild(checkLabel);
-
-    if (note.imageBlob) {
-      const img = document.createElement('img');
-      img.className = 'keep-import-thumb';
-      img.src = URL.createObjectURL(note.imageBlob);
-      row.appendChild(img);
-    }
-
-    const textWrap = document.createElement('div');
-    textWrap.className = 'keep-import-text';
-    const titleEl = document.createElement('div');
-    titleEl.className = 'keep-import-title';
-    titleEl.textContent = note.title || (note.text || '').slice(0, 30) || '(無題)';
-    const previewEl = document.createElement('div');
-    previewEl.className = 'keep-import-preview';
-    previewEl.textContent = (note.text || '').replace(/\n/g, ' ').slice(0, 80);
-    textWrap.appendChild(titleEl);
-    textWrap.appendChild(previewEl);
-    row.appendChild(textWrap);
-
-    const select = document.createElement('select');
-    select.className = 'keep-import-dest';
-    [['pn', 'プロンプト帳'], ['ms', '素材帳'], ['both', '両方'], ['skip', 'スキップ']].forEach(([val, label]) => {
-      const opt = document.createElement('option');
-      opt.value = val; opt.textContent = label;
-      select.appendChild(opt);
-    });
-    select.value = note.destination;
-    select.onchange = () => { note.destination = select.value; };
-    row.appendChild(select);
-
-    return row;
-  }
-
-  function renderKeepImportList() {
-    $('#keep-import-step1').style.display = 'none';
-    $('#keep-import-step2').style.display = 'flex';
-    $('#keep-import-execute-btn').style.display = 'inline-block';
-
-    if (keepImportNotes.length && keepImportNotes[0].groupId === undefined) {
-      keepImportNotes = computeSimilarityGroups(keepImportNotes);
-    }
-
-    const dupCount = keepImportNotes.filter((n) => n.groupSize > 1).length;
-    $('#keep-import-count').textContent = `${keepImportNotes.length}件見つかりました${dupCount ? `（うち類似候補 ${dupCount}件）` : ''}`;
-
-    // グループが大きい順に、グループ内は元の順のまま並べる
-    const groupIds = [];
-    const seenGroup = new Set();
-    keepImportNotes.forEach((n) => { if (!seenGroup.has(n.groupId)) { seenGroup.add(n.groupId); groupIds.push(n.groupId); } });
-    groupIds.sort((a, b) => {
-      const sizeA = keepImportNotes.find((n) => n.groupId === a).groupSize;
-      const sizeB = keepImportNotes.find((n) => n.groupId === b).groupSize;
-      return sizeB - sizeA;
-    });
-
-    const list = $('#keep-import-list');
-    list.innerHTML = '';
-    groupIds.forEach((gid) => {
-      const members = keepImportNotes.filter((n) => n.groupId === gid);
-      if (members[0].groupSize > 1) {
-        const header = document.createElement('div');
-        header.className = 'keep-import-group-header';
-        const label = document.createElement('span');
-        label.textContent = `🔁 似た内容の可能性：${members.length}件`;
-        header.appendChild(label);
-        const skipRestBtn = document.createElement('button');
-        skipRestBtn.textContent = '2件目以降をスキップ';
-        skipRestBtn.onclick = () => {
-          members.slice(1).forEach((m) => { m.selected = false; });
-          renderKeepImportList();
-        };
-        header.appendChild(skipRestBtn);
-        list.appendChild(header);
-      }
-      members.forEach((note) => list.appendChild(renderKeepImportRow(note)));
-    });
-  }
-
-  async function executeKeepImport() {
-    const targets = keepImportNotes.filter((n) => n.selected && n.destination !== 'skip');
-    if (!targets.length) { alert('選択された内容がありません'); return; }
-    const btn = $('#keep-import-execute-btn');
-    const progEl = $('#keep-import-progress');
-    btn.disabled = true;
-
-    if (targets.some((n) => n.destination === 'ms' || n.destination === 'both')) {
-      progEl.textContent = '素材帳を確認しています…';
-      await ensureMaterialLoaded();
-    }
-
-    let done = 0;
-    for (const note of targets) {
-      progEl.textContent = `取り込み中… ${done + 1} / ${targets.length}`;
-      try {
-        if ((note.destination === 'pn' || note.destination === 'both') && window.__pnImportOne) {
-          await window.__pnImportOne({ title: note.title, text: note.text, imageBlob: note.imageBlob });
-        }
-        if ((note.destination === 'ms' || note.destination === 'both') && note.imageBlob && window.__msImportOne) {
-          await window.__msImportOne({ imageBlob: note.imageBlob, memo: note.title || '' });
-        }
-      } catch (e) { console.error('[Keep取込] 追加に失敗:', note, e); }
-      done++;
-    }
-    progEl.textContent = `完了：${done}件取り込みました`;
-    btn.disabled = false;
-    showCenterToast(`✓ ${done}件取り込みました`);
-  }
-
   // ============== 合言葉の変更 ==============
   async function keysRawEqual(keyA, keyB) {
     const a = bufToB64(await crypto.subtle.exportKey('raw', keyA));
@@ -5194,22 +4533,6 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#change-pass-cancel-btn').onclick = closeChangePassDialog;
     $('#change-pass-overlay').addEventListener('click', (e) => { if (e.target === $('#change-pass-overlay')) closeChangePassDialog(); });
     $('#change-pass-submit-btn').onclick = submitChangePassphrase;
-
-    $('#global-search-btn').onclick = openGlobalSearch;
-    $('#global-search-close-btn').onclick = closeGlobalSearch;
-    $('#global-search-overlay').addEventListener('click', (e) => { if (e.target === $('#global-search-overlay')) closeGlobalSearch(); });
-    $('#global-search-input').addEventListener('input', (e) => renderGlobalSearchResults(e.target.value.trim()));
-
-    $('#shell-keep-import-btn').onclick = openKeepImportDialog;
-    $('#keep-import-close-btn').onclick = closeKeepImportDialog;
-    $('#keep-import-overlay').addEventListener('click', (e) => { if (e.target === $('#keep-import-overlay')) closeKeepImportDialog(); });
-    $('#keep-import-zip-input').addEventListener('change', (e) => {
-      if (e.target.files && e.target.files[0]) handleKeepZipFile(e.target.files[0]);
-    });
-    $('#keep-import-all-prompt-btn').onclick = () => { keepImportNotes.forEach((n) => { if (n.selected) n.destination = 'pn'; }); renderKeepImportList(); };
-    $('#keep-import-all-material-btn').onclick = () => { keepImportNotes.forEach((n) => { if (n.selected) n.destination = 'ms'; }); renderKeepImportList(); };
-    $('#keep-import-all-skip-btn').onclick = () => { keepImportNotes.forEach((n) => { n.selected = false; }); renderKeepImportList(); };
-    $('#keep-import-execute-btn').onclick = executeKeepImport;
 
     const ok = await tryAutoUnlock();
     if (!ok) showLogin();
