@@ -230,7 +230,6 @@ textarea, input { font-family: inherit; }
 .item-row:hover { background: var(--accent-soft); }
 .item-row:active { background: var(--rule); }
 .item-star { border: none; background: transparent; font-size: 15px; color: var(--rule-strong); padding: 2px 4px; flex-shrink: 0; line-height: 1; }
-.near-dup-badge { font-size: 12px; flex-shrink: 0; cursor: help; }
 .item-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--rule-strong); flex-shrink: 0; }
 .item-star.active { color: var(--gold); }
 .item-main { flex: 1; min-width: 0; }
@@ -1542,21 +1541,11 @@ function renderView() {
     items = reorderBySimilarity(items);
   }
 
-  // ほぼ同一（95%以上類似）のものにマークを付けるための判定
-  const nearDupIds = computeNearDuplicateIds(items);
-
   $('#cp-empty-state').style.display = items.length ? 'none' : 'block';
-  items.forEach((it) => list.appendChild(renderRow(it, isSearching, nearDupIds.has(it.id))));
+  items.forEach((it) => list.appendChild(renderRow(it, isSearching)));
 }
 
-function computeNearDuplicateIds(items) {
-  const groups = computeSimilarityGroups(items, 0.95);
-  const ids = new Set();
-  groups.forEach((g) => { if (g.groupSize > 1) ids.add(g.id); });
-  return ids;
-}
-
-function renderRow(item, showGenreBadge, isNearDup) {
+function renderRow(item, showGenreBadge) {
   const row = document.createElement('div');
   row.className = 'item-row';
   row.onclick = () => handleRowTap(item);
@@ -1567,14 +1556,6 @@ function renderRow(item, showGenreBadge, isNearDup) {
   starBtn.title = 'お気に入り';
   starBtn.onclick = async (e) => { e.stopPropagation(); item.favorite = !item.favorite; await saveNotebook(); renderView(); };
   row.appendChild(starBtn);
-
-  if (isNearDup) {
-    const dupBadge = document.createElement('span');
-    dupBadge.className = 'near-dup-badge';
-    dupBadge.textContent = '🔁';
-    dupBadge.title = 'ほぼ同じ内容のものが他にもあります';
-    row.appendChild(dupBadge);
-  }
 
   const imgs = itemImages(item);
   if (imgs.length) {
@@ -2630,17 +2611,8 @@ function renderView() {
     items = reorderBySimilarity(items);
   }
 
-  const nearDupIds = computeNearDuplicateIds(items);
-
   $('#pn-empty-state').style.display = items.length ? 'none' : 'block';
-  items.forEach((p) => list.appendChild(renderCard(p, isSearching, nearDupIds.has(p.id))));
-}
-
-function computeNearDuplicateIds(items) {
-  const groups = computeSimilarityGroups(items, 0.95);
-  const ids = new Set();
-  groups.forEach((g) => { if (g.groupSize > 1) ids.add(g.id); });
-  return ids;
+  items.forEach((p) => list.appendChild(renderCard(p, isSearching)));
 }
 
 function sortKey(p) {
@@ -2657,7 +2629,7 @@ function formatDate(iso) {
   return `${mm}/${dd} ${hh}:${mi}`;
 }
 
-function renderCard(p, showGenreBadge, isNearDup) {
+function renderCard(p, showGenreBadge) {
   const card = document.createElement('div');
   card.className = 'prompt-card';
   card.onclick = () => openEditor(p);
@@ -2694,13 +2666,6 @@ function renderCard(p, showGenreBadge, isNearDup) {
     badge.style.background = g.color || 'var(--accent)';
     badge.textContent = g.name;
     textWrap.appendChild(badge);
-  }
-  if (isNearDup) {
-    const dupBadge = document.createElement('span');
-    dupBadge.className = 'near-dup-badge';
-    dupBadge.textContent = '🔁';
-    dupBadge.title = 'ほぼ同じ内容のものが他にもあります';
-    textWrap.appendChild(dupBadge);
   }
   const titleEl = document.createElement('div');
   const fallbackTitle = p.text ? p.text.split('\n')[0].slice(0, 30) : '(無題)';
@@ -3199,10 +3164,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 画像：貼り付け（Ctrl+V / Cmd+V）
   document.addEventListener('paste', (e) => {
-    const overlayActive = $('#pn-editor-overlay').classList.contains('active');
-    showCenterToast(`[診断] paste検知 overlay:${overlayActive}`);
-    console.log('[プロンプト帳][診断] pasteイベント検知. overlayActive:', overlayActive, ' target:', e.target && (e.target.id || e.target.tagName), ' clipboardData:', !!e.clipboardData, ' types:', e.clipboardData ? [...e.clipboardData.types] : null);
-    if (!overlayActive) return;
+    if (!$('#pn-editor-overlay').classList.contains('active')) return;
     const items = e.clipboardData && e.clipboardData.items;
     if (items && editorHasImageGenre) {
       for (const item of items) {
