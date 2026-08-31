@@ -411,6 +411,11 @@ textarea, input { font-family: inherit; }
 .ms-modal.ms-drag-over { outline: 2px dashed var(--ms-accent); outline-offset: -4px; }
 .ms-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .ms-modal-head h2 { margin: 0; font-size: 15px; font-family: 'Space Grotesk', sans-serif; }
+.ms-edit-item-preview {
+  display: none; width: 100%; max-height: 42vh; object-fit: contain; border-radius: 12px;
+  background: var(--ms-surface2); margin-bottom: 14px;
+}
+.ms-edit-item-preview.show { display: block; }
 .ms-modal-close {
   width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--ms-border); background: var(--ms-surface);
   color: var(--ms-text-dim); display: flex; align-items: center; justify-content: center; cursor: pointer;
@@ -763,6 +768,7 @@ textarea, input { font-family: inherit; }
 <div class="ms-modal-overlay" id="ms-edit-item-overlay">
   <div class="ms-modal" id="ms-edit-item-modal">
     <div class="ms-modal-head"><h2>編集</h2><div class="ms-modal-close" id="ms-edit-item-close-btn">✕</div></div>
+    <img id="ms-edit-item-preview" class="ms-edit-item-preview" alt="拡大画像">
     <div class="ms-field-label">メモ（一言ラベル）</div>
     <input type="text" id="ms-edit-item-memo" placeholder="例：全身・私服" />
     <div class="ms-field-label">カテゴリ</div>
@@ -1069,6 +1075,11 @@ function reorderBySimilarity(items, threshold = 0.55) {
   });
   return result;
 }
+
+// アプリ内共有クリップボード：コピペ帳⇔プロンプト帳のように、このページの中だけで完結するやり取りは
+// OSのクリップボードAPIに頼らず、こちらを使って確実に受け渡しできるようにする。
+// { kind: 'text', text } または { kind: 'image'|'images', blobs: [Blob,...] }
+window.__sharedClipboard = null;
 
 /* ===================== コピペ帳 (CP) / プロンプト帳 (PN) の本体スクリプトはこの下に続く ===================== */
 
@@ -1718,8 +1729,18 @@ function copyItem(item) {
       console.error('画像のコピーに失敗しました', e);
       showCopyToast('コピーに失敗しました。貼り付け先が複数画像に対応していない可能性もあります');
     });
+    // OSクリップボードの結果に関わらず、このアプリ内での貼り付け用にも保持しておく
+    (async () => {
+      const blobs = [];
+      for (const img of imgs) {
+        const blob = await loadImageBlobById(img.imageId, img.imageIv, img.imageMime);
+        if (blob) blobs.push(blob);
+      }
+      if (blobs.length) window.__sharedClipboard = { kind: 'images', blobs };
+    })();
     return;
   }
+  window.__sharedClipboard = { kind: 'text', text: item.text || '' };
   copyText(item.text || '').then(async (ok) => {
     if (ok) {
       showCopyToast(item.text || '');
@@ -2097,6 +2118,17 @@ window.addEventListener('DOMContentLoaded', () => {
           }
         }
       }
+      // OSクリップボードで見つからなかった場合、このアプリ内で直前にコピーしたものがあればそれを使う
+      if (!text && window.__sharedClipboard) {
+        const sc = window.__sharedClipboard;
+        if (sc.kind === 'images' && sc.blobs && sc.blobs.length) {
+          await addPendingImages(sc.blobs);
+          return;
+        }
+        if (sc.kind === 'text' && sc.text) {
+          text = sc.text;
+        }
+      }
       if (!text) {
         alert('画像・テキストが見つかりませんでした。本文欄を長押し→「貼り付け」でお試しください');
         const target = $('#cp-editor-text');
@@ -2382,6 +2414,7 @@ window.__pnGetSearchIndex = function () {
 window.__pnCopyById = async function (id) {
   const p = notebook && notebook.prompts.find((x) => x.id === id);
   if (!p) return;
+  window.__sharedClipboard = { kind: 'text', text: p.text || '' };
   await navigator.clipboard.writeText(p.text);
   p.lastCopiedAt = new Date().toISOString();
   p.useCount = (p.useCount || 0) + 1;
@@ -2727,6 +2760,7 @@ function renderCard(p, showGenreBadge, isNearDup) {
   copyBtn.textContent = '📋 コピー';
   copyBtn.onclick = async (e) => {
     e.stopPropagation();
+    window.__sharedClipboard = { kind: 'text', text: p.text || '' };
     await navigator.clipboard.writeText(p.text);
     p.lastCopiedAt = new Date().toISOString();
     p.useCount = (p.useCount || 0) + 1;
@@ -3118,6 +3152,7 @@ window.addEventListener('DOMContentLoaded', () => {
   $('#pn-editor-fav-btn').onclick = () => { editorFavorite = !editorFavorite; updateEditorFavBtn(); };
   $('#pn-editor-copy-btn').onclick = async () => {
     const btn = $('#pn-editor-copy-btn');
+    window.__sharedClipboard = { kind: 'text', text: $('#pn-editor-text').value || '' };
     await navigator.clipboard.writeText($('#pn-editor-text').value);
     if (editingPromptId) {
       const p = notebook.prompts.find((x) => x.id === editingPromptId);
@@ -3296,6 +3331,18 @@ window.addEventListener('DOMContentLoaded', () => {
       if (navigator.clipboard.readText) {
         const text = await navigator.clipboard.readText();
         if (text) { insertTextAtCursorPn(text); return; }
+      }
+      // OSクリップボードで見つからなかった場合、このアプリ内で直前にコピーしたものがあればそれを使う
+      if (window.__sharedClipboard) {
+        const sc = window.__sharedClipboard;
+        if (sc.kind === 'images' && sc.blobs && sc.blobs.length && editorHasImageGenre) {
+          setPendingImage(sc.blobs[0]);
+          return;
+        }
+        if (sc.kind === 'text' && sc.text) {
+          insertTextAtCursorPn(sc.text);
+          return;
+        }
       }
       alert('画像・テキストが見つかりませんでした。本文欄を長押し→「貼り付け」でお試しください');
       const pasteTarget = $('#pn-editor-text');
@@ -3504,6 +3551,33 @@ window.addEventListener('DOMContentLoaded', () => {
     canvas.height = bitmap.height;
     canvas.getContext('2d').drawImage(bitmap, 0, 0);
     return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  }
+
+  // 画像1枚をクリップボードへコピーする共通処理（アプリ内共有クリップボードにも保存する）
+  function copyImageItem(it, onDone) {
+    if (!navigator.clipboard || !navigator.clipboard.write) {
+      showToast('お使いのブラウザは画像コピーに対応していません');
+      return;
+    }
+    navigator.clipboard.write([
+      new ClipboardItem({
+        'image/png': (async () => {
+          const blob = await loadImageBlob(it);
+          if (!blob) throw new Error('画像の読み込みに失敗しました');
+          return await blobToPngBlob(blob);
+        })(),
+      }),
+    ]).then(() => {
+      showCenterToast('✓ コピーしました');
+      if (onDone) onDone();
+    }).catch((err) => {
+      console.error('[素材帳] 画像コピーに失敗:', err);
+      showToast('コピーに失敗しました。もう一度お試しください');
+    });
+    (async () => {
+      const blob = await loadImageBlob(it);
+      if (blob) window.__sharedClipboard = { kind: 'images', blobs: [blob] };
+    })();
   }
 
   function resizeImageBlob(fileOrBlob, maxDim, quality) {
@@ -4067,7 +4141,7 @@ window.addEventListener('DOMContentLoaded', () => {
         renderGrid();
         return;
       }
-      if (revealedIds.has(it.id)) { openEditItemModal(it); return; } // 表示済みの画像を再タップすると編集画面
+      if (revealedIds.has(it.id)) { copyImageItem(it); return; } // 表示済みの画像を再タップするとコピー（編集はメモ欄タップから）
       const url = await loadImageUrl(it);
       if (!url) { showToast('画像の読み込みに失敗しました'); return; }
       revealedIds.add(it.id);
@@ -4128,27 +4202,9 @@ window.addEventListener('DOMContentLoaded', () => {
     copyBtn.title = '画像をコピー';
     copyBtn.onclick = (e) => {
       e.stopPropagation();
-      if (!navigator.clipboard || !navigator.clipboard.write) {
-        showToast('お使いのブラウザは画像コピーに対応していません');
-        return;
-      }
-      // clipboard.write自体はクリックした瞬間に同期的に呼ぶ（Safari等はここが遅れると失敗しやすいため）。
-      // 画像の読み込み・変換はClipboardItemに渡すPromiseの中で行う
-      navigator.clipboard.write([
-        new ClipboardItem({
-          'image/png': (async () => {
-            const blob = await loadImageBlob(it);
-            if (!blob) throw new Error('画像の読み込みに失敗しました');
-            return await blobToPngBlob(blob);
-          })(),
-        }),
-      ]).then(() => {
-        showCenterToast('✓ コピーしました');
+      copyImageItem(it, () => {
         copyBtn.textContent = '✓'; copyBtn.classList.add('copied');
         setTimeout(() => { copyBtn.textContent = '📋'; copyBtn.classList.remove('copied'); }, 1100);
-      }).catch((err) => {
-        console.error('[素材帳] 画像コピーに失敗:', err);
-        showToast('コピーに失敗しました。もう一度お試しください');
       });
     };
     actions.appendChild(copyBtn);
@@ -4248,9 +4304,19 @@ window.addEventListener('DOMContentLoaded', () => {
 
   function itemSubCats(x) { return x.subCategories || (x.subCategory ? [x.subCategory] : []); }
 
+  function setEditItemPreview(it) {
+    const img = $('#ms-edit-item-preview');
+    img.classList.remove('show');
+    img.src = '';
+    loadImageUrl(it).then((url) => {
+      if (url) { img.src = url; img.classList.add('show'); }
+    });
+  }
+
   function openEditItemModal(it) {
     editingItemId = it.id;
     editingGroupId = null;
+    setEditItemPreview(it);
     $('#ms-edit-item-memo').value = it.memo || '';
     editItemCategory = it.category || CATEGORIES[0];
     editItemSubCategories = new Set(itemSubCats(it));
@@ -4265,6 +4331,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const cover = members[0];
     editingItemId = null;
     editingGroupId = groupId;
+    setEditItemPreview(cover);
     $('#ms-edit-item-memo').value = cover.memo || '';
     editItemCategory = cover.category || CATEGORIES[0];
     editItemSubCategories = new Set(itemSubCats(cover));
@@ -4368,7 +4435,7 @@ window.addEventListener('DOMContentLoaded', () => {
     veil.innerHTML = '🖼<span>タップで表示</span>';
     thumb.appendChild(veil);
     thumb.onclick = async () => {
-      if (revealedIds.has(it.id)) { openEditItemModal(it); return; }
+      if (revealedIds.has(it.id)) { copyImageItem(it); return; } // 表示済みの画像を再タップするとコピー（編集は✎ボタンから）
       const url = await loadImageUrl(it);
       if (!url) { showToast('画像の読み込みに失敗しました'); return; }
       revealedIds.add(it.id);
@@ -4385,24 +4452,7 @@ window.addEventListener('DOMContentLoaded', () => {
     copyBtn.title = '画像をコピー';
     copyBtn.onclick = (e) => {
       e.stopPropagation();
-      if (!navigator.clipboard || !navigator.clipboard.write) {
-        showToast('お使いのブラウザは画像コピーに対応していません');
-        return;
-      }
-      navigator.clipboard.write([
-        new ClipboardItem({
-          'image/png': (async () => {
-            const blob = await loadImageBlob(it);
-            if (!blob) throw new Error('画像の読み込みに失敗しました');
-            return await blobToPngBlob(blob);
-          })(),
-        }),
-      ]).then(() => {
-        showCenterToast('✓ コピーしました');
-      }).catch((err) => {
-        console.error('[素材帳] 画像コピーに失敗:', err);
-        showToast('コピーに失敗しました。もう一度お試しください');
-      });
+      copyImageItem(it);
     };
     actions.appendChild(copyBtn);
 
