@@ -73,6 +73,21 @@ textarea, input { font-family: inherit; }
 .mode-shell-btn:hover { opacity: 1; text-decoration: underline; }
 .shell-footer { display: flex; justify-content: center; gap: 18px; padding: 22px 14px 34px; }
 
+.bottom-nav {
+  display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 600;
+  background: #20262b; border-top: 1px solid rgba(255,255,255,0.1);
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  justify-content: space-around; align-items: stretch;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.25);
+}
+.bottom-nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  background: transparent; border: none; color: #8b969b; padding: 6px 2px; border-radius: 10px;
+}
+.bottom-nav-btn .bnav-icon { font-size: 20px; line-height: 1; }
+.bottom-nav-btn .bnav-label { font-size: 10px; line-height: 1; }
+.bottom-nav-btn.active { color: #fff; background: rgba(255,255,255,0.1); }
+
 .app-mode { display: none; min-height: calc(100vh - 46px); }
 .app-mode.active { display: block; }
 
@@ -139,6 +154,11 @@ textarea, input { font-family: inherit; }
 .editor-panel { background: var(--paper-card); width: min(760px, 100%); height: min(660px, 92vh); border-radius: 6px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); display: flex; flex-direction: column; padding: 26px; transform: scale(0.92); opacity: 0; transition: transform 0.16s ease, opacity 0.16s ease; }
 .editor-overlay.active .editor-panel { transform: scale(1); opacity: 1; }
 .editor-panel.drag-over { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.editor-genre-indicator {
+  display: none; padding: 5px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 700; color: #fff;
+  margin-bottom: 10px; text-align: center; letter-spacing: 0.02em;
+}
+.editor-genre-indicator.show { display: block; }
 .editor-topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .editor-topbar input[type="text"] { flex: 1; min-width: 0; font-size: 19px; font-family: 'Shippori Mincho', serif; border: none; border-bottom: 1px solid var(--rule-strong); padding: 6px 2px; background: transparent; outline: none; }
 .editor-topbar button { flex-shrink: 0; border: none; background: transparent; font-size: 20px; color: var(--ink-soft); line-height: 1; padding: 4px 6px; cursor: pointer; border-radius: var(--radius); }
@@ -272,7 +292,10 @@ textarea, input { font-family: inherit; }
 
 @media (max-width: 720px) {
   .mode-bar { height: 40px; gap: 6px; padding: 0 10px; }
-  .mode-btn { padding: 6px 12px; font-size: 12px; }
+  .mode-btn { display: none; } /* モード切替は下部ナビに集約 */
+  .bottom-nav { display: flex; }
+  body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
+  .fab-add-btn { bottom: calc(24px + 54px + env(safe-area-inset-bottom)); }
   .mode-shell-btn { font-size: 10.5px; padding: 5px 8px; }
   .app-mode { min-height: calc(100vh - 40px); }
 
@@ -280,22 +303,23 @@ textarea, input { font-family: inherit; }
   .spiral { display: none; }
   .tabs {
     width: 100%; flex-direction: row; flex-wrap: wrap; flex-shrink: 0;
-    padding: 10px 12px; gap: 6px;
+    padding: 8px 10px; gap: 5px;
   }
-  .tab-btn { margin-right: 0; flex-shrink: 0; padding: 6px 12px; font-size: 12px; border-radius: 14px; }
+  .tab-btn { margin-right: 0; flex-shrink: 0; padding: 5px 11px; font-size: 11.5px; border-radius: 14px; }
   .tab-btn.active { transform: none; }
   .tab-btn.trash-tab { margin-top: 0; }
   .tab-add-row { padding: 0; flex-shrink: 0; width: auto; }
-  .tab-add-row button { white-space: nowrap; padding: 6px 10px; font-size: 11px; width: auto; }
+  .tab-add-row button { white-space: nowrap; padding: 5px 9px; font-size: 10.5px; width: auto; }
 
-  .main { padding: 14px 14px; }
-  .main-header { margin-bottom: 10px; gap: 4px 10px; }
-  .header-actions { gap: 8px; }
+  .main { padding: 10px 12px; }
+  .main-header { margin-bottom: 6px; gap: 4px 10px; }
+  .header-actions { gap: 6px; }
   #cp-export-btn, #cp-import-label, #pn-export-btn, #pn-import-label { display: none; }
 
-  .list-toolbar { margin-bottom: 12px; gap: 8px; }
-  .add-new-btn { padding: 10px 12px; font-size: 13px; }
-  .search-input { padding: 10px 12px; font-size: 13px; }
+  .list-toolbar { margin-bottom: 8px; gap: 6px; }
+  .add-new-btn { padding: 8px 12px; font-size: 12.5px; }
+  .search-input { padding: 8px 12px; font-size: 12.5px; }
+  .sort-mode-select { padding: 8px 8px; font-size: 11.5px; }
 
   .prompt-card { padding: 8px 12px; margin-bottom: 6px; }
   .prompt-card .thumb { width: 38px; height: 38px; }
@@ -499,10 +523,17 @@ textarea, input { font-family: inherit; }
 .eye-toggle-btn.active { opacity: 1; color: #fff; background: rgba(255,255,255,0.1); }
 #mode-material-btn { opacity: 0.16; transition: opacity 0.2s; }
 #mode-material-btn.revealed { opacity: 1; }
+#bnav-material-btn { opacity: 0.16; transition: opacity 0.2s; }
+#bnav-material-btn.revealed { opacity: 1; }
 
 @media (max-width: 720px) {
-  .ms-wrap { padding: 14px 12px 70px; }
+  .ms-wrap { padding: 10px 12px 70px; }
   .ms-grid { gap: 8px; }
+  .ms-tabs { margin-bottom: 8px; gap: 5px; }
+  .ms-tab { padding: 5px 11px; font-size: 11.5px; }
+  .ms-search-input { margin-bottom: 6px; height: 34px; font-size: 12px; }
+  .ms-toolbar { margin-bottom: 8px; gap: 6px; }
+  .ms-tbtn { height: 34px; font-size: 11.5px; }
 }
 
 </style>
@@ -528,6 +559,12 @@ textarea, input { font-family: inherit; }
     <button class="eye-toggle-btn" id="global-search-btn" title="全体検索">🔍</button>
     <button class="eye-toggle-btn" id="eye-toggle-btn" title="隠しモードを表示">👁</button>
     <a href="https://gemini.google.com/app" target="_blank" rel="noopener" class="eye-toggle-btn" title="Geminiを開く">✨ Gemini</a>
+  </div>
+
+  <div class="bottom-nav" id="bottom-nav">
+    <button class="bottom-nav-btn" id="bnav-copy-btn"><span class="bnav-icon">📋</span><span class="bnav-label">コピペ帳</span></button>
+    <button class="bottom-nav-btn" id="bnav-prompt-btn"><span class="bnav-icon">🗒</span><span class="bnav-label">プロンプト帳</span></button>
+    <button class="bottom-nav-btn" id="bnav-material-btn"><span class="bnav-icon">🖼</span><span class="bnav-label">素材帳</span></button>
   </div>
 
   <div id="copy-app" class="app-mode">
@@ -649,6 +686,7 @@ textarea, input { font-family: inherit; }
 
 <div class="editor-overlay" id="pn-editor-overlay">
   <div class="editor-panel" id="pn-editor-panel">
+    <div class="editor-genre-indicator" id="pn-editor-genre-indicator"></div>
     <div class="editor-topbar">
       <input type="text" id="pn-editor-title" placeholder="タイトル（任意）">
       <button id="pn-editor-tentative-title-btn" title="本文の語句から仮タイトルを作成">🪄</button>
@@ -682,10 +720,6 @@ textarea, input { font-family: inherit; }
   <div class="dialog">
     <h3>ジャンルを追加</h3>
     <input type="text" id="pn-genre-name-input" placeholder="ジャンル名（例：SNS投稿用）">
-    <label class="checkbox-row">
-      <input type="checkbox" id="pn-genre-image-checkbox">
-      画像添付・お気に入り機能を使う（画像生成用など）
-    </label>
     <div class="dialog-actions">
       <button class="cancel" id="pn-genre-cancel-btn">キャンセル</button>
       <button class="confirm" id="pn-genre-confirm-btn">追加</button>
@@ -700,8 +734,8 @@ textarea, input { font-family: inherit; }
 
   <div id="material-app" class="app-mode">
 <div class="ms-wrap">
-  <div class="ms-eyebrow">Material Stock</div>
-  <h1 class="ms-h1">素材帳</h1>
+  <div class="ms-eyebrow" style="display:none;">Material Stock</div>
+  <h1 class="ms-h1" style="display:none;">素材帳</h1>
 
   <div class="ms-tabs" id="ms-cat-tabs"></div>
 
@@ -2317,7 +2351,7 @@ function uid() {
 function defaultNotebook() {
   return {
     genres: [
-      { id: uid(), name: '業務用', hasImage: false, color: PALETTE[0] },
+      { id: uid(), name: '業務用', hasImage: true, color: PALETTE[0] },
       { id: uid(), name: '画像生成用', hasImage: true, color: PALETTE[1] },
     ],
     prompts: [],
@@ -2327,8 +2361,30 @@ function defaultNotebook() {
 // 合言葉の記憶・自動ログインは共有トップレベル（notebookAuthDB）で一元管理する。
 // ここでは「鍵を受け取ってプロンプト帳データを読み込む/新規作成する」処理だけを持つ。
 
-function enterApp() {
-  currentView = notebook.genres[0]?.id || '__fav__';
+// 前回開いていたジャンルを記憶する（次回開いた時にそのジャンルから始められるように）
+async function saveLastGenreView(genreId) {
+  try {
+    if (!db) db = await openDB();
+    await idbPut(db, 'meta', { key: 'lastGenreView', value: genreId });
+  } catch (e) { /* noop */ }
+}
+async function loadLastGenreView() {
+  try {
+    if (!db) db = await openDB();
+    const saved = await idbGet(db, 'meta', 'lastGenreView');
+    return saved ? saved.value : null;
+  } catch (e) { return null; }
+}
+
+async function enterApp() {
+  const savedView = await loadLastGenreView();
+  if (savedView && notebook.genres.some((g) => g.id === savedView)) {
+    currentView = savedView;
+  } else {
+    // 記憶がない場合は「画像生成用」ジャンルをデフォルトにする（見つからなければ2番目・1番目の順で代用）
+    const defaultGenre = notebook.genres.find((g) => g.name === '画像生成用') || notebook.genres[1] || notebook.genres[0];
+    currentView = defaultGenre ? defaultGenre.id : '__fav__';
+  }
   $('#pn-app-screen').classList.add('active');
   renderTabs();
   renderView();
@@ -2378,7 +2434,7 @@ async function loadOrCreateNotebook(key, salt) {
   }
 
   encKey = key;
-  enterApp();
+  await enterApp();
 }
 window.__pnLoad = loadOrCreateNotebook;
 
@@ -2427,15 +2483,13 @@ window.__pnCopyById = async function (id) {
 // 画像付きの場合は「画像対応ジャンル」に、テキストのみの場合は「画像非対応ジャンル」に自動で振り分ける
 window.__pnImportOne = async function ({ title, text, imageBlob }) {
   if (!notebook) return;
-  const g = imageBlob
-    ? (notebook.genres.find((x) => x.hasImage) || notebook.genres[0])
-    : (notebook.genres.find((x) => !x.hasImage) || notebook.genres[0]);
+  const g = notebook.genres[0];
   if (!g) return;
   const p = {
     id: uid(), genreId: g.id, title: title || '', text: text || '', favorite: false, trashed: false,
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   };
-  if (imageBlob && g.hasImage) {
+  if (imageBlob) {
     try {
       const resized = await resizeImageBlob(imageBlob, 2048, 0.90);
       const { imageId, imageIv, imageMime } = await uploadImage(resized);
@@ -2560,7 +2614,7 @@ function renderTabs() {
     btn.className = 'tab-btn' + (currentView === g.id ? ' active' : '');
     btn.style.background = g.color;
     btn.textContent = g.name;
-    btn.onclick = () => { clearPendingImage(); currentView = g.id; renderTabs(); renderView(); };
+    btn.onclick = () => { clearPendingImage(); currentView = g.id; saveLastGenreView(g.id); renderTabs(); renderView(); };
     btn.addEventListener('dragover', (e) => {
       if (!e.dataTransfer.types.includes('text/x-pn-prompt-id')) return;
       e.preventDefault();
@@ -2706,7 +2760,7 @@ function renderCard(p, showGenreBadge, isNearDup) {
   body.className = 'card-body';
   const g = genreOf(p);
 
-  if (g && g.hasImage && p.imageId) {
+  if (p.imageId) {
     const img = document.createElement('img');
     img.className = 'thumb';
     img.alt = '添付画像';
@@ -2948,6 +3002,15 @@ let editorRemoveImage = false;
 let editorFavorite = false;
 let editorGenreId = null;
 
+function updateEditorGenreIndicator() {
+  const el = $('#pn-editor-genre-indicator');
+  const g = notebook.genres.find((x) => x.id === editorGenreId);
+  if (!g) { el.classList.remove('show'); return; }
+  el.textContent = g.name;
+  el.style.background = g.color || 'var(--accent)';
+  el.classList.add('show');
+}
+
 function renderGenreMoveChips() {
   const container = $('#pn-genre-move-chips');
   container.innerHTML = '';
@@ -2963,8 +3026,9 @@ function renderGenreMoveChips() {
         p.genreId = g.id;
         p.updatedAt = new Date().toISOString();
         editorGenreId = g.id;
-        editorHasImageGenre = !!g.hasImage;
+        editorHasImageGenre = true; // 全ジャンルで画像添付できるようにしたため常にtrue
         $('#pn-editor-image-area').style.display = editorHasImageGenre ? 'block' : 'none';
+        updateEditorGenreIndicator();
         await saveNotebook();
         renderGenreMoveChips();
         renderView();
@@ -2974,6 +3038,7 @@ function renderGenreMoveChips() {
           await saveNotebook();
           editorGenreId = oldGenreId;
           renderGenreMoveChips();
+          updateEditorGenreIndicator();
           renderView();
         });
       };
@@ -2991,11 +3056,12 @@ function updateEditorFavBtn() {
 function openEditor(p) {
   editingPromptId = p ? p.id : null;
   const g = p ? genreOf(p) : currentGenre();
-  editorHasImageGenre = !!(g && g.hasImage);
+  editorHasImageGenre = true; // 全ジャンルで画像添付できるようにしたため常にtrue
   editorGenreId = g ? g.id : null;
   editorRemoveImage = false;
   editorFavorite = p ? !!p.favorite : false;
   updateEditorFavBtn();
+  updateEditorGenreIndicator();
   clearPendingImage();
 
   $('#pn-editor-title').value = p ? (p.title || '') : '';
@@ -3052,7 +3118,7 @@ async function closeEditorSave() {
         imageId: null, imageIv: null, imageMime: null,
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       };
-      if (g.hasImage && pendingImageFile) {
+      if (pendingImageFile) {
         const { imageId, imageIv, imageMime } = await uploadImage(pendingImageFile);
         p.imageId = imageId; p.imageIv = imageIv; p.imageMime = imageMime;
       }
@@ -3100,16 +3166,14 @@ function closeEditorUI() {
 
 function openGenreDialog() {
   $('#pn-genre-name-input').value = '';
-  $('#pn-genre-image-checkbox').checked = false;
   $('#pn-genre-dialog-overlay').classList.add('active');
 }
 function closeGenreDialog() { $('#pn-genre-dialog-overlay').classList.remove('active'); }
 async function confirmAddGenre() {
   const name = $('#pn-genre-name-input').value.trim();
   if (!name) return;
-  const hasImage = $('#pn-genre-image-checkbox').checked;
   const color = PALETTE[notebook.genres.length % PALETTE.length];
-  const g = { id: uid(), name, hasImage, color };
+  const g = { id: uid(), name, hasImage: true, color };
   notebook.genres.push(g);
   await saveNotebook();
   currentView = g.id;
@@ -3234,10 +3298,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 画像：貼り付け（Ctrl+V / Cmd+V）
   document.addEventListener('paste', (e) => {
-    const overlayActive = $('#pn-editor-overlay').classList.contains('active');
-    showCenterToast(`[診断] paste検知 overlay:${overlayActive}`);
-    console.log('[プロンプト帳][診断] pasteイベント検知. overlayActive:', overlayActive, ' target:', e.target && (e.target.id || e.target.tagName), ' clipboardData:', !!e.clipboardData, ' types:', e.clipboardData ? [...e.clipboardData.types] : null);
-    if (!overlayActive) return;
+    if (!$('#pn-editor-overlay').classList.contains('active')) return;
     const items = e.clipboardData && e.clipboardData.items;
     if (items && editorHasImageGenre) {
       for (const item of items) {
@@ -3941,11 +4002,9 @@ window.addEventListener('DOMContentLoaded', () => {
         dragSourceItemIds = [...selectedItemIds];
         e.dataTransfer.setData('text/x-ms-item-ids', JSON.stringify(dragSourceItemIds));
         setDragCountBadge(e, dragSourceItemIds.length);
-        console.log('[素材帳][診断] 複数ドラッグ開始. ids:', dragSourceItemIds);
       } else {
         dragSourceItemId = itemId;
         e.dataTransfer.setData('text/x-ms-item-id', itemId);
-        console.log('[素材帳][診断] 単体ドラッグ開始. id:', itemId, ' selectionMode:', selectionMode, ' selectedItemIds:', [...selectedItemIds]);
       }
       // 画像が既に表示済み（data URL変換済み）なら、別ウィンドウ・別アプリへそのままドラッグして貼り付けられるようにする
       const dataUrl = dataUrlCache.get(itemId);
@@ -3970,7 +4029,6 @@ window.addEventListener('DOMContentLoaded', () => {
     card.addEventListener('drop', async (e) => {
       const isMultiInternal = e.dataTransfer.types.includes('text/x-ms-item-ids');
       const isInternal = e.dataTransfer.types.includes('text/x-ms-item-id');
-      console.log('[素材帳][診断] drop. types:', [...e.dataTransfer.types], ' isMultiInternal:', isMultiInternal, ' isInternal:', isInternal);
       if (isMultiInternal) {
         e.preventDefault();
         e.stopPropagation();
@@ -4686,10 +4744,7 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('dragover', (e) => {
     e.preventDefault();
     if (e.dataTransfer.types.includes('text/x-ms-item-id') || e.dataTransfer.types.includes('text/x-ms-item-ids')) return; // カード同士の結合ドラッグはここでは扱わない
-    if (!dragoverLogged) {
-      console.log('[素材帳][診断] dragoverイベント検知. モーダルopen状態:', $('#ms-add-overlay').classList.contains('open'));
-      dragoverLogged = true;
-    }
+    dragoverLogged = true;
     const materialActive = document.getElementById('material-app').classList.contains('active');
     if (materialActive) addModalEl.classList.add('ms-drag-over');
   });
@@ -4869,8 +4924,12 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#mode-copy-btn').classList.toggle('active', mode === 'copy');
     $('#mode-prompt-btn').classList.toggle('active', mode === 'prompt');
     $('#mode-material-btn').classList.toggle('active', mode === 'material');
+    $('#bnav-copy-btn').classList.toggle('active', mode === 'copy');
+    $('#bnav-prompt-btn').classList.toggle('active', mode === 'prompt');
+    $('#bnav-material-btn').classList.toggle('active', mode === 'material');
     if (mode === 'material') {
       $('#mode-material-btn').classList.add('revealed');
+      $('#bnav-material-btn').classList.add('revealed');
       $('#eye-toggle-btn').classList.add('active');
     }
     // 素材帳モードは「前回のモード」として記憶しない（リロード時に自動で開かれないようにするため）
@@ -4934,6 +4993,7 @@ window.addEventListener('DOMContentLoaded', () => {
     msLoading = false;
     masterKeyRef = null;
     $('#mode-material-btn').classList.remove('revealed');
+    $('#bnav-material-btn').classList.remove('revealed');
     $('#eye-toggle-btn').classList.remove('active');
     showLogin();
   }
@@ -5266,11 +5326,15 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#mode-copy-btn').onclick = () => activateMode('copy');
     $('#mode-prompt-btn').onclick = () => activateMode('prompt');
     $('#mode-material-btn').onclick = () => activateMode('material');
+    $('#bnav-copy-btn').onclick = () => activateMode('copy');
+    $('#bnav-prompt-btn').onclick = () => activateMode('prompt');
+    $('#bnav-material-btn').onclick = () => activateMode('material');
 
     // 素材帳ボタンの表示切り替え（👁）。この表示状態はどこにも保存せず、リロードのたびに必ず非表示に戻る
     $('#eye-toggle-btn').onclick = () => {
       const btn = $('#mode-material-btn');
       const revealed = btn.classList.toggle('revealed');
+      $('#bnav-material-btn').classList.toggle('revealed', revealed);
       $('#eye-toggle-btn').classList.toggle('active', revealed);
     };
 
