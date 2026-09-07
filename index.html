@@ -1596,9 +1596,17 @@ function renderView() {
 }
 
 function computeNearDuplicateIds(items) {
-  const groups = computeSimilarityGroups(items, 0.95);
+  // 空白・改行・句読点を無視した「完全一致」だけを重複として拾う
+  const norm = (t) => (t || '').replace(/[\s\u3000]+/g, '').replace(/[、。，．,.!?！？]+/g, '');
+  const groups = new Map();
+  items.forEach((it) => {
+    const key = norm(it.text);
+    if (!key) return; // 本文が空のものは対象外
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(it.id);
+  });
   const ids = new Set();
-  groups.forEach((g) => { if (g.groupSize > 1) ids.add(g.id); });
+  groups.forEach((idList) => { if (idList.length > 1) idList.forEach((id) => ids.add(id)); });
   return ids;
 }
 
@@ -1617,8 +1625,8 @@ function renderRow(item, showGenreBadge, isNearDup) {
   if (isNearDup) {
     const dupBadge = document.createElement('span');
     dupBadge.className = 'near-dup-badge';
-    dupBadge.textContent = '🔁';
-    dupBadge.title = 'ほぼ同じ内容のものが他にもあります';
+    dupBadge.textContent = '🔴';
+    dupBadge.title = '完全に同じ内容（表記ゆれ含む）のものが他にもあります';
     row.appendChild(dupBadge);
   }
 
@@ -2725,9 +2733,17 @@ function renderView() {
 }
 
 function computeNearDuplicateIds(items) {
-  const groups = computeSimilarityGroups(items, 0.95);
+  // 空白・改行・句読点を無視した「完全一致」だけを重複として拾う
+  const norm = (t) => (t || '').replace(/[\s\u3000]+/g, '').replace(/[、。，．,.!?！？]+/g, '');
+  const groups = new Map();
+  items.forEach((p) => {
+    const key = norm(p.text);
+    if (!key) return; // 本文が空のものは対象外
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(p.id);
+  });
   const ids = new Set();
-  groups.forEach((g) => { if (g.groupSize > 1) ids.add(g.id); });
+  groups.forEach((idList) => { if (idList.length > 1) idList.forEach((id) => ids.add(id)); });
   return ids;
 }
 
@@ -2786,8 +2802,8 @@ function renderCard(p, showGenreBadge, isNearDup) {
   if (isNearDup) {
     const dupBadge = document.createElement('span');
     dupBadge.className = 'near-dup-badge';
-    dupBadge.textContent = '🔁';
-    dupBadge.title = 'ほぼ同じ内容のものが他にもあります';
+    dupBadge.textContent = '🔴';
+    dupBadge.title = '完全に同じ内容（表記ゆれ含む）のものが他にもあります';
     textWrap.appendChild(dupBadge);
   }
   const titleEl = document.createElement('div');
