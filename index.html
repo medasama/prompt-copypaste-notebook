@@ -651,6 +651,7 @@ textarea, input { font-family: inherit; }
 
   <div id="sk-storage-view">
     <div class="spiral"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    <div id="sk-total-count" style="font-size:11px; color:var(--ink-soft); padding:6px 14px 0;"></div>
     <div class="tabs" id="sk-tabs-container"></div>
     <div class="tab-add-row"><button id="sk-new-genre-btn">＋ ジャンルを追加</button></div>
 
@@ -3902,6 +3903,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
       encKey = key;
       await runMigrationIfNeeded();
+      await mergeDuplicateGenres();
       await enterApp();
     } catch (e) {
       console.error('[創作帳] 読み込み処理全体が失敗しました:', e);
@@ -3958,6 +3960,22 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // 名前が同じ（表記ゆれ込み）ジャンルが複数できてしまっている場合、1つにまとめる
+  async function mergeDuplicateGenres() {
+    const norm = (s) => (s || '').normalize('NFKC').trim();
+    const byName = new Map();
+    const remap = new Map(); // 重複していたジャンルid → 残す方のジャンルid
+    notebook.genres.forEach((g) => {
+      const key = norm(g.name);
+      if (byName.has(key)) remap.set(g.id, byName.get(key));
+      else byName.set(key, g.id);
+    });
+    if (!remap.size) return;
+    notebook.items.forEach((it) => { if (remap.has(it.genreId)) it.genreId = remap.get(it.genreId); });
+    notebook.genres = notebook.genres.filter((g) => !remap.has(g.id));
+    await saveNotebook();
+  }
+
   // ============== 旧コピペ帳・プロンプト帳からの一回きりの移行 ==============
   function showMigrationOverlay(text) {
     let el = document.getElementById('sk-migration-overlay');
@@ -4005,14 +4023,15 @@ window.addEventListener('DOMContentLoaded', () => {
         if (cursor && typeof cursor.value === 'number') startIndex = cursor.value;
       } catch (e) { /* noop */ }
 
+      const normGenreName = (s) => (s || '').normalize('NFKC').trim();
       const genreIdByName = new Map();
-      notebook.genres.forEach((g) => genreIdByName.set(g.name, g.id));
+      notebook.genres.forEach((g) => genreIdByName.set(normGenreName(g.name), g.id));
       const ensureGenre = (name, color, gallery) => {
-        if (!name) name = '未分類';
-        if (genreIdByName.has(name)) return genreIdByName.get(name);
-        const g = { id: uid(), name, color: color || PALETTE[notebook.genres.length % PALETTE.length], gallery: !!gallery };
+        const key = normGenreName(name) || '未分類';
+        if (genreIdByName.has(key)) return genreIdByName.get(key);
+        const g = { id: uid(), name: key, color: color || PALETTE[notebook.genres.length % PALETTE.length], gallery: !!gallery };
         notebook.genres.push(g);
-        genreIdByName.set(name, g.id);
+        genreIdByName.set(key, g.id);
         return g.id;
       };
 
@@ -4041,7 +4060,7 @@ window.addEventListener('DOMContentLoaded', () => {
       }
       await idbPut(db, 'meta', { key: 'migrationComplete', value: true });
       hideMigrationOverlay();
-      alert(`✓ 移行が完了しました（${total}件を保管庫に追加しました）`);
+      alert(`✓ 移行が完了しました\n処理した件数: ${total}件\n保管庫の実際の件数: ${notebook.items.length}件・${notebook.genres.length}ジャンル`);
     } catch (e) {
       hideMigrationOverlay();
       console.error('[創作帳] 旧データの移行に失敗しました:', e);
@@ -4054,6 +4073,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
   function renderTabs() {
     if (!notebook) return;
+    const totalItems = notebook.items.filter((it) => !it.trashed).length;
+    const totalTrashed = notebook.items.filter((it) => it.trashed).length;
+    $('#sk-total-count').textContent = `保管庫 合計 ${totalItems}件（${notebook.genres.length}ジャンル）${totalTrashed ? ' ・ ゴミ箱 ' + totalTrashed + '件' : ''}`;
     const container = $('#sk-tabs-container');
     container.innerHTML = '';
     notebook.genres.forEach((g) => {
