@@ -3904,6 +3904,7 @@ window.addEventListener('DOMContentLoaded', () => {
       encKey = key;
       await runMigrationIfNeeded();
       await mergeDuplicateGenres();
+      await removeDuplicateItems();
       await enterApp();
     } catch (e) {
       console.error('[創作帳] 読み込み処理全体が失敗しました:', e);
@@ -3974,6 +3975,45 @@ window.addEventListener('DOMContentLoaded', () => {
     notebook.items.forEach((it) => { if (remap.has(it.genreId)) it.genreId = remap.get(it.genreId); });
     notebook.genres = notebook.genres.filter((g) => !remap.has(g.id));
     await saveNotebook();
+  }
+
+  // 同じジャンル・同じ内容（タイトル・本文）のアイテムが複数できてしまっている場合、1つにまとめる
+  // （移行を複数回試みた際に重複登録されてしまったケースの救済）
+  async function removeDuplicateItems() {
+    const norm = (t) => (t || '').replace(/[\s\u3000]+/g, '');
+    const seen = new Map(); // key -> 残すアイテム
+    const toRemove = [];
+    notebook.items.forEach((it) => {
+      if (it.trashed) return;
+      const key = it.genreId + '|' + norm(it.title) + '|' + norm(it.text);
+      if (seen.has(key)) {
+        const existing = seen.get(key);
+        // 画像が付いている方を優先して残す
+        if (itemImages(it).length > itemImages(existing).length) {
+          toRemove.push(existing);
+          seen.set(key, it);
+        } else {
+          toRemove.push(it);
+        }
+      } else {
+        seen.set(key, it);
+      }
+    });
+    if (!toRemove.length) return;
+    const overlay = showMigrationOverlay(`重複データを整理しています… 0 / ${toRemove.length}件`);
+    let done = 0;
+    for (const it of toRemove) {
+      for (const img of itemImages(it)) {
+        try { await deleteImageById(img.imageId); } catch (e) { /* noop */ }
+      }
+      done++;
+      overlay.textContent = `重複データを整理しています… ${done} / ${toRemove.length}件`;
+    }
+    const removeIds = new Set(toRemove.map((it) => it.id));
+    notebook.items = notebook.items.filter((it) => !removeIds.has(it.id));
+    await saveNotebook();
+    hideMigrationOverlay();
+    alert(`重複していた${toRemove.length}件を整理しました。保管庫の現在の件数: ${notebook.items.length}件`);
   }
 
   // ============== 旧コピペ帳・プロンプト帳からの一回きりの移行 ==============
