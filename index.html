@@ -3863,37 +3863,44 @@ window.addEventListener('DOMContentLoaded', () => {
   window.__skGetSalt = getSalt;
 
   async function loadOrCreateNotebook(key, salt) {
-    if (!db) db = await openDB();
-    cachedSalt = salt;
-    let loaded = null;
     try {
-      const remoteRow = await fetchRemoteNotebook();
-      if (remoteRow) {
-        const data = await decryptJSON(remoteRow.iv, remoteRow.ciphertext, key);
-        loaded = data;
-        await idbPut(db, 'meta', { key: 'notebook', salt: remoteRow.salt, iv: remoteRow.iv, ciphertext: remoteRow.ciphertext });
-      }
-    } catch (e) { console.warn('Supabaseからの読み込みに失敗しました（ローカルを試します）', e); }
-    if (!loaded) {
+      if (!db) db = await openDB();
+      cachedSalt = salt;
+      let loaded = null;
       try {
-        const localMeta = await idbGet(db, 'meta', 'notebook');
-        if (localMeta) loaded = await decryptJSON(localMeta.iv, localMeta.ciphertext, key);
-      } catch (e) { /* noop */ }
-    }
-    notebook = loaded || defaultNotebook();
-    if (!Array.isArray(notebook.genres)) notebook.genres = [];
-    if (!Array.isArray(notebook.items)) notebook.items = [];
+        const remoteRow = await fetchRemoteNotebook();
+        if (remoteRow) {
+          const data = await decryptJSON(remoteRow.iv, remoteRow.ciphertext, key);
+          loaded = data;
+          await idbPut(db, 'meta', { key: 'notebook', salt: remoteRow.salt, iv: remoteRow.iv, ciphertext: remoteRow.ciphertext });
+        }
+      } catch (e) { console.warn('Supabaseからの読み込みに失敗しました（ローカルを試します）', e); }
+      if (!loaded) {
+        try {
+          const localMeta = await idbGet(db, 'meta', 'notebook');
+          if (localMeta) loaded = await decryptJSON(localMeta.iv, localMeta.ciphertext, key);
+        } catch (e) { /* noop */ }
+      }
+      notebook = loaded || defaultNotebook();
+      if (!Array.isArray(notebook.genres)) notebook.genres = [];
+      if (!Array.isArray(notebook.items)) notebook.items = [];
 
-    if (!loaded) {
-      const { ivB64, ciphertextB64 } = await encryptJSON(notebook, key);
-      await idbPut(db, 'meta', { key: 'notebook', salt, iv: ivB64, ciphertext: ciphertextB64 });
-      try { await pushRemoteNotebook(ivB64, ciphertextB64); }
-      catch (e) { console.warn('Supabaseへの保存に失敗しました（ローカルには保存済みです）', e); }
-    }
+      if (!loaded) {
+        const { ivB64, ciphertextB64 } = await encryptJSON(notebook, key);
+        await idbPut(db, 'meta', { key: 'notebook', salt, iv: ivB64, ciphertext: ciphertextB64 });
+        try { await pushRemoteNotebook(ivB64, ciphertextB64); }
+        catch (e) { console.warn('Supabaseへの保存に失敗しました（ローカルには保存済みです）', e); }
+      }
 
-    encKey = key;
-    await runMigrationIfNeeded();
-    await enterApp();
+      encKey = key;
+      await runMigrationIfNeeded();
+      await enterApp();
+    } catch (e) {
+      console.error('[創作帳] 読み込み処理全体が失敗しました:', e);
+      notebook = notebook || defaultNotebook(); // 最低限、画面がnullで落ちないようにしておく
+      alert(`[診断] 創作帳の読み込みに失敗しました\n${e && e.name}: ${e && e.message}\n${e && e.stack ? e.stack.slice(0, 400) : ''}`);
+      try { $('#sk-app-screen').classList.add('active'); renderTabs(); renderStorageView(); switchToView('storage'); } catch (e2) { /* noop */ }
+    }
   }
   window.__skLoad = loadOrCreateNotebook;
 
@@ -3912,7 +3919,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const pnFnExists = !!window.__pnExportFull;
       const cpData = cpFnExists ? await window.__cpExportFull() : { genres: [], items: [] };
       const pnData = pnFnExists ? await window.__pnExportFull() : { genres: [], items: [] };
-      showCenterToast(`[診断] CP関数:${cpFnExists} PN関数:${pnFnExists} CP:${cpData.items.length}件 PN:${pnData.items.length}件`);
+      alert(`[診断] CP関数:${cpFnExists} PN関数:${pnFnExists} CP:${cpData.items.length}件 PN:${pnData.items.length}件`);
       const allSource = [...cpData.items, ...pnData.items];
       if (allSource.length) {
         const genreIdByName = new Map();
@@ -3941,13 +3948,17 @@ window.addEventListener('DOMContentLoaded', () => {
         await saveNotebook();
         console.log('[創作帳][診断] 移行完了. 合計', notebook.items.length, '件');
       }
-    } catch (e) { console.error('[創作帳] 旧データの移行に失敗しました:', e); showCenterToast(`[診断] 移行エラー: ${e && e.message}`); }
+    } catch (e) {
+      console.error('[創作帳] 旧データの移行に失敗しました:', e);
+      alert(`[診断] 移行エラー\n${e && e.name}: ${e && e.message}\n${e && e.stack ? e.stack.slice(0, 300) : ''}`);
+    }
   }
 
   // ============== 画面 ==============
   function currentGenre() { return notebook.genres.find((g) => g.id === currentView); }
 
   function renderTabs() {
+    if (!notebook) return;
     const container = $('#sk-tabs-container');
     container.innerHTML = '';
     notebook.genres.forEach((g) => {
@@ -4004,6 +4015,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderStorageView() {
+    if (!notebook) return;
     const addBtn = $('#sk-add-new-btn');
     const fab = $('#sk-fab-add-btn');
     const listEl = $('#sk-item-list');
@@ -4353,6 +4365,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // ============== 作業台 ==============
   function renderWorkbenchTabs() {
+    if (!notebook) return;
     const container = $('#sk-wb-tabs');
     container.innerHTML = '';
     notebook.genres.forEach((g) => {
@@ -4365,6 +4378,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   let wbGenreView = null;
   function renderWorkbenchBrowser() {
+    if (!notebook) return;
     const list = $('#sk-wb-browser-list');
     list.innerHTML = '';
     if (!wbGenreView && notebook.genres[0]) wbGenreView = notebook.genres[0].id;
