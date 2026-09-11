@@ -2669,8 +2669,10 @@ window.__pnExportFull = async function () {
     if (p.trashed) continue;
     const images = [];
     if (p.imageId) {
-      const blob = await loadImageBlob(p);
-      if (blob) images.push(blob);
+      try {
+        const url = await loadImageUrl(p);
+        if (url) { const resp = await fetch(url); images.push(await resp.blob()); }
+      } catch (e) { console.warn('[プロンプト帳] 移行用の画像取得に失敗:', e); }
     }
     items.push({
       title: p.title || '', text: p.text || '', favorite: !!p.favorite,
