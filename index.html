@@ -1565,11 +1565,12 @@ window.__cpReset = function () {
 // 合言葉変更用：新しい鍵・saltで丸ごと再暗号化する
 // 全体検索用：全ジャンル・全アイテムの検索対象一覧を返す
 // 創作帳への移行用：ジャンル・アイテムを画像データ込みでそのまま返す
-window.__cpExportFull = async function () {
+window.__cpExportFull = async function (onProgress) {
   if (!notebook) return { genres: [], items: [] };
   const items = [];
-  for (const it of notebook.items) {
-    if (it.trashed) continue;
+  const targets = notebook.items.filter((it) => !it.trashed);
+  let done = 0;
+  for (const it of targets) {
     const imgs = itemImages(it);
     const images = [];
     for (const img of imgs) {
@@ -1582,6 +1583,8 @@ window.__cpExportFull = async function () {
       createdAt: it.createdAt, genreName: (notebook.genres.find((g) => g.id === it.genreId) || {}).name || '',
       images,
     });
+    done++;
+    if (onProgress) onProgress(done, targets.length);
   }
   return { genres: notebook.genres.map((g) => ({ name: g.name, color: g.color })), items };
 };
@@ -2662,11 +2665,12 @@ window.__pnReset = function () {
 // 途中で失敗した場合、フェーズ3に入る前ならリモート側は一切変更されていない。
 // 全体検索用：全ジャンル・全プロンプトの検索対象一覧を返す
 // 創作帳への移行用：ジャンル・プロンプトを画像データ込みでそのまま返す
-window.__pnExportFull = async function () {
+window.__pnExportFull = async function (onProgress) {
   if (!notebook) return { genres: [], items: [] };
   const items = [];
-  for (const p of notebook.prompts) {
-    if (p.trashed) continue;
+  const targets = notebook.prompts.filter((p) => !p.trashed);
+  let done = 0;
+  for (const p of targets) {
     const images = [];
     if (p.imageId) {
       try {
@@ -2680,6 +2684,8 @@ window.__pnExportFull = async function () {
       createdAt: p.createdAt, genreName: (notebook.genres.find((g) => g.id === p.genreId) || {}).name || '',
       images,
     });
+    done++;
+    if (onProgress) onProgress(done, targets.length);
   }
   return { genres: notebook.genres.map((g) => ({ name: g.name, color: g.color, gallery: !!g.hasImage })), items };
 };
@@ -3913,46 +3919,133 @@ window.addEventListener('DOMContentLoaded', () => {
     catch (e) { console.warn('Supabaseへの保存に失敗しました（ローカルには保存済みです）', e); }
   }
 
-  // ============== 旧コピペ帳・プロンプト帳からの一回きりの移行 ==============
-  async function runMigrationIfNeeded() {
-    if (notebook.items.length > 0) return; // 既にデータがあるなら移行不要（移行済み、または既に使用中）
+  async function exportNotebook() {
+    const meta = await idbGet(db, 'meta', 'notebook');
+    if (!meta) return;
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      notebook: { salt: meta.salt, iv: meta.iv, ciphertext: meta.ciphertext },
+    };
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `sousaku-notebook-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+  async function importNotebookFile(file) {
+    if (!confirm('読み込むと、今ブラウザに保存されている内容は上書きされます。よろしいですか？')) return;
     try {
-      const cpFnExists = !!window.__cpExportFull;
-      const pnFnExists = !!window.__pnExportFull;
-      const cpData = cpFnExists ? await window.__cpExportFull() : { genres: [], items: [] };
-      const pnData = pnFnExists ? await window.__pnExportFull() : { genres: [], items: [] };
-      alert(`[診断] CP関数:${cpFnExists} PN関数:${pnFnExists} CP:${cpData.items.length}件 PN:${pnData.items.length}件`);
-      const allSource = [...cpData.items, ...pnData.items];
-      if (allSource.length) {
-        const genreIdByName = new Map();
-        notebook.genres.forEach((g) => genreIdByName.set(g.name, g.id));
-        const ensureGenre = (name, color, gallery) => {
-          if (!name) name = '未分類';
-          if (genreIdByName.has(name)) return genreIdByName.get(name);
-          const g = { id: uid(), name, color: color || PALETTE[notebook.genres.length % PALETTE.length], gallery: !!gallery };
-          notebook.genres.push(g);
-          genreIdByName.set(name, g.id);
-          return g.id;
-        };
-        for (const it of allSource) {
-          const genreId = ensureGenre(it.genreName, null, false);
-          const images = [];
-          for (const blob of it.images) {
-            try { images.push(await uploadImageBlob(blob)); } catch (e) { console.warn('移行画像のアップロードに失敗:', e); }
-          }
-          notebook.items.push({
-            id: uid(), genreId, title: it.title || '', text: it.text || '',
-            images, favorite: !!it.favorite, trashed: false,
-            useCount: it.useCount || 0, lastUsedAt: it.lastUsedAt || null,
-            createdAt: it.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(),
-          });
-        }
-        await saveNotebook();
-        console.log('[創作帳][診断] 移行完了. 合計', notebook.items.length, '件');
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      if (!payload || !payload.notebook || !payload.notebook.ciphertext) {
+        alert('このファイルは読み込めませんでした（形式が違います）');
+        return;
       }
+      await idbPut(db, 'meta', {
+        key: 'notebook', salt: payload.notebook.salt, iv: payload.notebook.iv, ciphertext: payload.notebook.ciphertext,
+      });
+      alert('読み込みが完了しました。ページを再読み込みし、合言葉を入力し直してください。');
+      location.reload();
     } catch (e) {
+      console.error(e);
+      alert('読み込みに失敗しました。ファイルをご確認ください。');
+    }
+  }
+
+  // ============== 旧コピペ帳・プロンプト帳からの一回きりの移行 ==============
+  function showMigrationOverlay(text) {
+    let el = document.getElementById('sk-migration-overlay');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'sk-migration-overlay';
+      el.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(20,24,27,0.92);color:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;font-size:15px;text-align:center;padding:24px;';
+      document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.style.display = 'flex';
+    return el;
+  }
+  function hideMigrationOverlay() {
+    const el = document.getElementById('sk-migration-overlay');
+    if (el) el.style.display = 'none';
+  }
+
+  async function runMigrationIfNeeded() {
+    let migrationDone = false;
+    try {
+      const flag = await idbGet(db, 'meta', 'migrationComplete');
+      migrationDone = !!(flag && flag.value);
+    } catch (e) { /* noop */ }
+    if (migrationDone) return;
+
+    const overlay = showMigrationOverlay('過去のデータを確認しています…');
+    try {
+      const cpData = window.__cpExportFull
+        ? await window.__cpExportFull((done, total) => { overlay.textContent = `コピペ帳を確認中… ${done} / ${total} 件`; })
+        : { genres: [], items: [] };
+      const pnData = window.__pnExportFull
+        ? await window.__pnExportFull((done, total) => { overlay.textContent = `プロンプト帳を確認中… ${done} / ${total} 件`; })
+        : { genres: [], items: [] };
+      const allSource = [...cpData.items, ...pnData.items];
+      if (!allSource.length) {
+        hideMigrationOverlay();
+        await idbPut(db, 'meta', { key: 'migrationComplete', value: true });
+        return;
+      }
+
+      let startIndex = 0;
+      try {
+        const cursor = await idbGet(db, 'meta', 'migrationCursor');
+        if (cursor && typeof cursor.value === 'number') startIndex = cursor.value;
+      } catch (e) { /* noop */ }
+
+      const genreIdByName = new Map();
+      notebook.genres.forEach((g) => genreIdByName.set(g.name, g.id));
+      const ensureGenre = (name, color, gallery) => {
+        if (!name) name = '未分類';
+        if (genreIdByName.has(name)) return genreIdByName.get(name);
+        const g = { id: uid(), name, color: color || PALETTE[notebook.genres.length % PALETTE.length], gallery: !!gallery };
+        notebook.genres.push(g);
+        genreIdByName.set(name, g.id);
+        return g.id;
+      };
+
+      const total = allSource.length;
+      for (let i = startIndex; i < total; i++) {
+        const it = allSource[i];
+        overlay.textContent = `移行中… ${i + 1} / ${total} 件\n（画像を含むため時間がかかります。閉じずにお待ちください）`;
+        const genreId = ensureGenre(it.genreName, null, false);
+        const images = [];
+        for (const blob of it.images) {
+          try { images.push(await uploadImageBlob(blob)); } catch (e) { console.warn('移行画像のアップロードに失敗:', e); }
+        }
+        notebook.items.push({
+          id: uid(), genreId, title: it.title || '', text: it.text || '',
+          images, favorite: !!it.favorite, trashed: false,
+          useCount: it.useCount || 0, lastUsedAt: it.lastUsedAt || null,
+          createdAt: it.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(),
+        });
+        // 5件ごとに一旦保存し、進んだところまでをカーソルとして記録する。中断しても続きから再開できるように
+        if ((i + 1) % 5 === 0 || i === total - 1) {
+          try {
+            await saveNotebook();
+            await idbPut(db, 'meta', { key: 'migrationCursor', value: i + 1 });
+          } catch (e) { console.warn('移行の途中保存に失敗しました:', e); }
+        }
+      }
+      await idbPut(db, 'meta', { key: 'migrationComplete', value: true });
+      hideMigrationOverlay();
+      alert(`✓ 移行が完了しました（${total}件を保管庫に追加しました）`);
+    } catch (e) {
+      hideMigrationOverlay();
       console.error('[創作帳] 旧データの移行に失敗しました:', e);
-      alert(`[診断] 移行エラー\n${e && e.name}: ${e && e.message}\n${e && e.stack ? e.stack.slice(0, 300) : ''}`);
+      alert(`[移行エラー]\n${e && e.name}: ${e && e.message}\n\nここまでに保存できた分は保管庫に残っています。もう一度合言葉を入力して開き直すと、続きから再開します。`);
     }
   }
 
@@ -4210,6 +4303,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // ============== 編集画面 ==============
   let editingItemId = null;
+  let editorOriginalSnapshot = null;
   let editorFavorite = false;
   let editorGenreId = null;
   let pendingNewImages = [];
@@ -4299,6 +4393,7 @@ window.addEventListener('DOMContentLoaded', () => {
     editingItemId = item ? item.id : null;
     editorFavorite = item ? !!item.favorite : false;
     editorGenreId = item ? item.genreId : (currentGenre() ? currentGenre().id : (notebook.genres[0] && notebook.genres[0].id));
+    editorOriginalSnapshot = item ? { title: item.title || '', text: item.text || '', favorite: !!item.favorite, imageCount: itemImages(item).length } : null;
     updateEditorFavBtn(); updateEditorGenreIndicator();
     clearAllPendingImages();
 
@@ -4344,14 +4439,17 @@ window.addEventListener('DOMContentLoaded', () => {
     } else {
       const it = notebook.items.find((x) => x.id === editingItemId);
       if (it) {
+        const imageWillChange = pendingNewImages.length > 0 || removedExisting.length > 0;
+        const snap = editorOriginalSnapshot;
+        const changed = !snap || snap.title !== title || snap.text !== text || snap.favorite !== editorFavorite || imageWillChange;
         for (const img of removedExisting) await deleteImageById(img.imageId);
         const uploaded = [];
         for (const p of pendingNewImages) uploaded.push(await uploadImageBlob(p.file));
         it.title = title; it.text = text; it.favorite = editorFavorite;
         it.images = [...keptExisting, ...uploaded];
-        it.updatedAt = new Date().toISOString();
+        if (changed) it.updatedAt = new Date().toISOString();
         await saveNotebook(); closeEditorUI(); renderStorageView();
-        showCenterToast('✓ 保存しました');
+        if (changed) showCenterToast('✓ 保存しました');
       } else { closeEditorUI(); }
     }
   }
@@ -4428,8 +4526,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 下段への直接貼り付け→その場でカテゴリを選んで保管庫に保存
   let wbQuickSaveBlob = null;
-  function openWbQuickSaveDialog(blob) {
-    wbQuickSaveBlob = blob;
+  let wbQuickSaveText = '';
+  function openWbQuickSaveDialog(blob, text) {
+    wbQuickSaveBlob = blob || null;
+    wbQuickSaveText = text || '';
     $('#sk-quicksave-memo').value = '';
     const catRow = $('#sk-quicksave-cats');
     catRow.innerHTML = '';
@@ -4439,7 +4539,7 @@ window.addEventListener('DOMContentLoaded', () => {
       chip.textContent = g.name;
       chip.onclick = async () => {
         const it = {
-          id: uid(), genreId: g.id, title: $('#sk-quicksave-memo').value.trim(), text: '',
+          id: uid(), genreId: g.id, title: $('#sk-quicksave-memo').value.trim(), text: wbQuickSaveText,
           images: wbQuickSaveBlob ? [await uploadImageBlob(wbQuickSaveBlob)] : [],
           favorite: false, trashed: false, useCount: 0, lastUsedAt: null,
           createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
@@ -4576,6 +4676,11 @@ window.addEventListener('DOMContentLoaded', () => {
       renderTabs(); renderStorageView();
     };
 
+    $('#sk-export-btn').onclick = exportNotebook;
+    $('#sk-import-input').addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) importNotebookFile(e.target.files[0]);
+    });
+
     $('#sk-editor-close-btn').onclick = () => closeEditorSave();
     $('#sk-editor-overlay').addEventListener('click', (e) => { if (e.target === $('#sk-editor-overlay')) closeEditorSave(); });
     $('#sk-editor-fav-btn').onclick = () => { editorFavorite = !editorFavorite; updateEditorFavBtn(); };
@@ -4692,7 +4797,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
       }
       const text = e.clipboardData.getData('text/plain');
-      if (text) { insertIntoWorkbench(text); e.preventDefault(); }
+      if (text) { openWbQuickSaveDialog(null, text); e.preventDefault(); }
     });
     $('#sk-quicksave-cancel-btn').onclick = () => { $('#sk-quicksave-overlay').classList.remove('active'); };
   });
