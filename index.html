@@ -105,6 +105,8 @@ textarea, input { font-family: inherit; }
 /* ============== 共通シェル（スパイラル・タブ・ヘッダー） ============== */
 #cp-app-screen, #pn-app-screen { display: none; min-height: 100%; }
 #cp-app-screen.active, #pn-app-screen.active { display: flex; }
+#sk-storage-view { display: flex; min-height: 100%; }
+.sk-sidebar-col { display: flex; flex-direction: column; flex-shrink: 0; }
 
 .spiral { width: 34px; flex-shrink: 0; background: linear-gradient(90deg, transparent 0 15px, var(--rule-strong) 15px 17px, transparent 17px); display: flex; flex-direction: column; align-items: center; padding-top: 90px; gap: 22px; }
 .spiral span { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--rule-strong); background: var(--paper); }
@@ -297,6 +299,8 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
   .mode-shell-btn { font-size: 10.5px; padding: 5px 8px; }
 
   #cp-app-screen.active, #pn-app-screen.active { flex-direction: column; }
+  #sk-storage-view { flex-direction: column; }
+  .sk-sidebar-col { width: 100%; }
   .spiral { display: none; }
   .tabs {
     width: 100%; flex-direction: row; flex-wrap: wrap; flex-shrink: 0;
@@ -538,7 +542,8 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
   flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--rule-strong);
   background: var(--paper-card); color: var(--ink-soft); font-size: 13px; font-weight: 600;
 }
-.sk-view-toggle button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+#sk-view-storage-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+#sk-view-workbench-btn.active { background: #5b4a8a; color: #fff; border-color: #5b4a8a; }
 
 .sk-tab-wrap { position: relative; display: inline-flex; align-items: center; margin-right: 14px; }
 .sk-tab-wrap .tab-btn { margin-right: 0; }
@@ -553,36 +558,36 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
   border: none; background: transparent; color: var(--ink-soft); font-size: 14px; padding: 4px 8px; flex-shrink: 0;
 }
 
-.sk-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
-.sk-gallery-card { display: flex; flex-direction: column; gap: 4px; }
+.sk-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 8px; }
+.sk-gallery-card { display: flex; flex-direction: column; gap: 3px; }
 .sk-gallery-thumb {
-  width: 100%; aspect-ratio: 1; border-radius: 10px; background-size: cover; background-position: center;
+  width: 100%; aspect-ratio: 1; border-radius: 9px; background-size: cover; background-position: center;
   background-color: var(--paper-card); border: 1px solid var(--rule-strong); cursor: pointer; position: relative;
 }
 .sk-gallery-fav {
-  position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 6px; border: none;
-  background: rgba(0,0,0,.45); color: rgba(255,255,255,.6); font-size: 12px; cursor: pointer;
+  position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border-radius: 5px; border: none;
+  background: rgba(0,0,0,.45); color: rgba(255,255,255,.6); font-size: 10px; cursor: pointer;
 }
 .sk-gallery-fav.on { color: #ffd85e; }
-.sk-gallery-dup { position: absolute; top: 5px; left: 5px; font-size: 12px; }
-.sk-gallery-caption { font-size: 11.5px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.sk-gallery-dup { position: absolute; top: 4px; left: 4px; font-size: 10px; }
+.sk-gallery-caption { font-size: 10px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 
 .sk-workbench-view {
   display: none; flex-direction: column; gap: 10px; padding: 10px 14px;
   position: fixed; left: 0; right: 0; top: 58px; bottom: calc(54px + env(safe-area-inset-bottom)); overflow-y: auto; -webkit-overflow-scrolling: touch;
-  background: var(--paper); z-index: 10;
+  background: #f2eefa; z-index: 10;
 }
 .sk-wb-upper { display: flex; flex-direction: column; flex: 0 0 42%; min-height: 110px; flex-shrink: 1; }
 .sk-wb-upper textarea {
-  flex: 1; resize: none; border: 1px solid var(--rule-strong); border-radius: 10px; padding: 12px;
-  font-size: 14px; line-height: 1.6; background: var(--paper-card); color: var(--ink); outline: none;
+  flex: 1; resize: none; border: 1.5px solid #9a86c9; border-radius: 10px; padding: 12px;
+  font-size: 14px; line-height: 1.6; background: #fff; color: var(--ink); outline: none;
 }
 .sk-wb-upper-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .sk-wb-upper-actions button {
-  flex: 1; padding: 9px 6px; border-radius: 9px; border: 1px solid var(--rule-strong);
-  background: var(--paper-card); color: var(--ink); font-size: 12px; white-space: nowrap;
+  flex: 1; padding: 9px 6px; border-radius: 9px; border: 1px solid #9a86c9;
+  background: #fff; color: var(--ink); font-size: 12px; white-space: nowrap;
 }
-#sk-wb-save-btn { background: var(--accent); color: #fff; border-color: var(--accent); }
+#sk-wb-save-btn { background: #5b4a8a; color: #fff; border-color: #5b4a8a; }
 
 .sk-wb-lower { display: flex; flex-direction: column; flex: 1; min-height: 60px; border-top: 2px dashed var(--rule-strong); padding-top: 8px; }
 .sk-wb-tabs-row { width: auto; padding: 0; flex-direction: row; flex-wrap: wrap; margin-bottom: 8px; flex-shrink: 0; min-height: 28px; }
@@ -637,9 +642,11 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 
   <div id="sk-storage-view">
     <div class="spiral"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-    <div id="sk-total-count" style="font-size:11px; color:var(--ink-soft); padding:6px 14px 0;"></div>
-    <div class="tabs" id="sk-tabs-container"></div>
-    <div class="tab-add-row"><button id="sk-new-genre-btn">＋ ジャンルを追加</button></div>
+    <div class="sk-sidebar-col">
+      <div id="sk-total-count" style="font-size:11px; color:var(--ink-soft); padding:6px 14px 0;"></div>
+      <div class="tabs" id="sk-tabs-container"></div>
+      <div class="tab-add-row"><button id="sk-new-genre-btn">＋ ジャンルを追加</button></div>
+    </div>
 
     <div class="main">
       <div class="main-header">
@@ -3836,7 +3843,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function defaultNotebook() {
     return {
       genres: [
-        { id: uid(), name: '完成プロンプト', color: PALETTE[1], gallery: true },
+        { id: uid(), name: '完成品', color: PALETTE[1], gallery: true },
         { id: uid(), name: 'よく使う', color: PALETTE[0], gallery: false },
       ],
       items: [],
@@ -3890,6 +3897,7 @@ window.addEventListener('DOMContentLoaded', () => {
       encKey = key;
       await runMigrationIfNeeded();
       await mergeDuplicateGenres();
+      await renameOldCompletedGenre();
       await fixGalleryGenreFlag();
       await mergeImageGenIntoCompleted();
       await removeDuplicateItems();
@@ -3965,19 +3973,27 @@ window.addEventListener('DOMContentLoaded', () => {
     await saveNotebook();
   }
 
-  // 「完成プロンプト」ジャンルは必ずギャラリー表示にする（重複統合などの過程でフラグが失われた場合の自己修復）
+  // 「完成品」ジャンルは必ずギャラリー表示にする（重複統合などの過程でフラグが失われた場合の自己修復）
+  // 旧名称「完成プロンプト」を使っていた場合、「完成品」に改名する（一回だけ）
+  async function renameOldCompletedGenre() {
+    const g = notebook.genres.find((x) => x.name === '完成プロンプト');
+    if (!g) return;
+    g.name = '完成品';
+    await saveNotebook();
+  }
+
   async function fixGalleryGenreFlag() {
     let changed = false;
     notebook.genres.forEach((g) => {
-      const shouldBeGallery = g.name === '完成プロンプト';
+      const shouldBeGallery = g.name === '完成品';
       if (!!g.gallery !== shouldBeGallery) { g.gallery = shouldBeGallery; changed = true; }
     });
     if (changed) await saveNotebook();
   }
 
-  // 旧プロンプト帳の「画像生成用」ジャンルの中身を、新しい「完成プロンプト」ジャンルへ統合する（一回だけ）
+  // 旧プロンプト帳の「画像生成用」ジャンルの中身を、新しい「完成品」ジャンルへ統合する（一回だけ）
   async function mergeImageGenIntoCompleted() {
-    const target = notebook.genres.find((g) => g.name === '完成プロンプト');
+    const target = notebook.genres.find((g) => g.name === '完成品');
     const source = notebook.genres.find((g) => g.name === '画像生成用');
     if (!target || !source || target.id === source.id) return;
     let moved = false;
@@ -4310,8 +4326,9 @@ window.addEventListener('DOMContentLoaded', () => {
     card.className = 'sk-gallery-card';
     const thumb = document.createElement('div');
     thumb.className = 'sk-gallery-thumb';
-    loadFirstImageUrl(item).then((url) => { if (url) thumb.style.backgroundImage = `url(${url})`; });
-    thumb.onclick = () => handleRowTap(item);
+    let loadedUrl = null;
+    loadFirstImageUrl(item).then((url) => { if (url) { thumb.style.backgroundImage = `url(${url})`; loadedUrl = url; } });
+    attachLongPress(thumb, () => { if (loadedUrl) openImageModal(loadedUrl); }, () => handleRowTap(item));
     if (isNearDup) {
       const b = document.createElement('span'); b.className = 'near-dup-badge sk-gallery-dup'; b.textContent = '🔴';
       thumb.appendChild(b);
@@ -4373,6 +4390,28 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function openImageModal(url) { $('#sk-modal-image').src = url; $('#sk-image-modal').classList.add('active'); }
+
+  // 長押しで拡大表示、通常タップでは別の動作、を両立させる共通ヘルパー
+  function attachLongPress(el, onLongPress, onTap) {
+    let timer = null;
+    let firedLong = false;
+    const start = () => {
+      firedLong = false;
+      timer = setTimeout(() => { firedLong = true; onLongPress(); }, 480);
+    };
+    const cancel = () => { clearTimeout(timer); };
+    const end = (e) => {
+      clearTimeout(timer);
+      if (!firedLong) onTap(e);
+    };
+    el.addEventListener('mousedown', start);
+    el.addEventListener('mouseup', end);
+    el.addEventListener('mouseleave', cancel);
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchend', (e) => { e.preventDefault(); end(e); });
+    el.addEventListener('touchmove', cancel);
+    el.addEventListener('contextmenu', (e) => e.preventDefault()); // スマホの長押しメニューを防ぐ
+  }
 
   // ============== 編集画面 ==============
   let editingItemId = null;
