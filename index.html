@@ -573,7 +573,11 @@ textarea, input { font-family: inherit; }
 .sk-gallery-dup { position: absolute; top: 5px; left: 5px; font-size: 12px; }
 .sk-gallery-caption { font-size: 11.5px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 
-.sk-workbench-view { display: flex; flex-direction: column; height: calc(100vh - 40px - 48px); padding: 10px 14px; gap: 10px; }
+.sk-workbench-view {
+  display: none; flex-direction: column; gap: 10px; padding: 10px 14px;
+  position: fixed; left: 0; right: 0; top: 88px; bottom: 0; overflow: hidden;
+  background: var(--paper); z-index: 10;
+}
 .sk-wb-upper { display: flex; flex-direction: column; flex: 0 0 42%; min-height: 160px; }
 .sk-wb-upper textarea {
   flex: 1; resize: none; border: 1px solid var(--rule-strong); border-radius: 10px; padding: 12px;
@@ -605,7 +609,7 @@ textarea, input { font-family: inherit; }
 .sk-toast button { background: transparent; border: none; color: var(--accent-soft); font-weight: 700; font-size: 12px; }
 
 @media (max-width: 720px) {
-  .sk-workbench-view { height: calc(100vh - 40px - 54px - 54px); }
+  .sk-workbench-view { top: 82px; bottom: 54px; }
   .sk-wb-upper { flex: 0 0 38%; min-height: 130px; }
 }
 
@@ -3902,13 +3906,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // ============== 旧コピペ帳・プロンプト帳からの一回きりの移行 ==============
   async function runMigrationIfNeeded() {
+    if (notebook.items.length > 0) return; // 既にデータがあるなら移行不要（移行済み、または既に使用中）
     try {
-      const flag = await idbGet(db, 'meta', 'migratedFromCpPn');
-      if (flag && flag.value) return;
-    } catch (e) { /* noop */ }
-    try {
+      console.log('[創作帳][診断] 保管庫が空のため移行を試みます. __cpExportFull存在:', !!window.__cpExportFull, ' __pnExportFull存在:', !!window.__pnExportFull);
       const cpData = window.__cpExportFull ? await window.__cpExportFull() : { genres: [], items: [] };
       const pnData = window.__pnExportFull ? await window.__pnExportFull() : { genres: [], items: [] };
+      console.log('[創作帳][診断] コピペ帳から', cpData.items.length, '件、プロンプト帳から', pnData.items.length, '件見つかりました');
       const allSource = [...cpData.items, ...pnData.items];
       if (allSource.length) {
         const genreIdByName = new Map();
@@ -3935,9 +3938,9 @@ window.addEventListener('DOMContentLoaded', () => {
           });
         }
         await saveNotebook();
+        console.log('[創作帳][診断] 移行完了. 合計', notebook.items.length, '件');
       }
     } catch (e) { console.error('[創作帳] 旧データの移行に失敗しました:', e); }
-    try { await idbPut(db, 'meta', { key: 'migratedFromCpPn', value: true }); } catch (e) { /* noop */ }
   }
 
   // ============== 画面 ==============
