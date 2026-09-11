@@ -74,7 +74,7 @@ textarea, input { font-family: inherit; }
 .shell-footer { display: flex; justify-content: center; gap: 18px; padding: 22px 14px 34px; }
 
 .bottom-nav {
-  display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 80;
+  display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 80;
   background: #20262b; border-top: 1px solid rgba(255,255,255,0.1);
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
   justify-content: space-around; align-items: stretch;
@@ -88,7 +88,7 @@ textarea, input { font-family: inherit; }
 .bottom-nav-btn .bnav-label { font-size: 10px; line-height: 1; }
 .bottom-nav-btn.active { color: #fff; background: rgba(255,255,255,0.1); }
 
-.app-mode { display: none; min-height: calc(100vh - 46px); }
+.app-mode { display: none; min-height: 100vh; }
 .app-mode.active { display: block; }
 
 /* ============== ログイン画面（プロンプト帳のみ） ============== */
@@ -290,14 +290,11 @@ textarea, input { font-family: inherit; }
 .card-meta-spacer { flex: 1; }
 .undo-hint { font-size: 11px; color: var(--accent); text-decoration: underline; }
 
+body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
+.fab-add-btn { bottom: calc(24px + 54px + env(safe-area-inset-bottom)); }
+
 @media (max-width: 720px) {
-  .mode-bar { height: 40px; gap: 6px; padding: 0 10px; }
-  .mode-btn { display: none; } /* モード切替は下部ナビに集約 */
-  .bottom-nav { display: flex; }
-  body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
-  .fab-add-btn { bottom: calc(24px + 54px + env(safe-area-inset-bottom)); }
   .mode-shell-btn { font-size: 10.5px; padding: 5px 8px; }
-  .app-mode { min-height: calc(100vh - 40px); }
 
   #cp-app-screen.active, #pn-app-screen.active { flex-direction: column; }
   .spiral { display: none; }
@@ -519,13 +516,6 @@ textarea, input { font-family: inherit; }
 .ms-group-grid .ms-card { padding: 8px; }
 
 /* モードバーの目のアイコン・隠しモードボタン */
-.eye-toggle-btn { border: none; background: transparent; color: #6d7c82; font-size: 13px; padding: 6px 8px; border-radius: 12px; opacity: 0.6; }
-.eye-toggle-btn:hover { opacity: 1; }
-.eye-toggle-btn.active { opacity: 1; color: #fff; background: rgba(255,255,255,0.1); }
-#mode-material-btn { opacity: 0.16; transition: opacity 0.2s; }
-#mode-material-btn.revealed { opacity: 1; }
-#bnav-material-btn { opacity: 0.16; transition: opacity 0.2s; }
-#bnav-material-btn.revealed { opacity: 1; }
 
 @media (max-width: 720px) {
   .ms-wrap { padding: 10px 12px 70px; }
@@ -540,6 +530,10 @@ textarea, input { font-family: inherit; }
 
 /* ===================== 創作帳 (Sousaku) 専用スタイル ===================== */
 .sk-view-toggle { display: flex; gap: 8px; padding: 10px 14px 0; }
+.sk-view-toggle button.sk-global-search-btn {
+  flex: 0 0 auto; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--rule-strong);
+  background: var(--paper-card); color: var(--ink-soft); font-size: 14px;
+}
 .sk-view-toggle button {
   flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--rule-strong);
   background: var(--paper-card); color: var(--ink-soft); font-size: 13px; font-weight: 600;
@@ -575,7 +569,7 @@ textarea, input { font-family: inherit; }
 
 .sk-workbench-view {
   display: none; flex-direction: column; gap: 10px; padding: 10px 14px;
-  position: fixed; left: 0; right: 0; top: 88px; bottom: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  position: fixed; left: 0; right: 0; top: 58px; bottom: calc(54px + env(safe-area-inset-bottom)); overflow-y: auto; -webkit-overflow-scrolling: touch;
   background: var(--paper); z-index: 10;
 }
 .sk-wb-upper { display: flex; flex-direction: column; flex: 0 0 42%; min-height: 110px; flex-shrink: 1; }
@@ -591,7 +585,7 @@ textarea, input { font-family: inherit; }
 #sk-wb-save-btn { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 .sk-wb-lower { display: flex; flex-direction: column; flex: 1; min-height: 60px; border-top: 2px dashed var(--rule-strong); padding-top: 8px; }
-.sk-wb-tabs-row { flex-wrap: wrap; margin-bottom: 8px; flex-shrink: 0; min-height: 28px; }
+.sk-wb-tabs-row { width: auto; padding: 0; flex-direction: row; flex-wrap: wrap; margin-bottom: 8px; flex-shrink: 0; min-height: 28px; }
 .sk-wb-browser-list { flex: 1; min-height: 40px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .sk-wb-browser-row {
   display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-bottom: 1px solid var(--rule);
@@ -609,7 +603,6 @@ textarea, input { font-family: inherit; }
 .sk-toast button { background: transparent; border: none; color: var(--accent-soft); font-weight: 700; font-size: 12px; }
 
 @media (max-width: 720px) {
-  .sk-workbench-view { top: 82px; bottom: 54px; }
   .sk-wb-upper { flex: 0 0 38%; min-height: 130px; }
 }
 
@@ -629,14 +622,6 @@ textarea, input { font-family: inherit; }
 </div>
 
 <div id="main-shell" style="display:none;">
-  <div class="mode-bar">
-    <button class="mode-btn" id="mode-sousaku-btn">📔 創作帳</button>
-    <button class="mode-btn" id="mode-material-btn">🖼 素材帳</button>
-    <button class="eye-toggle-btn" id="global-search-btn" title="全体検索">🔍</button>
-    <button class="eye-toggle-btn" id="eye-toggle-btn" title="隠しモードを表示">👁</button>
-    <a href="https://gemini.google.com/app" target="_blank" rel="noopener" class="eye-toggle-btn" title="Geminiを開く">✨ Gemini</a>
-  </div>
-
   <div class="bottom-nav" id="bottom-nav">
     <button class="bottom-nav-btn" id="bnav-sousaku-btn"><span class="bnav-icon">📔</span><span class="bnav-label">創作帳</span></button>
     <button class="bottom-nav-btn" id="bnav-material-btn"><span class="bnav-icon">🖼</span><span class="bnav-label">素材帳</span></button>
@@ -647,6 +632,7 @@ textarea, input { font-family: inherit; }
   <div class="sk-view-toggle">
     <button id="sk-view-storage-btn" class="active">📚 保管庫</button>
     <button id="sk-view-workbench-btn">✎ 作業台</button>
+    <button class="sk-global-search-btn" id="global-search-btn" title="全体検索">🔍</button>
   </div>
 
   <div id="sk-storage-view">
@@ -3904,6 +3890,8 @@ window.addEventListener('DOMContentLoaded', () => {
       encKey = key;
       await runMigrationIfNeeded();
       await mergeDuplicateGenres();
+      await fixGalleryGenreFlag();
+      await mergeImageGenIntoCompleted();
       await removeDuplicateItems();
       await enterApp();
     } catch (e) {
@@ -3975,6 +3963,29 @@ window.addEventListener('DOMContentLoaded', () => {
     notebook.items.forEach((it) => { if (remap.has(it.genreId)) it.genreId = remap.get(it.genreId); });
     notebook.genres = notebook.genres.filter((g) => !remap.has(g.id));
     await saveNotebook();
+  }
+
+  // 「完成プロンプト」ジャンルは必ずギャラリー表示にする（重複統合などの過程でフラグが失われた場合の自己修復）
+  async function fixGalleryGenreFlag() {
+    let changed = false;
+    notebook.genres.forEach((g) => {
+      const shouldBeGallery = g.name === '完成プロンプト';
+      if (!!g.gallery !== shouldBeGallery) { g.gallery = shouldBeGallery; changed = true; }
+    });
+    if (changed) await saveNotebook();
+  }
+
+  // 旧プロンプト帳の「画像生成用」ジャンルの中身を、新しい「完成プロンプト」ジャンルへ統合する（一回だけ）
+  async function mergeImageGenIntoCompleted() {
+    const target = notebook.genres.find((g) => g.name === '完成プロンプト');
+    const source = notebook.genres.find((g) => g.name === '画像生成用');
+    if (!target || !source || target.id === source.id) return;
+    let moved = false;
+    notebook.items.forEach((it) => {
+      if (it.genreId === source.id) { it.genreId = target.id; moved = true; }
+    });
+    notebook.genres = notebook.genres.filter((g) => g.id !== source.id);
+    if (moved || true) await saveNotebook(); // ジャンル自体を消したので中身が0件でも保存する
   }
 
   // 同じジャンル・同じ内容（タイトル・本文）のアイテムが複数できてしまっている場合、1つにまとめる
@@ -6364,15 +6375,8 @@ window.addEventListener('DOMContentLoaded', () => {
     document.documentElement.setAttribute('data-mode', mode);
     $('#sousaku-app').classList.toggle('active', mode === 'sousaku');
     $('#material-app').classList.toggle('active', mode === 'material');
-    $('#mode-sousaku-btn').classList.toggle('active', mode === 'sousaku');
-    $('#mode-material-btn').classList.toggle('active', mode === 'material');
     $('#bnav-sousaku-btn').classList.toggle('active', mode === 'sousaku');
     $('#bnav-material-btn').classList.toggle('active', mode === 'material');
-    if (mode === 'material') {
-      $('#mode-material-btn').classList.add('revealed');
-      $('#bnav-material-btn').classList.add('revealed');
-      $('#eye-toggle-btn').classList.add('active');
-    }
     // 素材帳モードは「前回のモード」として記憶しない（リロード時に自動で開かれないようにするため）
     if (mode !== 'material') localStorage.setItem('combinedNotebookMode', mode);
     if (mode === 'material') ensureMaterialLoaded();
@@ -6438,9 +6442,6 @@ window.addEventListener('DOMContentLoaded', () => {
     msLoaded = false;
     msLoading = false;
     masterKeyRef = null;
-    $('#mode-material-btn').classList.remove('revealed');
-    $('#bnav-material-btn').classList.remove('revealed');
-    $('#eye-toggle-btn').classList.remove('active');
     showLogin();
   }
 
@@ -6765,18 +6766,8 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#master-password-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') attemptUnlock($('#master-password-input').value);
     });
-    $('#mode-sousaku-btn').onclick = () => activateMode('sousaku');
-    $('#mode-material-btn').onclick = () => activateMode('material');
     $('#bnav-sousaku-btn').onclick = () => activateMode('sousaku');
     $('#bnav-material-btn').onclick = () => activateMode('material');
-
-    // 素材帳ボタンの表示切り替え（👁）。この表示状態はどこにも保存せず、リロードのたびに必ず非表示に戻る
-    $('#eye-toggle-btn').onclick = () => {
-      const btn = $('#mode-material-btn');
-      const revealed = btn.classList.toggle('revealed');
-      $('#bnav-material-btn').classList.toggle('revealed', revealed);
-      $('#eye-toggle-btn').classList.toggle('active', revealed);
-    };
 
     $('#shell-lock-btn').onclick = lockAll;
     $('#shell-forget-btn').onclick = () => {
