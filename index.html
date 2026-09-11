@@ -6,8 +6,8 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0iIzIwMjYyYiIvPgo8dGV4dCB4PSI1MCIgeT0iNzAiIGZvbnQtc2l6ZT0iNTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCfk4s8L3RleHQ+Cjwvc3ZnPg==">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0iIzIwMjYyYiIvPgo8dGV4dCB4PSI1MCIgeT0iNzAiIGZvbnQtc2l6ZT0iNTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCfk4s8L3RleHQ+Cjwvc3ZnPg==">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="コピペ帳">
-<title>コピペ帳 / プロンプト帳</title>
+<meta name="apple-mobile-web-app-title" content="創作帳">
+<title>創作帳 / 素材帳</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
@@ -74,7 +74,7 @@ textarea, input { font-family: inherit; }
 .shell-footer { display: flex; justify-content: center; gap: 18px; padding: 22px 14px 34px; }
 
 .bottom-nav {
-  display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 600;
+  display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 80;
   background: #20262b; border-top: 1px solid rgba(255,255,255,0.1);
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
   justify-content: space-around; align-items: stretch;
@@ -537,13 +537,85 @@ textarea, input { font-family: inherit; }
   .ms-tbtn { height: 34px; font-size: 11.5px; }
 }
 
+
+/* ===================== 創作帳 (Sousaku) 専用スタイル ===================== */
+.sk-view-toggle { display: flex; gap: 8px; padding: 10px 14px 0; }
+.sk-view-toggle button {
+  flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--rule-strong);
+  background: var(--paper-card); color: var(--ink-soft); font-size: 13px; font-weight: 600;
+}
+.sk-view-toggle button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.sk-tab-wrap { position: relative; display: inline-flex; align-items: center; margin-right: 14px; }
+.sk-tab-wrap .tab-btn { margin-right: 0; }
+.sk-tab-del-btn {
+  position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%;
+  border: none; background: var(--danger); color: #fff; font-size: 10px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+@media (max-width: 720px) { .sk-tab-wrap { margin-right: 0; } }
+
+.sk-row-edit-btn {
+  border: none; background: transparent; color: var(--ink-soft); font-size: 14px; padding: 4px 8px; flex-shrink: 0;
+}
+
+.sk-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.sk-gallery-card { display: flex; flex-direction: column; gap: 4px; }
+.sk-gallery-thumb {
+  width: 100%; aspect-ratio: 1; border-radius: 10px; background-size: cover; background-position: center;
+  background-color: var(--paper-card); border: 1px solid var(--rule-strong); cursor: pointer; position: relative;
+}
+.sk-gallery-fav {
+  position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 6px; border: none;
+  background: rgba(0,0,0,.45); color: rgba(255,255,255,.6); font-size: 12px; cursor: pointer;
+}
+.sk-gallery-fav.on { color: #ffd85e; }
+.sk-gallery-dup { position: absolute; top: 5px; left: 5px; font-size: 12px; }
+.sk-gallery-caption { font-size: 11.5px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+
+.sk-workbench-view { display: flex; flex-direction: column; height: calc(100vh - 40px - 48px); padding: 10px 14px; gap: 10px; }
+.sk-wb-upper { display: flex; flex-direction: column; flex: 0 0 42%; min-height: 160px; }
+.sk-wb-upper textarea {
+  flex: 1; resize: none; border: 1px solid var(--rule-strong); border-radius: 10px; padding: 12px;
+  font-size: 14px; line-height: 1.6; background: var(--paper-card); color: var(--ink); outline: none;
+}
+.sk-wb-upper-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.sk-wb-upper-actions button {
+  flex: 1; padding: 9px 6px; border-radius: 9px; border: 1px solid var(--rule-strong);
+  background: var(--paper-card); color: var(--ink); font-size: 12px; white-space: nowrap;
+}
+#sk-wb-save-btn { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.sk-wb-lower { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.sk-wb-tabs-row { flex-wrap: wrap; margin-bottom: 8px; flex-shrink: 0; }
+.sk-wb-browser-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.sk-wb-browser-row {
+  display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+}
+.sk-wb-browser-row:active { background: var(--accent-soft); }
+.sk-wb-browser-thumb { width: 34px; height: 34px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.sk-wb-browser-text { font-size: 12.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.sk-toast {
+  position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: #2b2a25; color: #fff;
+  padding: 10px 16px; border-radius: 999px; font-size: 13px; display: flex; align-items: center; gap: 10px;
+  z-index: 700; box-shadow: 0 8px 20px rgba(0,0,0,.3);
+}
+.sk-toast button { background: transparent; border: none; color: var(--accent-soft); font-weight: 700; font-size: 12px; }
+
+@media (max-width: 720px) {
+  .sk-workbench-view { height: calc(100vh - 40px - 54px - 54px); }
+  .sk-wb-upper { flex: 0 0 38%; min-height: 130px; }
+}
+
 </style>
 </head>
 <body>
 
 <div id="master-login-screen">
   <div class="login-card">
-    <h1>コピペ帳 / プロンプト帳</h1>
+    <h1>創作帳 / 素材帳</h1>
     <p class="tagline">合言葉を入力して開いてください</p>
     <input type="password" id="master-password-input" placeholder="合言葉" autocomplete="current-password">
     <button id="master-unlock-btn">開く</button>
@@ -554,8 +626,7 @@ textarea, input { font-family: inherit; }
 
 <div id="main-shell" style="display:none;">
   <div class="mode-bar">
-    <button class="mode-btn" id="mode-copy-btn">📋 コピペ帳</button>
-    <button class="mode-btn" id="mode-prompt-btn">🗒 プロンプト帳</button>
+    <button class="mode-btn" id="mode-sousaku-btn">📔 創作帳</button>
     <button class="mode-btn" id="mode-material-btn">🖼 素材帳</button>
     <button class="eye-toggle-btn" id="global-search-btn" title="全体検索">🔍</button>
     <button class="eye-toggle-btn" id="eye-toggle-btn" title="隠しモードを表示">👁</button>
@@ -563,10 +634,113 @@ textarea, input { font-family: inherit; }
   </div>
 
   <div class="bottom-nav" id="bottom-nav">
-    <button class="bottom-nav-btn" id="bnav-copy-btn"><span class="bnav-icon">📋</span><span class="bnav-label">コピペ帳</span></button>
-    <button class="bottom-nav-btn" id="bnav-prompt-btn"><span class="bnav-icon">🗒</span><span class="bnav-label">プロンプト帳</span></button>
+    <button class="bottom-nav-btn" id="bnav-sousaku-btn"><span class="bnav-icon">📔</span><span class="bnav-label">創作帳</span></button>
     <button class="bottom-nav-btn" id="bnav-material-btn"><span class="bnav-icon">🖼</span><span class="bnav-label">素材帳</span></button>
   </div>
+
+<div id="sousaku-app" class="app-mode">
+<div id="sk-app-screen">
+  <div class="sk-view-toggle">
+    <button id="sk-view-storage-btn" class="active">📚 保管庫</button>
+    <button id="sk-view-workbench-btn">✎ 作業台</button>
+  </div>
+
+  <div id="sk-storage-view">
+    <div class="spiral"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="tabs" id="sk-tabs-container"></div>
+    <div class="tab-add-row"><button id="sk-new-genre-btn">＋ ジャンルを追加</button></div>
+
+    <div class="main">
+      <div class="main-header">
+        <div class="header-actions">
+          <button class="edit-mode-btn" id="sk-edit-mode-btn">✎ 編集モード</button>
+          <button class="lock-btn" id="sk-export-btn">⬇ 書き出し</button>
+          <label class="lock-btn file-label" id="sk-import-label">⬆ 読み込み
+            <input type="file" id="sk-import-input" accept="application/json" style="display:none;">
+          </label>
+        </div>
+      </div>
+
+      <div class="list-toolbar">
+        <button class="add-new-btn" id="sk-add-new-btn">＋ 新規追加</button>
+        <input type="text" class="search-input" id="sk-search-input" placeholder="🔍 検索">
+        <select class="sort-mode-select" id="sk-sort-mode-select">
+          <option value="created">並び替え：追加順</option>
+          <option value="recent">並び替え：最近使った順</option>
+          <option value="frequency">並び替え：よく使う順</option>
+          <option value="similar">並び替え：似ている順</option>
+        </select>
+      </div>
+
+      <button class="fab-add-btn" id="sk-fab-add-btn" title="新規追加">＋</button>
+
+      <div id="sk-item-list"></div>
+      <div id="sk-gallery-grid" class="sk-gallery-grid" style="display:none;"></div>
+      <div id="sk-empty-state" class="empty-state" style="display:none;">まだ何もありません。「＋新規追加」から作成してください。</div>
+    </div>
+  </div>
+
+  <div id="sk-workbench-view" class="sk-workbench-view" style="display:none;">
+    <div class="sk-wb-upper">
+      <textarea id="sk-wb-textarea" placeholder="ここに要素を貼り付け・入力して組み立てます…"></textarea>
+      <div class="sk-wb-upper-actions">
+        <button id="sk-wb-paste-btn">📥 貼り付け</button>
+        <button id="sk-wb-copy-btn">📋 コピー</button>
+        <button id="sk-wb-clear-btn">✕ クリア</button>
+        <button id="sk-wb-save-btn">💾 保管庫に保存</button>
+      </div>
+    </div>
+    <div class="sk-wb-lower">
+      <div class="tabs sk-wb-tabs-row" id="sk-wb-tabs"></div>
+      <div id="sk-wb-browser-list" class="sk-wb-browser-list"></div>
+      <p class="paste-hint">タップで上の欄に差し込みます。ここに直接貼り付けると、その場で保管庫に保存できます</p>
+    </div>
+  </div>
+</div>
+
+<div class="editor-overlay" id="sk-editor-overlay">
+  <div class="editor-panel" id="sk-editor-panel">
+    <div class="editor-genre-indicator" id="sk-editor-genre-indicator"></div>
+    <div class="editor-topbar">
+      <input type="text" id="sk-editor-title" placeholder="タイトル（任意）">
+      <button id="sk-editor-paste-btn" title="クリップボードから貼り付け（画像優先）">📥</button>
+      <button id="sk-editor-copy-btn" title="コピー">📋</button>
+      <button id="sk-editor-fav-btn" title="お気に入り">☆</button>
+      <button id="sk-editor-trash-btn" title="ゴミ箱へ">🗑</button>
+      <button id="sk-editor-close-btn">✕</button>
+    </div>
+    <textarea id="sk-editor-text" placeholder="内容を入力…"></textarea>
+    <div class="genre-move-row" id="sk-genre-move-row">
+      <span class="genre-move-label">ジャンル：</span>
+      <div class="genre-move-chips" id="sk-genre-move-chips"></div>
+    </div>
+    <div class="editor-image-area" id="sk-editor-image-area">
+      <div class="pending-image-grid" id="sk-pending-image-grid"></div>
+      <label class="file-label" id="sk-editor-file-label">
+        📎 画像を添付（複数選択可）
+        <input type="file" id="sk-editor-image-input" accept="image/*" multiple style="display:none;">
+      </label>
+      <p class="paste-hint">画像は📥ボタン・Ctrl+V（スマホは長押し→貼り付け）・ドラッグ＆ドロップで複数枚まとめて添付できます</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="sk-image-modal">
+  <img id="sk-modal-image" src="" alt="拡大画像">
+</div>
+
+<div class="dialog-overlay" id="sk-quicksave-overlay">
+  <div class="dialog" style="width:320px;">
+    <h3>保管庫に保存</h3>
+    <input type="text" id="sk-quicksave-memo" placeholder="タイトル（任意）">
+    <p style="font-size:12px; color:var(--ink-soft); margin:10px 0 6px;">保存先のジャンルを選んでください</p>
+    <div class="genre-move-chips" id="sk-quicksave-cats"></div>
+    <div class="dialog-actions">
+      <button class="cancel" id="sk-quicksave-cancel-btn">キャンセル</button>
+    </div>
+  </div>
+</div>
+</div>
 
   <div id="copy-app" class="app-mode">
 <div id="cp-app-screen">
@@ -673,6 +847,7 @@ textarea, input { font-family: inherit; }
       <input type="text" class="search-input" id="pn-search-input" placeholder="🔍 検索">
       <select class="sort-mode-select" id="pn-sort-mode-select">
         <option value="created">並び替え：追加順</option>
+        <option value="recent">並び替え：最近使った順</option>
         <option value="frequency">並び替え：よく使う順</option>
         <option value="similar">並び替え：似ている順</option>
       </select>
@@ -1385,6 +1560,28 @@ window.__cpReset = function () {
 
 // 合言葉変更用：新しい鍵・saltで丸ごと再暗号化する
 // 全体検索用：全ジャンル・全アイテムの検索対象一覧を返す
+// 創作帳への移行用：ジャンル・アイテムを画像データ込みでそのまま返す
+window.__cpExportFull = async function () {
+  if (!notebook) return { genres: [], items: [] };
+  const items = [];
+  for (const it of notebook.items) {
+    if (it.trashed) continue;
+    const imgs = itemImages(it);
+    const images = [];
+    for (const img of imgs) {
+      const blob = await loadImageBlobById(img.imageId, img.imageIv, img.imageMime);
+      if (blob) images.push(blob);
+    }
+    items.push({
+      title: it.title || '', text: it.text || '', favorite: !!it.favorite,
+      useCount: it.useCount || 0, lastUsedAt: it.lastUsedAt || null,
+      createdAt: it.createdAt, genreName: (notebook.genres.find((g) => g.id === it.genreId) || {}).name || '',
+      images,
+    });
+  }
+  return { genres: notebook.genres.map((g) => ({ name: g.name, color: g.color })), items };
+};
+
 window.__cpGetSearchIndex = function () {
   if (!notebook) return [];
   return notebook.items
@@ -2460,6 +2657,27 @@ window.__pnReset = function () {
 // フェーズ1/2は計算のみ（何も送信しない）、フェーズ3で初めて保存する。
 // 途中で失敗した場合、フェーズ3に入る前ならリモート側は一切変更されていない。
 // 全体検索用：全ジャンル・全プロンプトの検索対象一覧を返す
+// 創作帳への移行用：ジャンル・プロンプトを画像データ込みでそのまま返す
+window.__pnExportFull = async function () {
+  if (!notebook) return { genres: [], items: [] };
+  const items = [];
+  for (const p of notebook.prompts) {
+    if (p.trashed) continue;
+    const images = [];
+    if (p.imageId) {
+      const blob = await loadImageBlob(p);
+      if (blob) images.push(blob);
+    }
+    items.push({
+      title: p.title || '', text: p.text || '', favorite: !!p.favorite,
+      useCount: p.useCount || 0, lastUsedAt: p.lastCopiedAt || null,
+      createdAt: p.createdAt, genreName: (notebook.genres.find((g) => g.id === p.genreId) || {}).name || '',
+      images,
+    });
+  }
+  return { genres: notebook.genres.map((g) => ({ name: g.name, color: g.color, gallery: !!g.hasImage })), items };
+};
+
 window.__pnGetSearchIndex = function () {
   if (!notebook) return [];
   return notebook.prompts
@@ -2710,6 +2928,8 @@ function renderView() {
   if (useUserSort) {
     if (userSortMode === 'frequency') {
       items.sort((a, b) => (b.useCount || 0) - (a.useCount || 0) || (b.createdAt || '').localeCompare(a.createdAt || ''));
+    } else if (userSortMode === 'recent') {
+      items.sort((a, b) => (b.lastCopiedAt || b.createdAt || '').localeCompare(a.lastCopiedAt || a.createdAt || ''));
     } else {
       items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     }
@@ -3437,6 +3657,1027 @@ window.addEventListener('DOMContentLoaded', () => {
 
 })();
 
+// ===================== 創作帳 (Sousaku - CP+PN統合) =====================
+(function initSousakuApp(){
+  const $ = (sel) => document.querySelector(sel);
+  function uid() {
+    return crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  }
+  function resizeImageBlob(fileOrBlob, maxDim, quality) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            const scale = maxDim / Math.max(width, height);
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(fileOrBlob);
+    });
+  }
+  const SUPABASE_URL = 'https://edfrjxjdzxutcjeayfac.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_GVtanlT_gDwSEQSsZPC_NQ_nEK-60x2';
+  const NOTEBOOK_TABLE = 'sousaku-notebook';
+  const IMAGES_TABLE = 'sousaku-notebook-images';
+  const DB_NAME = 'sousakuNotebookDB';
+  const DB_VERSION = 1;
+  const PALETTE = ['#2c6e77', '#7a4b74', '#3f7a52', '#a9762f', '#4a5a8a', '#2f7a7a', '#8a4a4a'];
+
+  let db = null;
+  let encKey = null;
+  let cachedSalt = null;
+  let notebook = null;
+  let currentView = null; // ジャンルid | '__fav__' | '__trash__'
+  let wbView = 'storage'; // 'storage' | 'workbench'
+  let searchQuery = '';
+  let userSortMode = 'created';
+  let editMode = false;
+
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const d = req.result;
+        if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta', { keyPath: 'key' });
+        if (!d.objectStoreNames.contains('images')) d.createObjectStore('images', { keyPath: 'imageId' });
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  function idbGet(d, store, key) {
+    return new Promise((resolve, reject) => {
+      const tx = d.transaction(store, 'readonly');
+      const req = tx.objectStore(store).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  function idbPut(d, store, value) {
+    return new Promise((resolve, reject) => {
+      const tx = d.transaction(store, 'readwrite');
+      tx.objectStore(store).put(value);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  function idbDelete(d, store, key) {
+    return new Promise((resolve, reject) => {
+      const tx = d.transaction(store, 'readwrite');
+      tx.objectStore(store).delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function fetchRemoteNotebook() {
+    const { data, error } = await supabase.from(NOTEBOOK_TABLE).select('*').eq('id', 'notebook').maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+  async function pushRemoteNotebook(ivB64, ciphertextB64) {
+    const salt = cachedSalt;
+    const { error } = await supabase.from(NOTEBOOK_TABLE).upsert({
+      id: 'notebook', salt, iv: ivB64, ciphertext: ciphertextB64, updated_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+  }
+  async function fetchRemoteImage(imageId) {
+    const { data, error } = await supabase.from(IMAGES_TABLE).select('image_id, iv, mime, cipher_b64').eq('image_id', imageId).maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+  async function pushRemoteImage(imageId, ivB64, mime, cipherB64) {
+    const { error } = await supabase.from(IMAGES_TABLE).upsert({
+      image_id: imageId, iv: ivB64, mime, cipher_b64: cipherB64, updated_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+  }
+  async function deleteRemoteImage(imageId) {
+    const { error } = await supabase.from(IMAGES_TABLE).delete().eq('image_id', imageId);
+    if (error) throw error;
+  }
+
+  const imageUrlCache = new Map();
+  const imageBlobCache = new Map();
+
+  function itemImages(it) { return Array.isArray(it.images) ? it.images : []; }
+
+  async function uploadImageBlob(fileOrBlob) {
+    const buf = await fileOrBlob.arrayBuffer();
+    const { ivB64, cipherBuffer } = await encryptBytes(buf, encKey);
+    const imageId = uid();
+    const mime = fileOrBlob.type || 'image/jpeg';
+    await idbPut(db, 'images', { imageId, iv: ivB64, mime, cipher: cipherBuffer });
+    try { await pushRemoteImage(imageId, ivB64, mime, bufToB64(cipherBuffer)); }
+    catch (e) { console.warn('画像のSupabase同期に失敗しました', e); }
+    return { imageId, imageIv: ivB64, imageMime: mime };
+  }
+  async function loadImageBlobById(imageId, imageIv, imageMime) {
+    if (!imageId) return null;
+    if (imageBlobCache.has(imageId)) return imageBlobCache.get(imageId);
+    try {
+      let rec = await idbGet(db, 'images', imageId);
+      let cipherBuf;
+      if (rec) { cipherBuf = rec.cipher; }
+      else {
+        const remoteRec = await fetchRemoteImage(imageId);
+        if (!remoteRec) return null;
+        cipherBuf = b64ToBuf(remoteRec.cipher_b64);
+        await idbPut(db, 'images', { imageId, iv: remoteRec.iv, mime: remoteRec.mime, cipher: cipherBuf });
+      }
+      const plainBuf = await decryptBytes(imageIv, cipherBuf, encKey);
+      const blob = new Blob([plainBuf], { type: imageMime || 'image/jpeg' });
+      imageBlobCache.set(imageId, blob);
+      return blob;
+    } catch (e) { console.error('画像の復号に失敗しました', e); return null; }
+  }
+  async function loadImageUrlById(imageId, imageIv, imageMime) {
+    if (!imageId) return null;
+    if (imageUrlCache.has(imageId)) return imageUrlCache.get(imageId);
+    const blob = await loadImageBlobById(imageId, imageIv, imageMime);
+    if (!blob) return null;
+    const url = URL.createObjectURL(blob);
+    imageUrlCache.set(imageId, url);
+    return url;
+  }
+  async function loadFirstImageUrl(it) {
+    const imgs = itemImages(it);
+    if (!imgs.length) return null;
+    return loadImageUrlById(imgs[0].imageId, imgs[0].imageIv, imgs[0].imageMime);
+  }
+  async function deleteImageById(imageId) {
+    if (!imageId) return;
+    await idbDelete(db, 'images', imageId);
+    try { await deleteRemoteImage(imageId); } catch (e) { /* noop */ }
+    if (imageUrlCache.has(imageId)) { URL.revokeObjectURL(imageUrlCache.get(imageId)); imageUrlCache.delete(imageId); }
+    imageBlobCache.delete(imageId);
+  }
+  async function blobToPngBlob(blob) {
+    if (blob.type === 'image/png') return blob;
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width; canvas.height = bitmap.height;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0);
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  }
+
+  function defaultNotebook() {
+    return {
+      genres: [
+        { id: uid(), name: '完成プロンプト', color: PALETTE[1], gallery: true },
+        { id: uid(), name: 'よく使う', color: PALETTE[0], gallery: false },
+      ],
+      items: [],
+    };
+  }
+
+  async function getSalt() {
+    try {
+      const remoteRow = await fetchRemoteNotebook();
+      if (remoteRow) return remoteRow.salt;
+    } catch (e) { console.warn('Supabaseに接続できませんでした（saltの取得）', e); }
+    try {
+      if (!db) db = await openDB();
+      const localMeta = await idbGet(db, 'meta', 'notebook');
+      if (localMeta) return localMeta.salt;
+    } catch (e) { /* noop */ }
+    return null;
+  }
+  window.__skGetSalt = getSalt;
+
+  async function loadOrCreateNotebook(key, salt) {
+    if (!db) db = await openDB();
+    cachedSalt = salt;
+    let loaded = null;
+    try {
+      const remoteRow = await fetchRemoteNotebook();
+      if (remoteRow) {
+        const data = await decryptJSON(remoteRow.iv, remoteRow.ciphertext, key);
+        loaded = data;
+        await idbPut(db, 'meta', { key: 'notebook', salt: remoteRow.salt, iv: remoteRow.iv, ciphertext: remoteRow.ciphertext });
+      }
+    } catch (e) { console.warn('Supabaseからの読み込みに失敗しました（ローカルを試します）', e); }
+    if (!loaded) {
+      try {
+        const localMeta = await idbGet(db, 'meta', 'notebook');
+        if (localMeta) loaded = await decryptJSON(localMeta.iv, localMeta.ciphertext, key);
+      } catch (e) { /* noop */ }
+    }
+    notebook = loaded || defaultNotebook();
+    if (!Array.isArray(notebook.genres)) notebook.genres = [];
+    if (!Array.isArray(notebook.items)) notebook.items = [];
+
+    if (!loaded) {
+      const { ivB64, ciphertextB64 } = await encryptJSON(notebook, key);
+      await idbPut(db, 'meta', { key: 'notebook', salt, iv: ivB64, ciphertext: ciphertextB64 });
+      try { await pushRemoteNotebook(ivB64, ciphertextB64); }
+      catch (e) { console.warn('Supabaseへの保存に失敗しました（ローカルには保存済みです）', e); }
+    }
+
+    encKey = key;
+    await runMigrationIfNeeded();
+    await enterApp();
+  }
+  window.__skLoad = loadOrCreateNotebook;
+
+  async function saveNotebook() {
+    const { ivB64, ciphertextB64 } = await encryptJSON(notebook, encKey);
+    await idbPut(db, 'meta', { key: 'notebook', salt: cachedSalt, iv: ivB64, ciphertext: ciphertextB64 });
+    try { await pushRemoteNotebook(ivB64, ciphertextB64); }
+    catch (e) { console.warn('Supabaseへの保存に失敗しました（ローカルには保存済みです）', e); }
+  }
+
+  // ============== 旧コピペ帳・プロンプト帳からの一回きりの移行 ==============
+  async function runMigrationIfNeeded() {
+    try {
+      const flag = await idbGet(db, 'meta', 'migratedFromCpPn');
+      if (flag && flag.value) return;
+    } catch (e) { /* noop */ }
+    try {
+      const cpData = window.__cpExportFull ? await window.__cpExportFull() : { genres: [], items: [] };
+      const pnData = window.__pnExportFull ? await window.__pnExportFull() : { genres: [], items: [] };
+      const allSource = [...cpData.items, ...pnData.items];
+      if (allSource.length) {
+        const genreIdByName = new Map();
+        notebook.genres.forEach((g) => genreIdByName.set(g.name, g.id));
+        const ensureGenre = (name, color, gallery) => {
+          if (!name) name = '未分類';
+          if (genreIdByName.has(name)) return genreIdByName.get(name);
+          const g = { id: uid(), name, color: color || PALETTE[notebook.genres.length % PALETTE.length], gallery: !!gallery };
+          notebook.genres.push(g);
+          genreIdByName.set(name, g.id);
+          return g.id;
+        };
+        for (const it of allSource) {
+          const genreId = ensureGenre(it.genreName, null, false);
+          const images = [];
+          for (const blob of it.images) {
+            try { images.push(await uploadImageBlob(blob)); } catch (e) { console.warn('移行画像のアップロードに失敗:', e); }
+          }
+          notebook.items.push({
+            id: uid(), genreId, title: it.title || '', text: it.text || '',
+            images, favorite: !!it.favorite, trashed: false,
+            useCount: it.useCount || 0, lastUsedAt: it.lastUsedAt || null,
+            createdAt: it.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(),
+          });
+        }
+        await saveNotebook();
+      }
+    } catch (e) { console.error('[創作帳] 旧データの移行に失敗しました:', e); }
+    try { await idbPut(db, 'meta', { key: 'migratedFromCpPn', value: true }); } catch (e) { /* noop */ }
+  }
+
+  // ============== 画面 ==============
+  function currentGenre() { return notebook.genres.find((g) => g.id === currentView); }
+
+  function renderTabs() {
+    const container = $('#sk-tabs-container');
+    container.innerHTML = '';
+    notebook.genres.forEach((g) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'sk-tab-wrap';
+      const btn = document.createElement('button');
+      btn.className = 'tab-btn' + (currentView === g.id ? ' active' : '');
+      btn.style.background = g.color;
+      btn.textContent = g.name;
+      btn.onclick = () => { currentView = g.id; renderTabs(); renderStorageView(); renderWorkbenchTabs(); };
+      wrap.appendChild(btn);
+      const itemCount = notebook.items.filter((it) => it.genreId === g.id && !it.trashed).length;
+      if (itemCount === 0) {
+        const delBtn = document.createElement('button');
+        delBtn.className = 'sk-tab-del-btn';
+        delBtn.textContent = '✕';
+        delBtn.title = '空のジャンルを削除';
+        delBtn.onclick = async (e) => {
+          e.stopPropagation();
+          if (!confirm(`「${g.name}」ジャンルを削除しますか？`)) return;
+          notebook.genres = notebook.genres.filter((x) => x.id !== g.id);
+          if (currentView === g.id) currentView = notebook.genres[0] ? notebook.genres[0].id : '__fav__';
+          await saveNotebook();
+          renderTabs(); renderStorageView();
+        };
+        wrap.appendChild(delBtn);
+      }
+      container.appendChild(wrap);
+    });
+    const favBtn = document.createElement('button');
+    favBtn.className = 'tab-btn trash-tab' + (currentView === '__fav__' ? ' active' : '');
+    favBtn.textContent = '★ お気に入り';
+    favBtn.onclick = () => { currentView = '__fav__'; renderTabs(); renderStorageView(); };
+    container.appendChild(favBtn);
+    const trashBtn = document.createElement('button');
+    trashBtn.className = 'tab-btn trash-tab' + (currentView === '__trash__' ? ' active' : '');
+    trashBtn.textContent = '🗑 ゴミ箱';
+    trashBtn.onclick = () => { currentView = '__trash__'; renderTabs(); renderStorageView(); };
+    container.appendChild(trashBtn);
+  }
+
+  function computeNearDuplicateIds(items) {
+    const norm = (t) => (t || '').replace(/[\s\u3000]+/g, '').replace(/[、。，．,.!?！？]+/g, '');
+    const groups = new Map();
+    items.forEach((it) => {
+      const key = norm(it.text);
+      if (!key) return;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(it.id);
+    });
+    const ids = new Set();
+    groups.forEach((idList) => { if (idList.length > 1) idList.forEach((id) => ids.add(id)); });
+    return ids;
+  }
+
+  function renderStorageView() {
+    const addBtn = $('#sk-add-new-btn');
+    const fab = $('#sk-fab-add-btn');
+    const listEl = $('#sk-item-list');
+    const galleryEl = $('#sk-gallery-grid');
+    listEl.innerHTML = ''; galleryEl.innerHTML = '';
+
+    let items = [];
+    const isSearching = !!searchQuery;
+    const g = currentGenre();
+    const isGallery = g && g.gallery && !isSearching;
+
+    if (isSearching) {
+      addBtn.style.display = 'none'; if (fab) fab.style.display = 'none';
+      items = notebook.items.filter((it) => !it.trashed);
+    } else if (currentView === '__trash__') {
+      addBtn.style.display = 'none'; if (fab) fab.style.display = 'none';
+      items = notebook.items.filter((it) => it.trashed);
+    } else if (currentView === '__fav__') {
+      addBtn.style.display = 'none'; if (fab) fab.style.display = 'none';
+      items = notebook.items.filter((it) => it.favorite && !it.trashed);
+    } else {
+      addBtn.style.display = 'block'; if (fab) fab.style.display = 'flex';
+      items = notebook.items.filter((it) => it.genreId === currentView && !it.trashed);
+    }
+
+    if (userSortMode === 'frequency') {
+      items.sort((a, b) => (b.useCount || 0) - (a.useCount || 0) || (b.createdAt || '').localeCompare(a.createdAt || ''));
+    } else if (userSortMode === 'recent') {
+      items.sort((a, b) => (b.lastUsedAt || b.createdAt || '').localeCompare(a.lastUsedAt || a.createdAt || ''));
+    } else {
+      items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    }
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter((it) => (it.title || '').toLowerCase().includes(q) || (it.text || '').toLowerCase().includes(q));
+    }
+    if (userSortMode === 'similar' && !searchQuery) items = reorderBySimilarity(items);
+
+    const nearDupIds = computeNearDuplicateIds(items);
+    $('#sk-empty-state').style.display = items.length ? 'none' : 'block';
+
+    if (isGallery) {
+      galleryEl.style.display = 'grid'; listEl.style.display = 'none';
+      items.forEach((it) => galleryEl.appendChild(renderGalleryCard(it, nearDupIds.has(it.id))));
+    } else {
+      galleryEl.style.display = 'none'; listEl.style.display = 'block';
+      items.forEach((it) => listEl.appendChild(renderRow(it, isSearching, nearDupIds.has(it.id))));
+    }
+  }
+
+  function renderRow(item, showGenreBadge, isNearDup) {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.onclick = () => handleRowTap(item);
+
+    const starBtn = document.createElement('button');
+    starBtn.className = 'item-star' + (item.favorite ? ' active' : '');
+    starBtn.textContent = item.favorite ? '★' : '☆';
+    starBtn.onclick = async (e) => { e.stopPropagation(); item.favorite = !item.favorite; await saveNotebook(); renderStorageView(); };
+    row.appendChild(starBtn);
+
+    if (isNearDup) {
+      const dupBadge = document.createElement('span');
+      dupBadge.className = 'near-dup-badge';
+      dupBadge.textContent = '🔴';
+      dupBadge.title = '完全に同じ内容のものが他にもあります';
+      row.appendChild(dupBadge);
+    }
+
+    const imgs = itemImages(item);
+    if (imgs.length) {
+      const thumbWrap = document.createElement('div');
+      thumbWrap.className = 'item-thumb-wrap';
+      const thumb = document.createElement('img');
+      thumb.className = 'item-thumb';
+      let loadedUrl = null;
+      loadFirstImageUrl(item).then((url) => { if (url) { thumb.src = url; loadedUrl = url; } });
+      thumb.onclick = (e) => { e.stopPropagation(); if (loadedUrl) openImageModal(loadedUrl); };
+      thumbWrap.appendChild(thumb);
+      if (imgs.length > 1) {
+        const badge = document.createElement('span');
+        badge.className = 'item-thumb-count';
+        badge.textContent = `×${imgs.length}`;
+        thumbWrap.appendChild(badge);
+      }
+      row.appendChild(thumbWrap);
+    }
+
+    const main = document.createElement('div');
+    main.className = 'item-main';
+    if (showGenreBadge) {
+      const g = notebook.genres.find((x) => x.id === item.genreId);
+      if (g) {
+        const badge = document.createElement('div');
+        badge.className = 'card-genre-badge';
+        badge.style.background = g.color || 'var(--accent)';
+        badge.textContent = g.name;
+        main.appendChild(badge);
+      }
+    }
+    const fallback = item.text ? item.text.split('\n')[0].slice(0, 40) : (imgs.length ? '(画像)' : '(無題)');
+    const titleEl = document.createElement('div');
+    titleEl.className = 'item-title' + (item.title ? '' : ' placeholder');
+    titleEl.textContent = item.title || fallback;
+    const previewEl = document.createElement('div');
+    previewEl.className = 'item-preview';
+    previewEl.textContent = item.text ? item.text.replace(/\n/g, ' ') : '';
+    main.appendChild(titleEl); main.appendChild(previewEl);
+    row.appendChild(main);
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'sk-row-edit-btn';
+    editBtn.textContent = '✎';
+    editBtn.title = '編集';
+    editBtn.onclick = (e) => { e.stopPropagation(); openEditor(item); };
+    row.appendChild(editBtn);
+
+    return row;
+  }
+
+  function renderGalleryCard(item, isNearDup) {
+    const card = document.createElement('div');
+    card.className = 'sk-gallery-card';
+    const thumb = document.createElement('div');
+    thumb.className = 'sk-gallery-thumb';
+    loadFirstImageUrl(item).then((url) => { if (url) thumb.style.backgroundImage = `url(${url})`; });
+    thumb.onclick = () => handleRowTap(item);
+    if (isNearDup) {
+      const b = document.createElement('span'); b.className = 'near-dup-badge sk-gallery-dup'; b.textContent = '🔴';
+      thumb.appendChild(b);
+    }
+    const starBtn = document.createElement('button');
+    starBtn.className = 'sk-gallery-fav' + (item.favorite ? ' on' : '');
+    starBtn.textContent = '★';
+    starBtn.onclick = async (e) => { e.stopPropagation(); item.favorite = !item.favorite; await saveNotebook(); renderStorageView(); };
+    thumb.appendChild(starBtn);
+    card.appendChild(thumb);
+    const cap = document.createElement('div');
+    cap.className = 'sk-gallery-caption';
+    cap.textContent = item.title || (item.text || '').slice(0, 20) || '(無題)';
+    cap.onclick = () => openEditor(item);
+    card.appendChild(cap);
+    return card;
+  }
+
+  function handleRowTap(item) {
+    if (editMode) { openEditor(item); return; }
+    copyItem(item);
+  }
+
+  function copyItem(item) {
+    const imgs = itemImages(item);
+    if (imgs.length) {
+      if (!navigator.clipboard || !navigator.clipboard.write) { alert('お使いのブラウザは画像コピーに対応していません'); return; }
+      const clipboardItems = imgs.map((img) => new ClipboardItem({
+        'image/png': (async () => {
+          const blob = await loadImageBlobById(img.imageId, img.imageIv, img.imageMime);
+          if (!blob) throw new Error('画像の読み込みに失敗しました');
+          return await blobToPngBlob(blob);
+        })(),
+      }));
+      navigator.clipboard.write(clipboardItems).then(async () => {
+        showCenterToast(imgs.length > 1 ? `✓ ${imgs.length}枚コピーしました` : '✓ コピーしました');
+        item.lastUsedAt = new Date().toISOString();
+        item.useCount = (item.useCount || 0) + 1;
+        await saveNotebook(); renderStorageView();
+      }).catch((e) => {
+        console.error(e);
+        showCenterToast('✕ コピーに失敗しました');
+      });
+      window.__sharedClipboard = { kind: 'images', blobs: [] };
+      (async () => {
+        const blobs = [];
+        for (const img of imgs) { const b = await loadImageBlobById(img.imageId, img.imageIv, img.imageMime); if (b) blobs.push(b); }
+        if (blobs.length) window.__sharedClipboard = { kind: 'images', blobs };
+      })();
+      return;
+    }
+    window.__sharedClipboard = { kind: 'text', text: item.text || '' };
+    navigator.clipboard.writeText(item.text || '').then(async () => {
+      showCenterToast('✓ コピーしました');
+      item.lastUsedAt = new Date().toISOString();
+      item.useCount = (item.useCount || 0) + 1;
+      await saveNotebook(); renderStorageView();
+    }).catch(() => { showCenterToast('✕ コピーに失敗しました'); });
+  }
+
+  function openImageModal(url) { $('#sk-modal-image').src = url; $('#sk-image-modal').classList.add('active'); }
+
+  // ============== 編集画面 ==============
+  let editingItemId = null;
+  let editorFavorite = false;
+  let editorGenreId = null;
+  let pendingNewImages = [];
+  let existingEditorImages = [];
+
+  function updateEditorFavBtn() {
+    const btn = $('#sk-editor-fav-btn');
+    btn.textContent = editorFavorite ? '★' : '☆';
+    btn.classList.toggle('active', editorFavorite);
+  }
+  function updateEditorGenreIndicator() {
+    const el = $('#sk-editor-genre-indicator');
+    const g = notebook.genres.find((x) => x.id === editorGenreId);
+    if (!g) { el.classList.remove('show'); return; }
+    el.textContent = g.name; el.style.background = g.color || 'var(--accent)'; el.classList.add('show');
+  }
+  function renderGenreMoveChips() {
+    const container = $('#sk-genre-move-chips');
+    container.innerHTML = '';
+    notebook.genres.forEach((g) => {
+      const el = document.createElement('div');
+      el.className = 'genre-move-chip' + (g.id === editorGenreId ? ' current' : '');
+      el.textContent = g.name;
+      if (g.id !== editorGenreId) {
+        el.onclick = async () => {
+          const it = notebook.items.find((x) => x.id === editingItemId);
+          if (!it) return;
+          const oldGenreId = it.genreId;
+          it.genreId = g.id; it.updatedAt = new Date().toISOString();
+          editorGenreId = g.id;
+          updateEditorGenreIndicator();
+          await saveNotebook();
+          renderGenreMoveChips();
+          renderStorageView();
+          showUndoToast(`「${g.name}」に移動しました`, async () => {
+            it.genreId = oldGenreId; it.updatedAt = new Date().toISOString();
+            await saveNotebook(); editorGenreId = oldGenreId;
+            renderGenreMoveChips(); updateEditorGenreIndicator(); renderStorageView();
+          });
+        };
+      }
+      container.appendChild(el);
+    });
+  }
+
+  function renderPendingImageGrid() {
+    const grid = $('#sk-pending-image-grid');
+    grid.innerHTML = '';
+    existingEditorImages.forEach((img) => {
+      if (!img.kept) return;
+      const cell = document.createElement('div');
+      cell.className = 'pending-image-cell';
+      const imgEl = document.createElement('img'); imgEl.src = img.previewUrl || '';
+      imgEl.onclick = () => { if (img.previewUrl) openImageModal(img.previewUrl); };
+      const removeBtn = document.createElement('button'); removeBtn.textContent = '✕';
+      removeBtn.onclick = () => { img.kept = false; renderPendingImageGrid(); };
+      cell.appendChild(imgEl); cell.appendChild(removeBtn); grid.appendChild(cell);
+    });
+    pendingNewImages.forEach((img, idx) => {
+      const cell = document.createElement('div');
+      cell.className = 'pending-image-cell';
+      const imgEl = document.createElement('img'); imgEl.src = img.previewUrl;
+      imgEl.onclick = () => openImageModal(img.previewUrl);
+      const removeBtn = document.createElement('button'); removeBtn.textContent = '✕';
+      removeBtn.onclick = () => { URL.revokeObjectURL(img.previewUrl); pendingNewImages.splice(idx, 1); renderPendingImageGrid(); };
+      cell.appendChild(imgEl); cell.appendChild(removeBtn); grid.appendChild(cell);
+    });
+  }
+  async function addPendingImages(fileList) {
+    const files = Array.from(fileList).filter((f) => f && f.type && f.type.startsWith('image/'));
+    for (const file of files) {
+      let resized = file;
+      try { resized = await resizeImageBlob(file, 2048, 0.90); } catch (e) { /* noop */ }
+      const previewUrl = URL.createObjectURL(resized);
+      pendingNewImages.push({ file: resized, previewUrl });
+    }
+    renderPendingImageGrid();
+  }
+  function clearAllPendingImages() {
+    pendingNewImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+    pendingNewImages = []; existingEditorImages = [];
+    $('#sk-editor-image-input').value = '';
+    $('#sk-pending-image-grid').innerHTML = '';
+  }
+
+  async function openEditor(item) {
+    editingItemId = item ? item.id : null;
+    editorFavorite = item ? !!item.favorite : false;
+    editorGenreId = item ? item.genreId : (currentGenre() ? currentGenre().id : (notebook.genres[0] && notebook.genres[0].id));
+    updateEditorFavBtn(); updateEditorGenreIndicator();
+    clearAllPendingImages();
+
+    $('#sk-editor-title').value = item ? (item.title || '') : '';
+    $('#sk-editor-text').value = item ? item.text : '';
+
+    if (item) {
+      $('#sk-genre-move-row').style.display = 'flex';
+      renderGenreMoveChips();
+      for (const img of itemImages(item)) {
+        const url = await loadImageUrlById(img.imageId, img.imageIv, img.imageMime);
+        existingEditorImages.push({ imageId: img.imageId, imageIv: img.imageIv, imageMime: img.imageMime, previewUrl: url, kept: true });
+      }
+      renderPendingImageGrid();
+    } else {
+      $('#sk-genre-move-row').style.display = 'none';
+    }
+
+    $('#sk-editor-overlay').classList.add('active');
+    setTimeout(() => $('#sk-editor-text').focus(), 50);
+  }
+
+  async function closeEditorSave() {
+    const title = $('#sk-editor-title').value.trim();
+    const text = $('#sk-editor-text').value.trim();
+    const keptExisting = existingEditorImages.filter((img) => img.kept).map((img) => ({ imageId: img.imageId, imageIv: img.imageIv, imageMime: img.imageMime }));
+    const removedExisting = existingEditorImages.filter((img) => !img.kept);
+
+    if (!editingItemId) {
+      if (!text && !pendingNewImages.length) { closeEditorUI(); return; }
+      const g = notebook.genres.find((x) => x.id === editorGenreId) || notebook.genres[0];
+      if (!g) { closeEditorUI(); return; }
+      const uploaded = [];
+      for (const p of pendingNewImages) uploaded.push(await uploadImageBlob(p.file));
+      const it = {
+        id: uid(), genreId: g.id, title, text, favorite: editorFavorite, trashed: false,
+        images: uploaded, useCount: 0, lastUsedAt: null,
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      };
+      notebook.items.push(it);
+      await saveNotebook(); closeEditorUI(); renderStorageView();
+      showCenterToast('✓ 保存しました');
+    } else {
+      const it = notebook.items.find((x) => x.id === editingItemId);
+      if (it) {
+        for (const img of removedExisting) await deleteImageById(img.imageId);
+        const uploaded = [];
+        for (const p of pendingNewImages) uploaded.push(await uploadImageBlob(p.file));
+        it.title = title; it.text = text; it.favorite = editorFavorite;
+        it.images = [...keptExisting, ...uploaded];
+        it.updatedAt = new Date().toISOString();
+        await saveNotebook(); closeEditorUI(); renderStorageView();
+        showCenterToast('✓ 保存しました');
+      } else { closeEditorUI(); }
+    }
+  }
+  function closeEditorUI() {
+    $('#sk-editor-overlay').classList.remove('active');
+    editingItemId = null; clearAllPendingImages();
+  }
+
+  async function trashItem(item) {
+    item.trashed = true; item.updatedAt = new Date().toISOString();
+    await saveNotebook(); renderStorageView();
+  }
+
+  // ============== 作業台 ==============
+  function renderWorkbenchTabs() {
+    const container = $('#sk-wb-tabs');
+    container.innerHTML = '';
+    notebook.genres.forEach((g) => {
+      const btn = document.createElement('button');
+      btn.className = 'tab-btn' + (wbGenreView === g.id ? ' active' : '');
+      btn.style.background = g.color; btn.textContent = g.name;
+      btn.onclick = () => { wbGenreView = g.id; renderWorkbenchTabs(); renderWorkbenchBrowser(); };
+      container.appendChild(btn);
+    });
+  }
+  let wbGenreView = null;
+  function renderWorkbenchBrowser() {
+    const list = $('#sk-wb-browser-list');
+    list.innerHTML = '';
+    if (!wbGenreView && notebook.genres[0]) wbGenreView = notebook.genres[0].id;
+    const items = notebook.items.filter((it) => it.genreId === wbGenreView && !it.trashed)
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    items.forEach((it) => {
+      const row = document.createElement('div');
+      row.className = 'sk-wb-browser-row';
+      const imgs = itemImages(it);
+      if (imgs.length) {
+        const img = document.createElement('img');
+        img.className = 'sk-wb-browser-thumb';
+        loadFirstImageUrl(it).then((url) => { if (url) img.src = url; });
+        row.appendChild(img);
+      }
+      const text = document.createElement('div');
+      text.className = 'sk-wb-browser-text';
+      text.textContent = it.title || (it.text || '').slice(0, 40) || '(画像)';
+      row.appendChild(text);
+      row.onclick = () => insertIntoWorkbench(it.text || '');
+      list.appendChild(row);
+    });
+  }
+  function insertIntoWorkbench(text) {
+    const ta = $('#sk-wb-textarea');
+    const start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
+    const end = ta.selectionEnd != null ? ta.selectionEnd : ta.value.length;
+    const sep = (start > 0 && ta.value[start - 1] !== '\n' && ta.value.length) ? '\n' : '';
+    const insertText = sep + text;
+    ta.value = ta.value.slice(0, start) + insertText + ta.value.slice(end);
+    const caret = start + insertText.length;
+    ta.selectionStart = ta.selectionEnd = caret;
+    ta.focus();
+    showCenterToast('✓ 差し込みました');
+  }
+
+  function switchToView(view) {
+    wbView = view;
+    $('#sk-view-storage-btn').classList.toggle('active', view === 'storage');
+    $('#sk-view-workbench-btn').classList.toggle('active', view === 'workbench');
+    $('#sk-storage-view').style.display = view === 'storage' ? 'block' : 'none';
+    $('#sk-workbench-view').style.display = view === 'workbench' ? 'flex' : 'none';
+    if (view === 'workbench') { renderWorkbenchTabs(); renderWorkbenchBrowser(); }
+  }
+
+  // 下段への直接貼り付け→その場でカテゴリを選んで保管庫に保存
+  let wbQuickSaveBlob = null;
+  function openWbQuickSaveDialog(blob) {
+    wbQuickSaveBlob = blob;
+    $('#sk-quicksave-memo').value = '';
+    const catRow = $('#sk-quicksave-cats');
+    catRow.innerHTML = '';
+    notebook.genres.forEach((g) => {
+      const chip = document.createElement('button');
+      chip.className = 'genre-move-chip';
+      chip.textContent = g.name;
+      chip.onclick = async () => {
+        const it = {
+          id: uid(), genreId: g.id, title: $('#sk-quicksave-memo').value.trim(), text: '',
+          images: wbQuickSaveBlob ? [await uploadImageBlob(wbQuickSaveBlob)] : [],
+          favorite: false, trashed: false, useCount: 0, lastUsedAt: null,
+          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        };
+        notebook.items.push(it);
+        await saveNotebook();
+        $('#sk-quicksave-overlay').classList.remove('active');
+        showCenterToast('✓ 保管庫に保存しました');
+      };
+      catRow.appendChild(chip);
+    });
+    $('#sk-quicksave-overlay').classList.add('active');
+  }
+
+  async function enterApp() {
+    currentView = notebook.genres[0] ? notebook.genres[0].id : '__fav__';
+    $('#sk-app-screen').classList.add('active');
+    renderTabs(); renderStorageView();
+    switchToView('storage');
+  }
+
+  // 全体検索用：全ジャンル・全アイテムの検索対象一覧を返す
+  window.__skGetSearchIndex = function () {
+    if (!notebook) return [];
+    return notebook.items.filter((it) => !it.trashed).map((it) => {
+      const g = notebook.genres.find((x) => x.id === it.genreId);
+      return { id: it.id, title: it.title || '', text: it.text || '', genreName: g ? g.name : '', hasImage: itemImages(it).length > 0 };
+    });
+  };
+  window.__skCopyById = function (id) {
+    const it = notebook && notebook.items.find((x) => x.id === id);
+    if (it) copyItem(it);
+  };
+  // 外部（Google Keep等）からの一括取り込み用：1件分を追加する
+  window.__skImportOne = async function ({ title, text, imageBlob }) {
+    if (!notebook) return;
+    const g = notebook.genres[0];
+    if (!g) return;
+    const images = [];
+    if (imageBlob) {
+      try { images.push(await uploadImageBlob(imageBlob)); } catch (e) { console.warn('[創作帳] 取込画像の処理に失敗:', e); }
+    }
+    notebook.items.push({
+      id: uid(), genreId: g.id, title: title || '', text: text || '', images,
+      favorite: false, trashed: false, useCount: 0, lastUsedAt: null,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    });
+    await saveNotebook();
+    if (currentView === g.id) renderStorageView();
+  };
+
+  window.__skReset = function () {
+    encKey = null; cachedSalt = null; notebook = null; currentView = null; editMode = false;
+    $('#sk-app-screen').classList.remove('active');
+  };
+
+  window.__skReencrypt = async function (oldKey, newKey, newSalt) {
+    const imageUpdates = [];
+    for (const it of notebook.items) {
+      for (const img of itemImages(it)) {
+        let rec = await idbGet(db, 'images', img.imageId);
+        let cipherBuf, mime;
+        if (rec) { cipherBuf = rec.cipher; mime = rec.mime; }
+        else {
+          const remoteRec = await fetchRemoteImage(img.imageId);
+          if (!remoteRec) continue;
+          cipherBuf = b64ToBuf(remoteRec.cipher_b64); mime = remoteRec.mime;
+        }
+        const plainBuf = await decryptBytes(img.imageIv, cipherBuf, oldKey);
+        const { ivB64, cipherBuffer } = await encryptBytes(plainBuf, newKey);
+        imageUpdates.push({ itemId: it.id, imageId: img.imageId, ivB64, mime, cipherBuffer });
+      }
+    }
+    const tempNotebook = JSON.parse(JSON.stringify(notebook));
+    imageUpdates.forEach((u) => {
+      const target = tempNotebook.items.find((x) => x.id === u.itemId);
+      if (!target) return;
+      const match = (target.images || []).find((im) => im.imageId === u.imageId);
+      if (match) match.imageIv = u.ivB64;
+    });
+    const { ivB64: nbIv, ciphertextB64: nbCipher } = await encryptJSON(tempNotebook, newKey);
+
+    for (const u of imageUpdates) {
+      await idbPut(db, 'images', { imageId: u.imageId, iv: u.ivB64, mime: u.mime, cipher: u.cipherBuffer });
+      await pushRemoteImage(u.imageId, u.ivB64, u.mime, bufToB64(u.cipherBuffer));
+      const realItem = notebook.items.find((x) => x.id === u.itemId);
+      if (realItem) {
+        const match = (realItem.images || []).find((im) => im.imageId === u.imageId);
+        if (match) match.imageIv = u.ivB64;
+      }
+    }
+    await idbPut(db, 'meta', { key: 'notebook', salt: newSalt, iv: nbIv, ciphertext: nbCipher });
+    await pushRemoteNotebook(nbIv, nbCipher);
+    encKey = newKey;
+    cachedSalt = newSalt;
+    imageUrlCache.forEach((u) => URL.revokeObjectURL(u));
+    imageUrlCache.clear();
+    imageBlobCache.clear();
+  };
+
+  function showUndoToast(message, onUndo) {
+    let toast = document.querySelector('.sk-toast');
+    if (toast) toast.remove();
+    toast = document.createElement('div'); toast.className = 'toast sk-toast';
+    const msg = document.createElement('span'); msg.textContent = message;
+    const undoBtn = document.createElement('button'); undoBtn.textContent = '取り消す';
+    undoBtn.onclick = () => { onUndo(); toast.remove(); };
+    toast.appendChild(msg); toast.appendChild(undoBtn);
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 6000);
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    $('#sk-view-storage-btn').onclick = () => switchToView('storage');
+    $('#sk-view-workbench-btn').onclick = () => switchToView('workbench');
+
+    $('#sk-add-new-btn').onclick = () => openEditor(null);
+    $('#sk-fab-add-btn').onclick = () => openEditor(null);
+    $('#sk-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderStorageView(); });
+    $('#sk-sort-mode-select').addEventListener('change', (e) => { userSortMode = e.target.value; renderStorageView(); });
+    $('#sk-edit-mode-btn').onclick = () => {
+      editMode = !editMode;
+      $('#sk-edit-mode-btn').textContent = editMode ? '✓ 完了' : '✎ 編集モード';
+      $('#sk-edit-mode-btn').classList.toggle('active', editMode);
+    };
+
+    $('#sk-new-genre-btn').onclick = async () => {
+      const name = prompt('新しいジャンル名');
+      if (!name || !name.trim()) return;
+      const g = { id: uid(), name: name.trim(), color: PALETTE[notebook.genres.length % PALETTE.length], gallery: false };
+      notebook.genres.push(g);
+      await saveNotebook();
+      currentView = g.id;
+      renderTabs(); renderStorageView();
+    };
+
+    $('#sk-editor-close-btn').onclick = () => closeEditorSave();
+    $('#sk-editor-overlay').addEventListener('click', (e) => { if (e.target === $('#sk-editor-overlay')) closeEditorSave(); });
+    $('#sk-editor-fav-btn').onclick = () => { editorFavorite = !editorFavorite; updateEditorFavBtn(); };
+    $('#sk-editor-trash-btn').onclick = async () => {
+      if (!editingItemId) { closeEditorUI(); return; }
+      const it = notebook.items.find((x) => x.id === editingItemId);
+      if (it && confirm('ゴミ箱に移動しますか？')) { await trashItem(it); closeEditorUI(); }
+    };
+    $('#sk-image-modal').onclick = () => $('#sk-image-modal').classList.remove('active');
+
+    $('#sk-editor-image-input').addEventListener('change', (e) => { if (e.target.files && e.target.files.length) addPendingImages(e.target.files); });
+    const skEditorPanel = $('#sk-editor-panel');
+    skEditorPanel.addEventListener('dragover', (e) => { e.preventDefault(); skEditorPanel.classList.add('drag-over'); });
+    skEditorPanel.addEventListener('dragleave', () => skEditorPanel.classList.remove('drag-over'));
+    skEditorPanel.addEventListener('drop', (e) => { e.preventDefault(); skEditorPanel.classList.remove('drag-over'); if (e.dataTransfer.files && e.dataTransfer.files.length) addPendingImages(e.dataTransfer.files); });
+    document.addEventListener('paste', (e) => {
+      if (!$('#sk-editor-overlay').classList.contains('active')) return;
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      const files = [];
+      for (const item of items) { if (item.type && item.type.startsWith('image/')) { const f = item.getAsFile(); if (f) files.push(f); } }
+      if (files.length) { addPendingImages(files); e.preventDefault(); return; }
+      if (e.target !== $('#sk-editor-text')) {
+        const text = e.clipboardData.getData('text/plain');
+        if (text) {
+          const ta = $('#sk-editor-text');
+          const start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
+          const end = ta.selectionEnd != null ? ta.selectionEnd : ta.value.length;
+          ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
+          ta.selectionStart = ta.selectionEnd = start + text.length;
+          e.preventDefault();
+        }
+      }
+    });
+    $('#sk-editor-paste-btn').onclick = async () => {
+      try {
+        if (navigator.clipboard && navigator.clipboard.read) {
+          try {
+            let found = [];
+            for (let attempt = 0; attempt < 3 && !found.length; attempt++) {
+              const clipItems = await navigator.clipboard.read();
+              for (const item of clipItems) {
+                const type = item.types.find((t) => t.startsWith('image/'));
+                if (type) { const blob = await item.getType(type); found.push(new File([blob], 'clip.png', { type })); }
+              }
+              if (!found.length && attempt < 2) await new Promise((r) => setTimeout(r, 350));
+            }
+            if (found.length) { await addPendingImages(found); showCenterToast('✓ 貼り付けました'); return; }
+          } catch (e) { /* noop */ }
+        }
+        let text = '';
+        if (navigator.clipboard && navigator.clipboard.readText) text = await navigator.clipboard.readText();
+        if (!text && window.__sharedClipboard) {
+          const sc = window.__sharedClipboard;
+          if (sc.kind === 'images' && sc.blobs && sc.blobs.length) { await addPendingImages(sc.blobs); showCenterToast('✓ 貼り付けました'); return; }
+          if (sc.kind === 'text' && sc.text) text = sc.text;
+        }
+        if (!text) { showCenterToast('✕ 貼り付けられる内容が見つかりません'); return; }
+        const ta = $('#sk-editor-text');
+        const start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
+        const end = ta.selectionEnd != null ? ta.selectionEnd : ta.value.length;
+        ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
+        ta.selectionStart = ta.selectionEnd = start + text.length;
+        showCenterToast('✓ 貼り付けました');
+      } catch (e) { console.error(e); showCenterToast('✕ 貼り付けに失敗しました'); }
+    };
+    $('#sk-editor-copy-btn').onclick = () => {
+      const blobPromises = [
+        ...existingEditorImages.filter((img) => img.kept).map((img) => loadImageBlobById(img.imageId, img.imageIv, img.imageMime)),
+        ...pendingNewImages.map((img) => Promise.resolve(img.file)),
+      ];
+      if (blobPromises.length) {
+        const clipboardItems = blobPromises.map((p) => new ClipboardItem({
+          'image/png': (async () => { const blob = await p; if (!blob) throw new Error('no blob'); return await blobToPngBlob(blob); })(),
+        }));
+        navigator.clipboard.write(clipboardItems).then(() => showCenterToast('✓ コピーしました')).catch(() => showCenterToast('✕ コピーに失敗しました'));
+      } else {
+        navigator.clipboard.writeText($('#sk-editor-text').value).then(() => showCenterToast('✓ コピーしました')).catch(() => showCenterToast('✕ コピーに失敗しました'));
+      }
+    };
+
+    // 作業台：上段
+    $('#sk-wb-paste-btn').onclick = async () => {
+      try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          const text = await navigator.clipboard.readText();
+          if (text) { insertIntoWorkbench(text); return; }
+        }
+        if (window.__sharedClipboard && window.__sharedClipboard.kind === 'text' && window.__sharedClipboard.text) {
+          insertIntoWorkbench(window.__sharedClipboard.text); return;
+        }
+        showCenterToast('✕ 貼り付けられる内容が見つかりません');
+      } catch (e) { showCenterToast('✕ 貼り付けに失敗しました'); }
+    };
+    $('#sk-wb-copy-btn').onclick = () => {
+      navigator.clipboard.writeText($('#sk-wb-textarea').value).then(() => showCenterToast('✓ コピーしました')).catch(() => showCenterToast('✕ コピーに失敗しました'));
+    };
+    $('#sk-wb-clear-btn').onclick = () => { $('#sk-wb-textarea').value = ''; };
+    $('#sk-wb-save-btn').onclick = () => {
+      const text = $('#sk-wb-textarea').value.trim();
+      if (!text) { showCenterToast('内容が空です'); return; }
+      openEditor(null);
+      setTimeout(() => { $('#sk-editor-text').value = text; }, 60);
+    };
+    document.addEventListener('paste', (e) => {
+      if (wbView !== 'workbench' || !document.getElementById('sousaku-app').classList.contains('active')) return;
+      if (e.target === $('#sk-wb-textarea')) return; // 本文欄への直接貼り付けはブラウザ標準動作に任せる
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) { openWbQuickSaveDialog(file); e.preventDefault(); return; }
+        }
+      }
+      const text = e.clipboardData.getData('text/plain');
+      if (text) { insertIntoWorkbench(text); e.preventDefault(); }
+    });
+    $('#sk-quicksave-cancel-btn').onclick = () => { $('#sk-quicksave-overlay').classList.remove('active'); };
+  });
+})();
+
 
 // ===================== 素材帳 (Material Stock) =====================
 (function initMaterialStockApp(){
@@ -4108,7 +5349,7 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     }
     renderGrid();
-    showToast(`グループに${added.length}枚追加しました`);
+    showCenterToast(`✓ グループに${added.length}枚追加しました`);
   }
 
   function renderGroupCard(groupId, members) {
@@ -4702,7 +5943,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (url) revealedIds.add(newItem.id);
       }
       renderGrid();
-      if (!silent) showToast('素材を追加しました');
+      if (!silent) showCenterToast('✓ 素材を追加しました');
       return true;
     } catch (err) {
       console.error('[素材帳] 自動追加に失敗:', err);
@@ -4738,7 +5979,7 @@ window.addEventListener('DOMContentLoaded', () => {
           target.classList.add('ms-paste-target-flash');
         }
       } else if (addedCount === 1) {
-        showToast('素材を追加しました');
+        showCenterToast('✓ 素材を追加しました');
       } else {
         showToast(`${addedCount}枚を追加しました`);
       }
@@ -4788,8 +6029,8 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     let addedCount = 0;
     for (const f of files) { if (await autoAddImage(f, true)) addedCount++; }
-    if (addedCount === 1) showToast('素材を追加しました');
-    else if (addedCount > 1) showToast(`${addedCount}枚を追加しました`);
+    if (addedCount === 1) showCenterToast('✓ 素材を追加しました');
+    else if (addedCount > 1) showCenterToast(`✓ ${addedCount}枚を追加しました`);
   });
 
   // Ctrl+V（貼り付け）にも対応。ファイル管理ソフトでコピーしたファイルは
@@ -4810,8 +6051,8 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!files.length) return;
     let addedCount = 0;
     for (const f of files) { if (await autoAddImage(f, true)) addedCount++; }
-    if (addedCount === 1) showToast('素材を追加しました');
-    else if (addedCount > 1) showToast(`${addedCount}枚を追加しました`);
+    if (addedCount === 1) showCenterToast('✓ 素材を追加しました');
+    else if (addedCount > 1) showCenterToast(`✓ ${addedCount}枚を追加しました`);
   });
 
   // スマホでは編集可能な要素を長押ししないと「貼り付け」がOSメニューに出ないため、専用の入力欄を用意する
@@ -4907,9 +6148,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function showShell() {
     $('#master-login-screen').style.display = 'none';
     $('#main-shell').style.display = 'block';
-    const saved = localStorage.getItem('combinedNotebookMode');
-    const savedMode = saved === 'prompt' ? 'prompt' : 'copy'; // 素材帳は自動復元の対象にしない
-    activateMode(savedMode);
+    activateMode('sousaku'); // 素材帳は自動復元の対象にしない。それ以外は今は創作帳のみなので固定
   }
   function showLogin() {
     $('#main-shell').style.display = 'none';
@@ -4936,14 +6175,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
   function activateMode(mode) {
     document.documentElement.setAttribute('data-mode', mode);
-    $('#copy-app').classList.toggle('active', mode === 'copy');
-    $('#prompt-app').classList.toggle('active', mode === 'prompt');
+    $('#sousaku-app').classList.toggle('active', mode === 'sousaku');
     $('#material-app').classList.toggle('active', mode === 'material');
-    $('#mode-copy-btn').classList.toggle('active', mode === 'copy');
-    $('#mode-prompt-btn').classList.toggle('active', mode === 'prompt');
+    $('#mode-sousaku-btn').classList.toggle('active', mode === 'sousaku');
     $('#mode-material-btn').classList.toggle('active', mode === 'material');
-    $('#bnav-copy-btn').classList.toggle('active', mode === 'copy');
-    $('#bnav-prompt-btn').classList.toggle('active', mode === 'prompt');
+    $('#bnav-sousaku-btn').classList.toggle('active', mode === 'sousaku');
     $('#bnav-material-btn').classList.toggle('active', mode === 'material');
     if (mode === 'material') {
       $('#mode-material-btn').classList.add('revealed');
@@ -4964,6 +6200,10 @@ window.addEventListener('DOMContentLoaded', () => {
       window.__pnLoad(key, salt),
       window.__cpLoad(key, salt),
     ]);
+    // 創作帳はコピペ帳・プロンプト帳からの一回きりの移行に依存するため、両方の読み込み完了後に読み込む
+    if (window.__skLoad) {
+      try { await window.__skLoad(key, salt); } catch (e) { console.error('[創作帳] 読み込みに失敗しました', e); }
+    }
     showShell();
   }
 
@@ -5004,6 +6244,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function lockAll() {
+    if (window.__skReset) window.__skReset();
     if (window.__cpReset) window.__cpReset();
     if (window.__pnReset) window.__pnReset();
     if (window.__msReset) window.__msReset();
@@ -5041,27 +6282,20 @@ window.addEventListener('DOMContentLoaded', () => {
     container.innerHTML = '';
     if (!query) { container.innerHTML = '<div class="gs-empty">キーワードを入力してください</div>'; return; }
     const q = query.toLowerCase();
-    const cpItems = (window.__cpGetSearchIndex ? window.__cpGetSearchIndex() : [])
-      .filter((it) => it.title.toLowerCase().includes(q) || it.text.toLowerCase().includes(q))
-      .map((it) => ({ ...it, app: 'cp' }));
-    const pnItems = (window.__pnGetSearchIndex ? window.__pnGetSearchIndex() : [])
-      .filter((it) => it.title.toLowerCase().includes(q) || it.text.toLowerCase().includes(q))
-      .map((it) => ({ ...it, app: 'pn' }));
-    const all = [...cpItems, ...pnItems];
+    const all = (window.__skGetSearchIndex ? window.__skGetSearchIndex() : [])
+      .filter((it) => it.title.toLowerCase().includes(q) || it.text.toLowerCase().includes(q));
     if (!all.length) { container.innerHTML = '<div class="gs-empty">見つかりませんでした</div>'; return; }
     all.forEach((it) => {
       const row = document.createElement('div');
       row.className = 'gs-result-row';
-      const appLabel = it.app === 'cp' ? '📋 コピペ帳' : '🗒 プロンプト帳';
       const preview = (it.text || '').replace(/\n/g, ' ').slice(0, 60);
       row.innerHTML = `
-        <div class="gs-result-meta">${appLabel}${it.genreName ? ' ・ ' + escapeHtmlGs(it.genreName) : ''}${it.hasImage ? ' 🖼' : ''}</div>
+        <div class="gs-result-meta">${it.genreName ? escapeHtmlGs(it.genreName) : ''}${it.hasImage ? ' 🖼' : ''}</div>
         <div class="gs-result-title">${escapeHtmlGs(it.title || preview || '(無題)')}</div>
         ${it.title ? `<div class="gs-result-preview">${escapeHtmlGs(preview)}</div>` : ''}
       `;
       row.onclick = () => {
-        if (it.app === 'cp' && window.__cpCopyById) window.__cpCopyById(it.id);
-        else if (it.app === 'pn' && window.__pnCopyById) window.__pnCopyById(it.id);
+        if (window.__skCopyById) window.__skCopyById(it.id);
         closeGlobalSearch();
       };
       container.appendChild(row);
@@ -5121,7 +6355,7 @@ window.addEventListener('DOMContentLoaded', () => {
             }
           }
           if (!text && !imageBlob) continue;
-          const destination = imageBlob && text ? 'pn' : (imageBlob ? 'ms' : 'pn');
+          const destination = imageBlob && text ? 'sk' : (imageBlob ? 'ms' : 'sk');
           notes.push({ id: keepUid(), title, text, imageBlob, destination, selected: true });
         } catch (e) { console.warn('[Keep取込] メモの解析に失敗:', name, e); }
       }
@@ -5173,7 +6407,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const select = document.createElement('select');
     select.className = 'keep-import-dest';
-    [['pn', 'プロンプト帳'], ['ms', '素材帳'], ['both', '両方'], ['skip', 'スキップ']].forEach(([val, label]) => {
+    [['sk', '創作帳'], ['ms', '素材帳'], ['both', '両方'], ['skip', 'スキップ']].forEach(([val, label]) => {
       const opt = document.createElement('option');
       opt.value = val; opt.textContent = label;
       select.appendChild(opt);
@@ -5246,8 +6480,8 @@ window.addEventListener('DOMContentLoaded', () => {
     for (const note of targets) {
       progEl.textContent = `取り込み中… ${done + 1} / ${targets.length}`;
       try {
-        if ((note.destination === 'pn' || note.destination === 'both') && window.__pnImportOne) {
-          await window.__pnImportOne({ title: note.title, text: note.text, imageBlob: note.imageBlob });
+        if ((note.destination === 'sk' || note.destination === 'both') && window.__skImportOne) {
+          await window.__skImportOne({ title: note.title, text: note.text, imageBlob: note.imageBlob });
         }
         if ((note.destination === 'ms' || note.destination === 'both') && note.imageBlob && window.__msImportOne) {
           await window.__msImportOne({ imageBlob: note.imageBlob, memo: note.title || '' });
@@ -5311,6 +6545,9 @@ window.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      progEl.textContent = '創作帳を更新しています（画像を含むため時間がかかる場合があります）…';
+      await window.__skReencrypt(oldKey, newKey, newSalt);
+
       progEl.textContent = 'コピペ帳を更新しています…';
       await window.__cpReencrypt(oldKey, newKey, newSalt);
 
@@ -5341,11 +6578,9 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#master-password-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') attemptUnlock($('#master-password-input').value);
     });
-    $('#mode-copy-btn').onclick = () => activateMode('copy');
-    $('#mode-prompt-btn').onclick = () => activateMode('prompt');
+    $('#mode-sousaku-btn').onclick = () => activateMode('sousaku');
     $('#mode-material-btn').onclick = () => activateMode('material');
-    $('#bnav-copy-btn').onclick = () => activateMode('copy');
-    $('#bnav-prompt-btn').onclick = () => activateMode('prompt');
+    $('#bnav-sousaku-btn').onclick = () => activateMode('sousaku');
     $('#bnav-material-btn').onclick = () => activateMode('material');
 
     // 素材帳ボタンの表示切り替え（👁）。この表示状態はどこにも保存せず、リロードのたびに必ず非表示に戻る
