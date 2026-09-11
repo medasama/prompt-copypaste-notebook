@@ -108,10 +108,10 @@ textarea, input { font-family: inherit; }
 #sk-storage-view { display: flex; min-height: 100%; }
 .sk-sidebar-col { display: flex; flex-direction: column; flex-shrink: 0; }
 
-.spiral { width: 34px; flex-shrink: 0; background: linear-gradient(90deg, transparent 0 15px, var(--rule-strong) 15px 17px, transparent 17px); display: flex; flex-direction: column; align-items: center; padding-top: 90px; gap: 22px; }
+.spiral { width: 34px; flex-shrink: 0; background: linear-gradient(90deg, transparent 0 15px, var(--rule-strong) 15px 17px, transparent 17px); display: flex; flex-direction: column; align-items: center; padding-top: 18px; gap: 22px; }
 .spiral span { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--rule-strong); background: var(--paper); }
 
-.tabs { width: 168px; flex-shrink: 0; padding: 78px 0 20px; display: flex; flex-direction: column; gap: 6px; }
+.tabs { width: 168px; flex-shrink: 0; padding: 14px 0 20px; display: flex; flex-direction: column; gap: 6px; }
 .tab-btn { border: none; padding: 10px 14px; text-align: left; font-size: 13px; font-weight: 500; color: #fff; border-radius: 0 20px 20px 0; margin-right: 14px; box-shadow: var(--shadow); opacity: 0.72; transition: opacity 0.15s, transform 0.15s; }
 .tab-btn.tab-drag-over { outline: 3px dashed #fff; outline-offset: 2px; opacity: 1; }
 .tab-btn:hover { opacity: 0.9; transform: translateX(2px); }
@@ -569,6 +569,10 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
   background: rgba(0,0,0,.45); color: rgba(255,255,255,.6); font-size: 10px; cursor: pointer;
 }
 .sk-gallery-fav.on { color: #ffd85e; }
+.sk-gallery-copy {
+  position: absolute; bottom: 4px; right: 4px; width: 20px; height: 20px; border-radius: 5px; border: none;
+  background: rgba(0,0,0,.55); color: #fff; font-size: 10px; cursor: pointer;
+}
 .sk-gallery-dup { position: absolute; top: 4px; left: 4px; font-size: 10px; }
 .sk-gallery-caption { font-size: 10px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 
@@ -651,7 +655,6 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
     <div class="main">
       <div class="main-header">
         <div class="header-actions">
-          <button class="edit-mode-btn" id="sk-edit-mode-btn">✎ 編集モード</button>
           <button class="lock-btn" id="sk-export-btn">⬇ 書き出し</button>
           <label class="lock-btn file-label" id="sk-import-label">⬆ 読み込み
             <input type="file" id="sk-import-input" accept="application/json" style="display:none;">
@@ -4254,7 +4257,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function renderRow(item, showGenreBadge, isNearDup) {
     const row = document.createElement('div');
     row.className = 'item-row';
-    row.onclick = () => handleRowTap(item);
+    row.onclick = () => openEditor(item);
 
     const starBtn = document.createElement('button');
     starBtn.className = 'item-star' + (item.favorite ? ' active' : '');
@@ -4311,12 +4314,12 @@ window.addEventListener('DOMContentLoaded', () => {
     main.appendChild(titleEl); main.appendChild(previewEl);
     row.appendChild(main);
 
-    const editBtn = document.createElement('button');
-    editBtn.className = 'sk-row-edit-btn';
-    editBtn.textContent = '✎';
-    editBtn.title = '編集';
-    editBtn.onclick = (e) => { e.stopPropagation(); openEditor(item); };
-    row.appendChild(editBtn);
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'sk-row-edit-btn';
+    copyBtn.textContent = '📋';
+    copyBtn.title = 'コピー';
+    copyBtn.onclick = (e) => { e.stopPropagation(); copyItem(item); };
+    row.appendChild(copyBtn);
 
     return row;
   }
@@ -4328,7 +4331,7 @@ window.addEventListener('DOMContentLoaded', () => {
     thumb.className = 'sk-gallery-thumb';
     let loadedUrl = null;
     loadFirstImageUrl(item).then((url) => { if (url) { thumb.style.backgroundImage = `url(${url})`; loadedUrl = url; } });
-    attachLongPress(thumb, () => { if (loadedUrl) openImageModal(loadedUrl); }, () => handleRowTap(item));
+    attachLongPress(thumb, () => { if (loadedUrl) openImageModal(loadedUrl); }, () => openEditor(item));
     if (isNearDup) {
       const b = document.createElement('span'); b.className = 'near-dup-badge sk-gallery-dup'; b.textContent = '🔴';
       thumb.appendChild(b);
@@ -4338,6 +4341,12 @@ window.addEventListener('DOMContentLoaded', () => {
     starBtn.textContent = '★';
     starBtn.onclick = async (e) => { e.stopPropagation(); item.favorite = !item.favorite; await saveNotebook(); renderStorageView(); };
     thumb.appendChild(starBtn);
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'sk-gallery-copy';
+    copyBtn.textContent = '📋';
+    copyBtn.title = 'コピー';
+    copyBtn.onclick = (e) => { e.stopPropagation(); copyItem(item); };
+    thumb.appendChild(copyBtn);
     card.appendChild(thumb);
     const cap = document.createElement('div');
     cap.className = 'sk-gallery-caption';
@@ -4772,11 +4781,6 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-fab-add-btn').onclick = () => openEditor(null);
     $('#sk-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderStorageView(); });
     $('#sk-sort-mode-select').addEventListener('change', (e) => { userSortMode = e.target.value; renderStorageView(); });
-    $('#sk-edit-mode-btn').onclick = () => {
-      editMode = !editMode;
-      $('#sk-edit-mode-btn').textContent = editMode ? '✓ 完了' : '✎ 編集モード';
-      $('#sk-edit-mode-btn').classList.toggle('active', editMode);
-    };
 
     $('#sk-new-genre-btn').onclick = async () => {
       const name = prompt('新しいジャンル名');
