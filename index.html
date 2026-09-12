@@ -671,6 +671,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
           <option value="frequency">並び替え：よく使う順</option>
           <option value="similar">並び替え：似ている順</option>
         </select>
+        <button class="lock-btn" id="sk-reveal-all-btn" style="display:none;">👁 一括表示/非表示</button>
       </div>
 
       <button class="fab-add-btn" id="sk-fab-add-btn" title="新規追加">＋</button>
@@ -4245,6 +4246,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const nearDupIds = computeNearDuplicateIds(items);
     $('#sk-empty-state').style.display = items.length ? 'none' : 'block';
 
+    $('#sk-reveal-all-btn').style.display = isGallery ? 'block' : 'none';
+
     if (isGallery) {
       galleryEl.style.display = 'grid'; listEl.style.display = 'none';
       items.forEach((it) => galleryEl.appendChild(renderGalleryCard(it, nearDupIds.has(it.id))));
@@ -4329,9 +4332,25 @@ window.addEventListener('DOMContentLoaded', () => {
     card.className = 'sk-gallery-card';
     const thumb = document.createElement('div');
     thumb.className = 'sk-gallery-thumb';
+    const revealed = sk_revealedIds.has(item.id);
     let loadedUrl = null;
-    loadFirstImageUrl(item).then((url) => { if (url) { thumb.style.backgroundImage = `url(${url})`; loadedUrl = url; } });
-    attachLongPress(thumb, () => { if (loadedUrl) openImageModal(loadedUrl); }, () => openEditor(item));
+
+    if (revealed) {
+      loadFirstImageUrl(item).then((url) => { if (url) { thumb.style.backgroundImage = `url(${url})`; loadedUrl = url; } });
+      attachLongPress(thumb, () => { if (loadedUrl) openImageModal(loadedUrl); }, () => openEditor(item));
+    } else {
+      const veil = document.createElement('div');
+      veil.className = 'ms-veil-icon';
+      veil.innerHTML = '🖼<span>タップで表示</span>';
+      thumb.appendChild(veil);
+      thumb.onclick = async () => {
+        const url = await loadFirstImageUrl(item);
+        if (!url) return;
+        sk_revealedIds.add(item.id);
+        renderStorageView();
+      };
+    }
+
     if (isNearDup) {
       const b = document.createElement('span'); b.className = 'near-dup-badge sk-gallery-dup'; b.textContent = '🔴';
       thumb.appendChild(b);
@@ -4341,12 +4360,14 @@ window.addEventListener('DOMContentLoaded', () => {
     starBtn.textContent = '★';
     starBtn.onclick = async (e) => { e.stopPropagation(); item.favorite = !item.favorite; await saveNotebook(); renderStorageView(); };
     thumb.appendChild(starBtn);
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'sk-gallery-copy';
-    copyBtn.textContent = '📋';
-    copyBtn.title = 'コピー';
-    copyBtn.onclick = (e) => { e.stopPropagation(); copyItem(item); };
-    thumb.appendChild(copyBtn);
+    if (revealed) {
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'sk-gallery-copy';
+      copyBtn.textContent = '📋';
+      copyBtn.title = 'コピー';
+      copyBtn.onclick = (e) => { e.stopPropagation(); copyItem(item); };
+      thumb.appendChild(copyBtn);
+    }
     card.appendChild(thumb);
     const cap = document.createElement('div');
     cap.className = 'sk-gallery-caption';
@@ -4612,6 +4633,8 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
   let wbGenreView = null;
+  const sk_revealedIds = new Set(); // タップで表示したギャラリー画像id（セッション限りで永続化しない）
+  let sk_bulkRevealState = false;
   function renderWorkbenchBrowser() {
     if (!notebook) return;
     const list = $('#sk-wb-browser-list');
@@ -4654,7 +4677,7 @@ window.addEventListener('DOMContentLoaded', () => {
     wbView = view;
     $('#sk-view-storage-btn').classList.toggle('active', view === 'storage');
     $('#sk-view-workbench-btn').classList.toggle('active', view === 'workbench');
-    $('#sk-storage-view').style.display = view === 'storage' ? 'block' : 'none';
+    $('#sk-storage-view').style.display = view === 'storage' ? 'flex' : 'none';
     $('#sk-workbench-view').style.display = view === 'workbench' ? 'flex' : 'none';
     if (view === 'workbench') { renderWorkbenchTabs(); renderWorkbenchBrowser(); }
   }
@@ -4728,6 +4751,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   window.__skReset = function () {
     encKey = null; cachedSalt = null; notebook = null; currentView = null; editMode = false;
+    sk_revealedIds.clear();
+    sk_bulkRevealState = false;
     $('#sk-app-screen').classList.remove('active');
   };
 
@@ -4795,6 +4820,28 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-fab-add-btn').onclick = () => openEditor(null);
     $('#sk-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderStorageView(); });
     $('#sk-sort-mode-select').addEventListener('change', (e) => { userSortMode = e.target.value; renderStorageView(); });
+    $('#sk-reveal-all-btn').addEventListener('click', async () => {
+      const items = notebook.items.filter((it) => it.genreId === currentView && !it.trashed);
+      const anyHidden = items.some((it) => !sk_revealedIds.has(it.id));
+      const btn = $('#sk-reveal-all-btn');
+      if (anyHidden) {
+        sk_bulkRevealState = true;
+        btn.disabled = true;
+        btn.textContent = '読み込み中…';
+        for (const it of items) {
+          if (!sk_revealedIds.has(it.id)) {
+            const url = await loadFirstImageUrl(it);
+            if (url) sk_revealedIds.add(it.id);
+          }
+        }
+        btn.disabled = false;
+        btn.textContent = '👁 一括表示/非表示';
+      } else {
+        sk_bulkRevealState = false;
+        items.forEach((it) => sk_revealedIds.delete(it.id));
+      }
+      renderStorageView();
+    });
 
     $('#sk-new-genre-btn').onclick = async () => {
       const name = prompt('新しいジャンル名');
