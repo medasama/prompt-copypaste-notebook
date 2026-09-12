@@ -4404,21 +4404,35 @@ window.addEventListener('DOMContentLoaded', () => {
   function attachLongPress(el, onLongPress, onTap) {
     let timer = null;
     let firedLong = false;
-    const start = () => {
+    let moved = false;
+    let startX = 0, startY = 0;
+    const getPoint = (e) => (e.touches && e.touches[0]) ? e.touches[0] : e;
+    const start = (e) => {
       firedLong = false;
+      moved = false;
+      const pt = getPoint(e);
+      startX = pt.clientX; startY = pt.clientY;
       timer = setTimeout(() => { firedLong = true; onLongPress(); }, 480);
+    };
+    const move = (e) => {
+      const pt = getPoint(e);
+      if (Math.abs(pt.clientX - startX) > 10 || Math.abs(pt.clientY - startY) > 10) {
+        moved = true;
+        clearTimeout(timer); // 指が動いた＝スクロールとみなし、長押し判定も打ち切る
+      }
     };
     const cancel = () => { clearTimeout(timer); };
     const end = (e) => {
       clearTimeout(timer);
-      if (!firedLong) onTap(e);
+      if (!firedLong && !moved) onTap(e); // 長押しでもスクロールでもない、純粋なタップの時だけ発火
     };
     el.addEventListener('mousedown', start);
+    el.addEventListener('mousemove', move);
     el.addEventListener('mouseup', end);
     el.addEventListener('mouseleave', cancel);
     el.addEventListener('touchstart', start, { passive: true });
-    el.addEventListener('touchend', (e) => { e.preventDefault(); end(e); });
-    el.addEventListener('touchmove', cancel);
+    el.addEventListener('touchmove', move, { passive: true });
+    el.addEventListener('touchend', end);
     el.addEventListener('contextmenu', (e) => e.preventDefault()); // スマホの長押しメニューを防ぐ
   }
 
