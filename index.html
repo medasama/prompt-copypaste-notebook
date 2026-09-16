@@ -316,11 +316,14 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
   .main-header { margin-bottom: 6px; gap: 4px 10px; }
   .header-actions { gap: 6px; }
   #cp-export-btn, #cp-import-label, #pn-export-btn, #pn-import-label { display: none; }
+  #sk-export-btn, #sk-import-label { display: none; } /* モバイルでは使用頻度が低いため隠す（PCでは引き続き表示） */
 
-  .list-toolbar { margin-bottom: 8px; gap: 6px; }
+  .list-toolbar { margin-bottom: 6px; gap: 6px; }
   .add-new-btn { padding: 8px 12px; font-size: 12.5px; }
-  .search-input { padding: 8px 12px; font-size: 12.5px; }
-  .sort-mode-select { padding: 8px 8px; font-size: 11.5px; }
+  #sk-add-new-btn { display: none; } /* 右下の＋ボタン（FAB）で代用するため隠す */
+  .search-input { padding: 7px 10px; font-size: 12px; flex: 1 1 auto; }
+  .sort-mode-select { padding: 7px 6px; font-size: 10.5px; flex: 0 1 auto; }
+  #sk-reveal-all-btn { padding: 7px 8px; font-size: 10.5px; white-space: nowrap; }
 
   .prompt-card { padding: 8px 12px; margin-bottom: 6px; }
   .prompt-card .thumb { width: 38px; height: 38px; }
@@ -604,6 +607,15 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 .sk-wb-browser-thumb { width: 34px; height: 34px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
 .sk-wb-browser-text { font-size: 12.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+.sk-wb-browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; align-content: start; }
+.sk-wb-browser-cell { display: flex; flex-direction: column; gap: 2px; cursor: pointer; }
+.sk-wb-browser-cell-thumb {
+  width: 100%; aspect-ratio: 1; border-radius: 8px; background-size: cover; background-position: center;
+  background-color: var(--paper-card); border: 1px solid var(--rule-strong);
+}
+.sk-wb-browser-cell-noimg { display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.sk-wb-browser-cell-cap { font-size: 9.5px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+
 .sk-toast {
   position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: #2b2a25; color: #fff;
   padding: 10px 16px; border-radius: 999px; font-size: 13px; display: flex; align-items: center; gap: 10px;
@@ -739,6 +751,20 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
     <div class="genre-move-chips" id="sk-quicksave-cats"></div>
     <div class="dialog-actions">
       <button class="cancel" id="sk-quicksave-cancel-btn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-overlay" id="sk-wb-preview-overlay">
+  <div class="dialog" style="width:min(480px, 92vw); max-height:80vh; display:flex; flex-direction:column;">
+    <h3 id="sk-wb-preview-title">内容を確認</h3>
+    <img id="sk-wb-preview-image" style="display:none; width:100%; max-height:220px; object-fit:contain; border-radius:10px; margin-bottom:10px; background:var(--paper-card);">
+    <textarea id="sk-wb-preview-text" readonly style="flex:1; min-height:120px; resize:none; border:1px solid var(--rule-strong); border-radius:10px; padding:10px; font-size:13px; line-height:1.6; background:var(--paper-card); color:var(--ink);"></textarea>
+    <p class="paste-hint" style="margin-top:6px;">一部だけ使いたい場合は、上の本文を選択してから「選択部分を差し込む」を押してください</p>
+    <div class="dialog-actions">
+      <button class="cancel" id="sk-wb-preview-cancel-btn">閉じる</button>
+      <button class="confirm" id="sk-wb-preview-partial-btn">選択部分を差し込む</button>
+      <button class="confirm" id="sk-wb-preview-insert-btn">全部差し込む</button>
     </div>
   </div>
 </div>
@@ -1292,6 +1318,22 @@ function reorderBySimilarity(items, threshold = 0.55) {
 // OSのクリップボードAPIに頼らず、こちらを使って確実に受け渡しできるようにする。
 // { kind: 'text', text } または { kind: 'image'|'images', blobs: [Blob,...] }
 window.__sharedClipboard = null;
+
+// 他の作業から戻ってきた時、ズームしたままになっていたら自動で100%に戻す
+// （iOSはピンチズーム自体を完全に禁止できないため、戻ってきた時にリセットする対策）
+(function setupAutoZoomReset() {
+  const viewportMeta = document.querySelector('meta[name="viewport"]');
+  if (!viewportMeta) return;
+  const baseContent = viewportMeta.getAttribute('content');
+  function resetZoom() {
+    // 一度別の値にしてから元に戻すことで、ブラウザに再適用を強制させる
+    viewportMeta.setAttribute('content', baseContent + ', maximum-scale=1.0');
+    setTimeout(() => { viewportMeta.setAttribute('content', baseContent); }, 60);
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) resetZoom(); });
+  window.addEventListener('focus', resetZoom);
+  window.addEventListener('pageshow', resetZoom);
+})();
 
 /* ===================== コピペ帳 (CP) / プロンプト帳 (PN) の本体スクリプトはこの下に続く ===================== */
 
@@ -4636,6 +4678,22 @@ window.addEventListener('DOMContentLoaded', () => {
   let wbGenreView = null;
   const sk_revealedIds = new Set(); // タップで表示したギャラリー画像id（セッション限りで永続化しない）
   let sk_bulkRevealState = false;
+  let sk_wbPreviewItem = null;
+  function openWbPreviewDialog(item) {
+    sk_wbPreviewItem = item;
+    $('#sk-wb-preview-title').textContent = item.title || '(無題)';
+    $('#sk-wb-preview-text').value = item.text || '';
+    const imgs = itemImages(item);
+    const imgEl = $('#sk-wb-preview-image');
+    if (imgs.length) {
+      imgEl.style.display = 'none';
+      loadFirstImageUrl(item).then((url) => { if (url) { imgEl.src = url; imgEl.style.display = 'block'; } });
+    } else {
+      imgEl.style.display = 'none'; imgEl.src = '';
+    }
+    $('#sk-wb-preview-overlay').classList.add('active');
+  }
+
   function renderWorkbenchBrowser() {
     if (!notebook) return;
     const list = $('#sk-wb-browser-list');
@@ -4643,23 +4701,42 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!wbGenreView && notebook.genres[0]) wbGenreView = notebook.genres[0].id;
     const items = notebook.items.filter((it) => it.genreId === wbGenreView && !it.trashed)
       .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-    items.forEach((it) => {
-      const row = document.createElement('div');
-      row.className = 'sk-wb-browser-row';
-      const imgs = itemImages(it);
-      if (imgs.length) {
-        const img = document.createElement('img');
-        img.className = 'sk-wb-browser-thumb';
-        loadFirstImageUrl(it).then((url) => { if (url) img.src = url; });
-        row.appendChild(img);
-      }
-      const text = document.createElement('div');
-      text.className = 'sk-wb-browser-text';
-      text.textContent = it.title || (it.text || '').slice(0, 40) || '(画像)';
-      row.appendChild(text);
-      row.onclick = () => insertIntoWorkbench(it.text || '');
-      list.appendChild(row);
-    });
+    const anyImages = items.some((it) => itemImages(it).length > 0);
+
+    if (anyImages) {
+      list.className = 'sk-wb-browser-list sk-wb-browser-grid';
+      items.forEach((it) => {
+        const cell = document.createElement('div');
+        cell.className = 'sk-wb-browser-cell';
+        const imgs = itemImages(it);
+        const thumb = document.createElement('div');
+        thumb.className = 'sk-wb-browser-cell-thumb' + (imgs.length ? '' : ' sk-wb-browser-cell-noimg');
+        if (imgs.length) {
+          loadFirstImageUrl(it).then((url) => { if (url) thumb.style.backgroundImage = `url(${url})`; });
+        } else {
+          thumb.textContent = '📝';
+        }
+        cell.appendChild(thumb);
+        const cap = document.createElement('div');
+        cap.className = 'sk-wb-browser-cell-cap';
+        cap.textContent = it.title || (it.text || '').slice(0, 16) || '(無題)';
+        cell.appendChild(cap);
+        cell.onclick = () => openWbPreviewDialog(it);
+        list.appendChild(cell);
+      });
+    } else {
+      list.className = 'sk-wb-browser-list';
+      items.forEach((it) => {
+        const row = document.createElement('div');
+        row.className = 'sk-wb-browser-row';
+        const text = document.createElement('div');
+        text.className = 'sk-wb-browser-text';
+        text.textContent = it.title || (it.text || '').slice(0, 40) || '(画像)';
+        row.appendChild(text);
+        row.onclick = () => openWbPreviewDialog(it);
+        list.appendChild(row);
+      });
+    }
   }
   function insertIntoWorkbench(text) {
     const ta = $('#sk-wb-textarea');
@@ -4680,7 +4757,23 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-view-workbench-btn').classList.toggle('active', view === 'workbench');
     $('#sk-storage-view').style.display = view === 'storage' ? 'flex' : 'none';
     $('#sk-workbench-view').style.display = view === 'workbench' ? 'flex' : 'none';
-    if (view === 'workbench') { renderWorkbenchTabs(); renderWorkbenchBrowser(); }
+    if (view === 'workbench') { renderWorkbenchTabs(); renderWorkbenchBrowser(); adjustWorkbenchForKeyboard(); }
+  }
+
+  // スマホでキーボードが出た時、作業台の枠が画面外にはみ出さないよう、
+  // 実際に見えている範囲（visualViewport）に合わせて高さ・位置を追従させる
+  function adjustWorkbenchForKeyboard() {
+    if (!window.visualViewport) return;
+    const el = $('#sk-workbench-view');
+    if (!el || el.style.display === 'none') return;
+    const vv = window.visualViewport;
+    el.style.top = Math.max(vv.offsetTop, 0) + 'px';
+    el.style.height = vv.height + 'px';
+    el.style.bottom = 'auto';
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', adjustWorkbenchForKeyboard);
+    window.visualViewport.addEventListener('scroll', adjustWorkbenchForKeyboard);
   }
 
   // 下段への直接貼り付け→その場でカテゴリを選んで保管庫に保存
@@ -4823,9 +4916,8 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-sort-mode-select').addEventListener('change', (e) => { userSortMode = e.target.value; renderStorageView(); });
     $('#sk-reveal-all-btn').addEventListener('click', async () => {
       const items = notebook.items.filter((it) => it.genreId === currentView && !it.trashed);
-      const anyHidden = items.some((it) => !sk_revealedIds.has(it.id));
       const btn = $('#sk-reveal-all-btn');
-      if (anyHidden) {
+      if (!sk_bulkRevealState) {
         sk_bulkRevealState = true;
         btn.disabled = true;
         btn.textContent = '読み込み中…';
@@ -4980,6 +5072,20 @@ window.addEventListener('DOMContentLoaded', () => {
       if (text) { openWbQuickSaveDialog(null, text); e.preventDefault(); }
     });
     $('#sk-quicksave-cancel-btn').onclick = () => { $('#sk-quicksave-overlay').classList.remove('active'); };
+
+    $('#sk-wb-preview-cancel-btn').onclick = () => { $('#sk-wb-preview-overlay').classList.remove('active'); };
+    $('#sk-wb-preview-overlay').addEventListener('click', (e) => { if (e.target === $('#sk-wb-preview-overlay')) $('#sk-wb-preview-overlay').classList.remove('active'); });
+    $('#sk-wb-preview-insert-btn').onclick = () => {
+      if (sk_wbPreviewItem) insertIntoWorkbench(sk_wbPreviewItem.text || '');
+      $('#sk-wb-preview-overlay').classList.remove('active');
+    };
+    $('#sk-wb-preview-partial-btn').onclick = () => {
+      const ta = $('#sk-wb-preview-text');
+      const selected = ta.value.slice(ta.selectionStart, ta.selectionEnd);
+      if (!selected) { alert('本文の一部を選択してから押してください'); return; }
+      insertIntoWorkbench(selected);
+      $('#sk-wb-preview-overlay').classList.remove('active');
+    };
   });
 })();
 
