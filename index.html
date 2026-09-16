@@ -4670,16 +4670,21 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // ============== 作業台 ==============
   function renderWorkbenchTabs() {
-    if (!notebook) return;
-    const container = $('#sk-wb-tabs');
-    container.innerHTML = '';
-    notebook.genres.forEach((g) => {
-      const btn = document.createElement('button');
-      btn.className = 'tab-btn' + (wbGenreView === g.id ? ' active' : '');
-      btn.style.background = g.color; btn.textContent = g.name;
-      btn.onclick = () => { wbGenreView = g.id; renderWorkbenchTabs(); renderWorkbenchBrowser(); };
-      container.appendChild(btn);
-    });
+    try {
+      if (!notebook) return;
+      const container = $('#sk-wb-tabs');
+      container.innerHTML = '';
+      notebook.genres.forEach((g) => {
+        const btn = document.createElement('button');
+        btn.className = 'tab-btn' + (wbGenreView === g.id ? ' active' : '');
+        btn.style.background = g.color; btn.textContent = g.name;
+        btn.onclick = () => { wbGenreView = g.id; renderWorkbenchTabs(); renderWorkbenchBrowser(); };
+        container.appendChild(btn);
+      });
+    } catch (e) {
+      console.error('[創作帳] renderWorkbenchTabsでエラー:', e);
+      alert(`[診断] 作業台タブの表示でエラー\n${e && e.name}: ${e && e.message}\n${e && e.stack ? e.stack.slice(0, 500) : ''}`);
+    }
   }
   let wbGenreView = null;
   const sk_revealedIds = new Set(); // タップで表示したギャラリー画像id（セッション限りで永続化しない）
@@ -4701,50 +4706,14 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderWorkbenchBrowser() {
-    if (!notebook) return;
-    const list = $('#sk-wb-browser-list');
-    list.innerHTML = '';
-    if (!wbGenreView && notebook.genres[0]) wbGenreView = notebook.genres[0].id;
-    const items = notebook.items.filter((it) => it.genreId === wbGenreView && !it.trashed)
-      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-    const anyImages = items.some((it) => itemImages(it).length > 0);
-
-    if (anyImages) {
-      list.className = 'sk-wb-browser-list sk-wb-browser-grid';
-      $('#sk-wb-reveal-all-btn').style.display = 'inline-block';
-      items.forEach((it) => {
-        const cell = document.createElement('div');
-        cell.className = 'sk-wb-browser-cell';
-        const imgs = itemImages(it);
-        const revealed = sk_revealedIds.has(it.id);
-        const thumb = document.createElement('div');
-        thumb.className = 'sk-wb-browser-cell-thumb' + (imgs.length ? '' : ' sk-wb-browser-cell-noimg');
-        if (!imgs.length) {
-          thumb.textContent = '📝';
-          cell.onclick = () => openWbPreviewDialog(it);
-        } else if (revealed) {
-          loadFirstImageUrl(it).then((url) => { if (url) thumb.style.backgroundImage = `url(${url})`; });
-          cell.onclick = () => openWbPreviewDialog(it);
-        } else {
-          const veil = document.createElement('div');
-          veil.className = 'ms-veil-icon';
-          veil.innerHTML = '🖼<span>タップで表示</span>';
-          thumb.appendChild(veil);
-          cell.onclick = async () => {
-            const url = await loadFirstImageUrl(it);
-            if (url) sk_revealedIds.add(it.id);
-            renderWorkbenchBrowser();
-          };
-        }
-        cell.appendChild(thumb);
-        const cap = document.createElement('div');
-        cap.className = 'sk-wb-browser-cell-cap';
-        cap.textContent = it.title || (it.text || '').slice(0, 16) || '(無題)';
-        cell.appendChild(cap);
-        list.appendChild(cell);
-      });
-    } else {
+    try {
+      if (!notebook) return;
+      const list = $('#sk-wb-browser-list');
+      list.innerHTML = '';
       $('#sk-wb-reveal-all-btn').style.display = 'none';
+      if (!wbGenreView && notebook.genres[0]) wbGenreView = notebook.genres[0].id;
+      const items = notebook.items.filter((it) => it.genreId === wbGenreView && !it.trashed)
+        .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
       list.className = 'sk-wb-browser-list';
       items.forEach((it) => {
         const row = document.createElement('div');
@@ -4756,6 +4725,9 @@ window.addEventListener('DOMContentLoaded', () => {
         row.onclick = () => openWbPreviewDialog(it);
         list.appendChild(row);
       });
+    } catch (e) {
+      console.error('[創作帳] renderWorkbenchBrowserでエラー:', e);
+      alert(`[診断] 下段の表示でエラー\n${e && e.name}: ${e && e.message}\n${e && e.stack ? e.stack.slice(0, 500) : ''}`);
     }
   }
   function insertIntoWorkbench(text) {
@@ -4772,40 +4744,25 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function switchToView(view) {
-    wbView = view;
-    $('#sk-view-storage-btn').classList.toggle('active', view === 'storage');
-    $('#sk-view-workbench-btn').classList.toggle('active', view === 'workbench');
-    $('#sk-storage-view').style.display = view === 'storage' ? 'flex' : 'none';
-    $('#sk-workbench-view').style.display = view === 'workbench' ? 'flex' : 'none';
-    if (view === 'workbench') { renderWorkbenchTabs(); renderWorkbenchBrowser(); adjustWorkbenchForKeyboard(); }
+    try {
+      wbView = view;
+      $('#sk-view-storage-btn').classList.toggle('active', view === 'storage');
+      $('#sk-view-workbench-btn').classList.toggle('active', view === 'workbench');
+      $('#sk-storage-view').style.display = view === 'storage' ? 'flex' : 'none';
+      $('#sk-workbench-view').style.display = view === 'workbench' ? 'flex' : 'none';
+      if (view === 'workbench') {
+        renderWorkbenchTabs();
+        renderWorkbenchBrowser();
+      }
+    } catch (e) {
+      console.error('[創作帳] switchToViewでエラー:', e);
+      alert(`[診断] 作業台への切り替えでエラー\n${e && e.name}: ${e && e.message}\n${e && e.stack ? e.stack.slice(0, 500) : ''}`);
+    }
   }
 
-  // スマホでキーボードが出た時、作業台の枠が画面外にはみ出さないよう、
-  // 実際に見えている範囲（visualViewport）に合わせて高さ・位置を追従させる
-  function adjustWorkbenchForKeyboard() {
-    if (!window.visualViewport) return;
-    const el = $('#sk-workbench-view');
-    if (!el || el.style.display === 'none') return;
-    const vv = window.visualViewport;
-    const fixedTop = 58; // 上の保管庫/作業台切り替えバーの高さ分。ここは動かさない
-    el.style.top = fixedTop + 'px';
-    // 実際に見えている範囲の下端から、上の固定バー分を引いた高さだけ確保する（キーボード分だけ縮む）
-    const visibleBottom = vv.height + vv.offsetTop;
-    el.style.height = Math.max(visibleBottom - fixedTop, 120) + 'px';
-    el.style.bottom = 'auto';
-  }
-  // 編集画面（モーダル）も、キーボード表示中に画面外へずれないよう追従させる
-  function adjustEditorOverlayForKeyboard() {
-    if (!window.visualViewport) return;
-    const overlay = $('#sk-editor-overlay');
-    if (!overlay || !overlay.classList.contains('active')) return;
-    const vv = window.visualViewport;
-    overlay.style.height = vv.height + 'px';
-    overlay.style.top = vv.offsetTop + 'px';
-  }
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => { adjustWorkbenchForKeyboard(); adjustEditorOverlayForKeyboard(); });
-  }
+  // キーボード追従機能は不安定要因の切り分けのため、一旦無効化しています
+  function adjustWorkbenchForKeyboard() { /* 無効化中 */ }
+  function adjustEditorOverlayForKeyboard() { /* 無効化中 */ }
 
   // 下段への直接貼り付け→その場でカテゴリを選んで保管庫に保存
   let wbQuickSaveBlob = null;
