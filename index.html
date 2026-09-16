@@ -1228,6 +1228,19 @@ async function forgetCachedMasterKey() {
 
 // 画面中央に大きく一瞬だけ出る成功通知（コピー成功など、見逃したくない結果の合図に使う。3ツール共通）
 let centerToastTimer = null;
+// 配列を何件かずつのまとまりに分けて並行処理する（Supabaseへの1件ずつの問い合わせが多すぎて詰まるのを防ぐため）
+async function runInBatches(items, batchSize, worker, onProgress) {
+  let done = 0;
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    await Promise.all(batch.map(async (item, j) => {
+      await worker(item, i + j);
+      done++;
+      if (onProgress) onProgress(done, items.length);
+    }));
+  }
+}
+
 function showCenterToast(msg) {
   let el = document.getElementById('shared-center-toast');
   if (!el) {
@@ -1608,25 +1621,22 @@ window.__cpReset = function () {
 // 創作帳への移行用：ジャンル・アイテムを画像データ込みでそのまま返す
 window.__cpExportFull = async function (onProgress) {
   if (!notebook) return { genres: [], items: [] };
-  const items = [];
   const targets = notebook.items.filter((it) => !it.trashed);
-  let done = 0;
-  for (const it of targets) {
+  const items = new Array(targets.length);
+  await runInBatches(targets, 8, async (it, idx) => {
     const imgs = itemImages(it);
     const images = [];
     for (const img of imgs) {
       const blob = await loadImageBlobById(img.imageId, img.imageIv, img.imageMime);
       if (blob) images.push(blob);
     }
-    items.push({
+    items[idx] = {
       title: it.title || '', text: it.text || '', favorite: !!it.favorite,
       useCount: it.useCount || 0, lastUsedAt: it.lastUsedAt || null,
       createdAt: it.createdAt, genreName: (notebook.genres.find((g) => g.id === it.genreId) || {}).name || '',
       images,
-    });
-    done++;
-    if (onProgress) onProgress(done, targets.length);
-  }
+    };
+  }, onProgress);
   return { genres: notebook.genres.map((g) => ({ name: g.name, color: g.color })), items };
 };
 
@@ -2708,10 +2718,9 @@ window.__pnReset = function () {
 // 創作帳への移行用：ジャンル・プロンプトを画像データ込みでそのまま返す
 window.__pnExportFull = async function (onProgress) {
   if (!notebook) return { genres: [], items: [] };
-  const items = [];
   const targets = notebook.prompts.filter((p) => !p.trashed);
-  let done = 0;
-  for (const p of targets) {
+  const items = new Array(targets.length);
+  await runInBatches(targets, 8, async (p, idx) => {
     const images = [];
     if (p.imageId) {
       try {
@@ -2719,15 +2728,13 @@ window.__pnExportFull = async function (onProgress) {
         if (url) { const resp = await fetch(url); images.push(await resp.blob()); }
       } catch (e) { console.warn('[プロンプト帳] 移行用の画像取得に失敗:', e); }
     }
-    items.push({
+    items[idx] = {
       title: p.title || '', text: p.text || '', favorite: !!p.favorite,
       useCount: p.useCount || 0, lastUsedAt: p.lastCopiedAt || null,
       createdAt: p.createdAt, genreName: (notebook.genres.find((g) => g.id === p.genreId) || {}).name || '',
       images,
-    });
-    done++;
-    if (onProgress) onProgress(done, targets.length);
-  }
+    };
+  }, onProgress);
   return { genres: notebook.genres.map((g) => ({ name: g.name, color: g.color, gallery: !!g.hasImage })), items };
 };
 
@@ -3838,24 +3845,49 @@ window.addEventListener('DOMContentLoaded', () => {
     catch (e) { console.warn('画像のSupabase同期に失敗しました', e); }
     return { imageId, imageIv: ivB64, imageMime: mime };
   }
+  // 画像の同時読み込み数を制限する（一気に大量リクエストを送ってSupabase側が詰まるのを防ぐ）
+  const SK_MAX_CONCURRENT_IMAGE_LOADS = 4;
+  let sk_activeImageLoads = 0;
+  const sk_imageLoadQueue = [];
+  function sk_processImageQueue() {
+    while (sk_activeImageLoads < SK_MAX_CONCURRENT_IMAGE_LOADS && sk_imageLoadQueue.length) {
+      const task = sk_imageLoadQueue.shift();
+      task();
+    }
+  }
+  function sk_runQueuedImageLoad(fn) {
+    return new Promise((resolve) => {
+      sk_imageLoadQueue.push(async () => {
+        sk_activeImageLoads++;
+        try { resolve(await fn()); }
+        catch (e) { console.error('画像読み込みキューでエラー:', e); resolve(null); }
+        finally { sk_activeImageLoads--; sk_processImageQueue(); }
+      });
+      sk_processImageQueue();
+    });
+  }
+
   async function loadImageBlobById(imageId, imageIv, imageMime) {
     if (!imageId) return null;
     if (imageBlobCache.has(imageId)) return imageBlobCache.get(imageId);
-    try {
-      let rec = await idbGet(db, 'images', imageId);
-      let cipherBuf;
-      if (rec) { cipherBuf = rec.cipher; }
-      else {
-        const remoteRec = await fetchRemoteImage(imageId);
-        if (!remoteRec) return null;
-        cipherBuf = b64ToBuf(remoteRec.cipher_b64);
-        await idbPut(db, 'images', { imageId, iv: remoteRec.iv, mime: remoteRec.mime, cipher: cipherBuf });
-      }
-      const plainBuf = await decryptBytes(imageIv, cipherBuf, encKey);
-      const blob = new Blob([plainBuf], { type: imageMime || 'image/jpeg' });
-      imageBlobCache.set(imageId, blob);
-      return blob;
-    } catch (e) { console.error('画像の復号に失敗しました', e); return null; }
+    return sk_runQueuedImageLoad(async () => {
+      if (imageBlobCache.has(imageId)) return imageBlobCache.get(imageId); // キュー待機中に他から先に読み込まれた場合
+      try {
+        let rec = await idbGet(db, 'images', imageId);
+        let cipherBuf;
+        if (rec) { cipherBuf = rec.cipher; }
+        else {
+          const remoteRec = await fetchRemoteImage(imageId);
+          if (!remoteRec) return null;
+          cipherBuf = b64ToBuf(remoteRec.cipher_b64);
+          await idbPut(db, 'images', { imageId, iv: remoteRec.iv, mime: remoteRec.mime, cipher: cipherBuf });
+        }
+        const plainBuf = await decryptBytes(imageIv, cipherBuf, encKey);
+        const blob = new Blob([plainBuf], { type: imageMime || 'image/jpeg' });
+        imageBlobCache.set(imageId, blob);
+        return blob;
+      } catch (e) { console.error('画像の復号に失敗しました', e); return null; }
+    });
   }
   async function loadImageUrlById(imageId, imageIv, imageMime) {
     if (!imageId) return null;
@@ -3942,18 +3974,28 @@ window.addEventListener('DOMContentLoaded', () => {
       }
 
       encKey = key;
+      await enterApp(); // 先に画面を開く。移行・整理処理は重いことがあるため、後追いでバックグラウンド実行する
+      runBackgroundMaintenance();
+    } catch (e) {
+      console.error('[創作帳] 読み込み処理全体が失敗しました:', e);
+      notebook = notebook || defaultNotebook(); // 最低限、画面がnullで落ちないようにしておく
+      alert(`[診断] 創作帳の読み込みに失敗しました\n${e && e.name}: ${e && e.message}\n${e && e.stack ? e.stack.slice(0, 400) : ''}`);
+      try { $('#sk-app-screen').classList.add('active'); renderTabs(); renderStorageView(); switchToView('storage'); } catch (e2) { /* noop */ }
+    }
+  }
+
+  // 移行・重複整理・自己修復処理をまとめてバックグラウンドで実行する（ログイン自体をブロックしないため）
+  async function runBackgroundMaintenance() {
+    try {
       await runMigrationIfNeeded();
       await mergeDuplicateGenres();
       await renameOldCompletedGenre();
       await fixGalleryGenreFlag();
       await mergeImageGenIntoCompleted();
       await removeDuplicateItems();
-      await enterApp();
+      renderTabs(); renderStorageView();
     } catch (e) {
-      console.error('[創作帳] 読み込み処理全体が失敗しました:', e);
-      notebook = notebook || defaultNotebook(); // 最低限、画面がnullで落ちないようにしておく
-      alert(`[診断] 創作帳の読み込みに失敗しました\n${e && e.name}: ${e && e.message}\n${e && e.stack ? e.stack.slice(0, 400) : ''}`);
-      try { $('#sk-app-screen').classList.add('active'); renderTabs(); renderStorageView(); switchToView('storage'); } catch (e2) { /* noop */ }
+      console.error('[創作帳] バックグラウンド処理でエラー:', e);
     }
   }
   window.__skLoad = loadOrCreateNotebook;
@@ -4710,21 +4752,59 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!notebook) return;
       const list = $('#sk-wb-browser-list');
       list.innerHTML = '';
-      $('#sk-wb-reveal-all-btn').style.display = 'none';
       if (!wbGenreView && notebook.genres[0]) wbGenreView = notebook.genres[0].id;
       const items = notebook.items.filter((it) => it.genreId === wbGenreView && !it.trashed)
         .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-      list.className = 'sk-wb-browser-list';
-      items.forEach((it) => {
-        const row = document.createElement('div');
-        row.className = 'sk-wb-browser-row';
-        const text = document.createElement('div');
-        text.className = 'sk-wb-browser-text';
-        text.textContent = it.title || (it.text || '').slice(0, 40) || '(画像)';
-        row.appendChild(text);
-        row.onclick = () => openWbPreviewDialog(it);
-        list.appendChild(row);
-      });
+      const anyImages = items.some((it) => itemImages(it).length > 0);
+
+      if (anyImages) {
+        list.className = 'sk-wb-browser-list sk-wb-browser-grid';
+        $('#sk-wb-reveal-all-btn').style.display = 'inline-block';
+        items.forEach((it) => {
+          const cell = document.createElement('div');
+          cell.className = 'sk-wb-browser-cell';
+          const imgs = itemImages(it);
+          const revealed = sk_revealedIds.has(it.id);
+          const thumb = document.createElement('div');
+          thumb.className = 'sk-wb-browser-cell-thumb' + (imgs.length ? '' : ' sk-wb-browser-cell-noimg');
+          if (!imgs.length) {
+            thumb.textContent = '📝';
+            cell.onclick = () => openWbPreviewDialog(it);
+          } else if (revealed) {
+            loadFirstImageUrl(it).then((url) => { if (url) thumb.style.backgroundImage = `url(${url})`; });
+            cell.onclick = () => openWbPreviewDialog(it);
+          } else {
+            const veil = document.createElement('div');
+            veil.className = 'ms-veil-icon';
+            veil.innerHTML = '🖼<span>タップで表示</span>';
+            thumb.appendChild(veil);
+            cell.onclick = async () => {
+              const url = await loadFirstImageUrl(it);
+              if (url) sk_revealedIds.add(it.id);
+              renderWorkbenchBrowser();
+            };
+          }
+          cell.appendChild(thumb);
+          const cap = document.createElement('div');
+          cap.className = 'sk-wb-browser-cell-cap';
+          cap.textContent = it.title || (it.text || '').slice(0, 16) || '(無題)';
+          cell.appendChild(cap);
+          list.appendChild(cell);
+        });
+      } else {
+        $('#sk-wb-reveal-all-btn').style.display = 'none';
+        list.className = 'sk-wb-browser-list';
+        items.forEach((it) => {
+          const row = document.createElement('div');
+          row.className = 'sk-wb-browser-row';
+          const text = document.createElement('div');
+          text.className = 'sk-wb-browser-text';
+          text.textContent = it.title || (it.text || '').slice(0, 40) || '(画像)';
+          row.appendChild(text);
+          row.onclick = () => openWbPreviewDialog(it);
+          list.appendChild(row);
+        });
+      }
     } catch (e) {
       console.error('[創作帳] renderWorkbenchBrowserでエラー:', e);
       alert(`[診断] 下段の表示でエラー\n${e && e.name}: ${e && e.message}\n${e && e.stack ? e.stack.slice(0, 500) : ''}`);
