@@ -584,7 +584,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
   position: fixed; left: 0; right: 0; top: 58px; bottom: calc(54px + env(safe-area-inset-bottom)); overflow-y: auto; -webkit-overflow-scrolling: touch;
   background: #f2eefa; z-index: 10;
 }
-.sk-wb-upper { display: flex; flex-direction: column; flex: 0 0 42%; min-height: 110px; flex-shrink: 1; }
+.sk-wb-upper { display: flex; flex-direction: column; flex: 0 0 58%; min-height: 160px; flex-shrink: 1; }
 .sk-wb-upper textarea {
   flex: 1; resize: none; border: 1.5px solid #9a86c9; border-radius: 10px; padding: 12px;
   font-size: 14px; line-height: 1.6; background: #fff; color: var(--ink); outline: none;
@@ -624,7 +624,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 .sk-toast button { background: transparent; border: none; color: var(--accent-soft); font-weight: 700; font-size: 12px; }
 
 @media (max-width: 720px) {
-  .sk-wb-upper { flex: 0 0 38%; min-height: 130px; }
+  .sk-wb-upper { flex: 0 0 52%; min-height: 180px; }
 }
 
 </style>
@@ -756,12 +756,12 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 </div>
 
 <div class="dialog-overlay" id="sk-wb-preview-overlay">
-  <div class="dialog" style="width:min(480px, 92vw); max-height:80vh; display:flex; flex-direction:column;">
+  <div class="dialog" style="width:min(560px, 94vw); height:min(640px, 88vh); max-height:88vh; display:flex; flex-direction:column;">
     <h3 id="sk-wb-preview-title">内容を確認</h3>
-    <img id="sk-wb-preview-image" style="display:none; width:100%; max-height:220px; object-fit:contain; border-radius:10px; margin-bottom:10px; background:var(--paper-card);">
-    <textarea id="sk-wb-preview-text" readonly style="flex:1; min-height:120px; resize:none; border:1px solid var(--rule-strong); border-radius:10px; padding:10px; font-size:13px; line-height:1.6; background:var(--paper-card); color:var(--ink);"></textarea>
-    <p class="paste-hint" style="margin-top:6px;">一部だけ使いたい場合は、上の本文を選択してから「選択部分を差し込む」を押してください</p>
-    <div class="dialog-actions">
+    <img id="sk-wb-preview-image" style="display:none; width:100%; max-height:220px; object-fit:contain; border-radius:10px; margin-bottom:10px; background:var(--paper-card); flex-shrink:0;">
+    <textarea id="sk-wb-preview-text" readonly style="flex:1; min-height:260px; resize:none; border:1px solid var(--rule-strong); border-radius:10px; padding:12px; font-size:14.5px; line-height:1.7; background:var(--paper-card); color:var(--ink);"></textarea>
+    <p class="paste-hint" style="margin-top:6px; flex-shrink:0;">一部だけ使いたい場合は、上の本文を選択してから「選択部分を差し込む」を押してください</p>
+    <div class="dialog-actions" style="flex-shrink:0;">
       <button class="cancel" id="sk-wb-preview-cancel-btn">閉じる</button>
       <button class="confirm" id="sk-wb-preview-partial-btn">選択部分を差し込む</button>
       <button class="confirm" id="sk-wb-preview-insert-btn">全部差し込む</button>
@@ -4767,8 +4767,11 @@ window.addEventListener('DOMContentLoaded', () => {
     const el = $('#sk-workbench-view');
     if (!el || el.style.display === 'none') return;
     const vv = window.visualViewport;
-    el.style.top = Math.max(vv.offsetTop, 0) + 'px';
-    el.style.height = vv.height + 'px';
+    const fixedTop = 58; // 上の保管庫/作業台切り替えバーの高さ分。ここは動かさない
+    el.style.top = fixedTop + 'px';
+    // 実際に見えている範囲の下端から、上の固定バー分を引いた高さだけ確保する（キーボード分だけ縮む）
+    const visibleBottom = vv.height + vv.offsetTop;
+    el.style.height = Math.max(visibleBottom - fixedTop, 120) + 'px';
     el.style.bottom = 'auto';
   }
   if (window.visualViewport) {
