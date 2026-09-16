@@ -605,6 +605,12 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 }
 .sk-wb-browser-row:active { background: var(--accent-soft); }
 .sk-wb-browser-thumb { width: 34px; height: 34px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.sk-wb-browser-thumb-box {
+  width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0; background-size: cover; background-position: center;
+  background-color: var(--paper-card); border: 1px solid var(--rule-strong);
+  display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer;
+}
+.sk-wb-thumb-veiled { opacity: 0.6; }
 .sk-wb-browser-text { font-size: 12.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sk-wb-browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; align-content: start; }
@@ -4752,59 +4758,43 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!notebook) return;
       const list = $('#sk-wb-browser-list');
       list.innerHTML = '';
+      list.className = 'sk-wb-browser-list';
       if (!wbGenreView && notebook.genres[0]) wbGenreView = notebook.genres[0].id;
       const items = notebook.items.filter((it) => it.genreId === wbGenreView && !it.trashed)
         .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
       const anyImages = items.some((it) => itemImages(it).length > 0);
+      $('#sk-wb-reveal-all-btn').style.display = anyImages ? 'inline-block' : 'none';
 
-      if (anyImages) {
-        list.className = 'sk-wb-browser-list sk-wb-browser-grid';
-        $('#sk-wb-reveal-all-btn').style.display = 'inline-block';
-        items.forEach((it) => {
-          const cell = document.createElement('div');
-          cell.className = 'sk-wb-browser-cell';
-          const imgs = itemImages(it);
+      items.forEach((it) => {
+        const row = document.createElement('div');
+        row.className = 'sk-wb-browser-row';
+        const imgs = itemImages(it);
+        if (imgs.length) {
           const revealed = sk_revealedIds.has(it.id);
           const thumb = document.createElement('div');
-          thumb.className = 'sk-wb-browser-cell-thumb' + (imgs.length ? '' : ' sk-wb-browser-cell-noimg');
-          if (!imgs.length) {
-            thumb.textContent = '📝';
-            cell.onclick = () => openWbPreviewDialog(it);
-          } else if (revealed) {
+          thumb.className = 'sk-wb-browser-thumb-box';
+          if (revealed) {
             loadFirstImageUrl(it).then((url) => { if (url) thumb.style.backgroundImage = `url(${url})`; });
-            cell.onclick = () => openWbPreviewDialog(it);
+            thumb.onclick = (e) => { e.stopPropagation(); openWbPreviewDialog(it); };
           } else {
-            const veil = document.createElement('div');
-            veil.className = 'ms-veil-icon';
-            veil.innerHTML = '🖼<span>タップで表示</span>';
-            thumb.appendChild(veil);
-            cell.onclick = async () => {
+            thumb.textContent = '🖼';
+            thumb.classList.add('sk-wb-thumb-veiled');
+            thumb.onclick = async (e) => {
+              e.stopPropagation();
               const url = await loadFirstImageUrl(it);
               if (url) sk_revealedIds.add(it.id);
               renderWorkbenchBrowser();
             };
           }
-          cell.appendChild(thumb);
-          const cap = document.createElement('div');
-          cap.className = 'sk-wb-browser-cell-cap';
-          cap.textContent = it.title || (it.text || '').slice(0, 16) || '(無題)';
-          cell.appendChild(cap);
-          list.appendChild(cell);
-        });
-      } else {
-        $('#sk-wb-reveal-all-btn').style.display = 'none';
-        list.className = 'sk-wb-browser-list';
-        items.forEach((it) => {
-          const row = document.createElement('div');
-          row.className = 'sk-wb-browser-row';
-          const text = document.createElement('div');
-          text.className = 'sk-wb-browser-text';
-          text.textContent = it.title || (it.text || '').slice(0, 40) || '(画像)';
-          row.appendChild(text);
-          row.onclick = () => openWbPreviewDialog(it);
-          list.appendChild(row);
-        });
-      }
+          row.appendChild(thumb);
+        }
+        const text = document.createElement('div');
+        text.className = 'sk-wb-browser-text';
+        text.textContent = it.title || (it.text || '').slice(0, 40) || '(画像)';
+        row.appendChild(text);
+        row.onclick = () => openWbPreviewDialog(it);
+        list.appendChild(row);
+      });
     } catch (e) {
       console.error('[創作帳] renderWorkbenchBrowserでエラー:', e);
       alert(`[診断] 下段の表示でエラー\n${e && e.name}: ${e && e.message}\n${e && e.stack ? e.stack.slice(0, 500) : ''}`);
