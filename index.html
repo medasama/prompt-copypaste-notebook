@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0iIzIwMjYyYiIvPgo8dGV4dCB4PSI1MCIgeT0iNzAiIGZvbnQtc2l6ZT0iNTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCfk4s8L3RleHQ+Cjwvc3ZnPg==">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIyMiIgZmlsbD0iIzIwMjYyYiIvPgo8dGV4dCB4PSI1MCIgeT0iNzAiIGZvbnQtc2l6ZT0iNTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCfk4s8L3RleHQ+Cjwvc3ZnPg==">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -4384,7 +4384,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   function copyItem(item) {
     const imgs = itemImages(item);
-    if (imgs.length) {
+    const hasText = !!(item.text && item.text.trim());
+    if (imgs.length && !hasText) {
       if (!navigator.clipboard || !navigator.clipboard.write) { alert('お使いのブラウザは画像コピーに対応していません'); return; }
       const clipboardItems = imgs.map((img) => new ClipboardItem({
         'image/png': (async () => {
@@ -4925,17 +4926,19 @@ window.addEventListener('DOMContentLoaded', () => {
       } catch (e) { console.error(e); showCenterToast('✕ 貼り付けに失敗しました'); }
     };
     $('#sk-editor-copy-btn').onclick = () => {
+      const text = $('#sk-editor-text').value;
+      const hasText = !!text.trim();
       const blobPromises = [
         ...existingEditorImages.filter((img) => img.kept).map((img) => loadImageBlobById(img.imageId, img.imageIv, img.imageMime)),
         ...pendingNewImages.map((img) => Promise.resolve(img.file)),
       ];
-      if (blobPromises.length) {
+      if (blobPromises.length && !hasText) {
         const clipboardItems = blobPromises.map((p) => new ClipboardItem({
           'image/png': (async () => { const blob = await p; if (!blob) throw new Error('no blob'); return await blobToPngBlob(blob); })(),
         }));
         navigator.clipboard.write(clipboardItems).then(() => showCenterToast('✓ コピーしました')).catch(() => showCenterToast('✕ コピーに失敗しました'));
       } else {
-        navigator.clipboard.writeText($('#sk-editor-text').value).then(() => showCenterToast('✓ コピーしました')).catch(() => showCenterToast('✕ コピーに失敗しました'));
+        navigator.clipboard.writeText(text).then(() => showCenterToast('✓ コピーしました')).catch(() => showCenterToast('✕ コピーに失敗しました'));
       }
     };
 
