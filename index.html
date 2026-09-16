@@ -4805,7 +4805,6 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', () => { adjustWorkbenchForKeyboard(); adjustEditorOverlayForKeyboard(); });
-    window.visualViewport.addEventListener('scroll', () => { adjustWorkbenchForKeyboard(); adjustEditorOverlayForKeyboard(); });
   }
 
   // 下段への直接貼り付け→その場でカテゴリを選んで保管庫に保存
