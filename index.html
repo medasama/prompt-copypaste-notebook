@@ -123,8 +123,13 @@ textarea, input { font-family: inherit; }
 .tab-add-row button:hover { background: var(--paper-card); }
 
 .main { flex: 1; padding: 40px 48px; max-width: 860px; min-width: 0; }
-.main-header { display: flex; align-items: baseline; justify-content: flex-end; margin-bottom: 14px; flex-wrap: wrap; gap: 8px 14px; }
+.main-header { display: flex; align-items: baseline; justify-content: flex-end; margin-bottom: 8px; flex-wrap: wrap; gap: 8px 14px; }
 .header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+.sk-reveal-icon-btn {
+  border: 1px solid var(--rule-strong); background: var(--paper-card); border-radius: 8px;
+  width: 30px; height: 30px; font-size: 16px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
 .fab-add-btn {
   display: none; position: fixed; right: 18px; bottom: 24px; width: 54px; height: 54px; border-radius: 50%;
   background: var(--accent); color: #fff; border: none; font-size: 26px; line-height: 1; box-shadow: 0 6px 18px rgba(0,0,0,0.28);
@@ -692,7 +697,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
     <div class="main">
       <div class="main-header">
         <div class="header-actions">
-          <button class="lock-btn" id="sk-reveal-all-btn" style="display:none;">👁 一括表示/非表示</button>
+          <button class="sk-reveal-icon-btn" id="sk-reveal-all-btn" style="display:none;" title="一括表示/非表示">👁</button>
           <button class="lock-btn" id="sk-export-btn">⬇ 書き出し</button>
           <label class="lock-btn file-label" id="sk-import-label">⬆ 読み込み
             <input type="file" id="sk-import-input" accept="application/json" style="display:none;">
@@ -4882,6 +4887,9 @@ window.addEventListener('DOMContentLoaded', () => {
       $('#sk-view-workbench-btn').classList.toggle('active', view === 'workbench');
       $('#sk-storage-view').style.display = view === 'storage' ? 'flex' : 'none';
       $('#sk-workbench-view').style.display = view === 'workbench' ? 'flex' : 'none';
+      // 作業台は独自のスクロール領域を持つ固定表示なので、背景（body）側のスクロールは止めておく
+      // （入力欄にフォーカスした時、背景がわずかにスクロールして上のバーが動いて見えるのを防ぐ）
+      document.body.style.overflow = view === 'workbench' ? 'hidden' : '';
       if (view === 'workbench') {
         renderWorkbenchTabs();
         renderWorkbenchBrowser();
@@ -5001,6 +5009,7 @@ window.addEventListener('DOMContentLoaded', () => {
     encKey = null; cachedSalt = null; notebook = null; currentView = null; editMode = false;
     sk_revealedIds.clear();
     sk_bulkRevealState = false;
+    document.body.style.overflow = '';
     $('#sk-app-screen').classList.remove('active');
   };
 
@@ -5074,7 +5083,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!sk_bulkRevealState) {
         sk_bulkRevealState = true;
         btn.disabled = true;
-        btn.textContent = '読み込み中…';
+        btn.textContent = '⏳';
         for (const it of items) {
           if (!sk_revealedIds.has(it.id)) {
             const url = await loadFirstImageUrl(it);
@@ -5082,7 +5091,7 @@ window.addEventListener('DOMContentLoaded', () => {
           }
         }
         btn.disabled = false;
-        btn.textContent = '👁 一括表示/非表示';
+        btn.textContent = '👁';
       } else {
         sk_bulkRevealState = false;
         items.forEach((it) => sk_revealedIds.delete(it.id));
