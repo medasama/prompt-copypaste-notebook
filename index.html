@@ -584,7 +584,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
   position: fixed; left: 0; right: 0; top: 58px; bottom: calc(54px + env(safe-area-inset-bottom)); overflow-y: auto; -webkit-overflow-scrolling: touch;
   background: #f2eefa; z-index: 10;
 }
-.sk-wb-upper { display: flex; flex-direction: column; flex: 0 0 58%; min-height: 160px; flex-shrink: 1; }
+.sk-wb-upper { display: flex; flex-direction: column; flex: 0 0 48%; min-height: 140px; flex-shrink: 1; }
 .sk-wb-upper textarea {
   flex: 1; resize: none; border: 1.5px solid #9a86c9; border-radius: 10px; padding: 12px;
   font-size: 14px; line-height: 1.6; background: #fff; color: var(--ink); outline: none;
@@ -624,7 +624,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 .sk-toast button { background: transparent; border: none; color: var(--accent-soft); font-weight: 700; font-size: 12px; }
 
 @media (max-width: 720px) {
-  .sk-wb-upper { flex: 0 0 52%; min-height: 180px; }
+  .sk-wb-upper { flex: 0 0 44%; min-height: 150px; }
 }
 
 </style>
@@ -706,6 +706,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
     </div>
     <div class="sk-wb-lower">
       <div class="tabs sk-wb-tabs-row" id="sk-wb-tabs"></div>
+      <button class="lock-btn" id="sk-wb-reveal-all-btn" style="display:none; margin-bottom:6px;">👁 一括表示/非表示</button>
       <div id="sk-wb-browser-list" class="sk-wb-browser-list"></div>
       <p class="paste-hint">タップで上の欄に差し込みます。ここに直接貼り付けると、その場で保管庫に保存できます</p>
     </div>
@@ -724,8 +725,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
       <button id="sk-editor-close-btn">✕</button>
     </div>
     <textarea id="sk-editor-text" placeholder="内容を入力…"></textarea>
-    <div class="genre-move-row" id="sk-genre-move-row">
-      <span class="genre-move-label">ジャンル：</span>
+    <div class="genre-move-row" id="sk-genre-move-row" style="display:none;">
       <div class="genre-move-chips" id="sk-genre-move-chips"></div>
     </div>
     <div class="editor-image-area" id="sk-editor-image-area">
@@ -762,6 +762,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
     <textarea id="sk-wb-preview-text" readonly style="flex:1; min-height:260px; resize:none; border:1px solid var(--rule-strong); border-radius:10px; padding:12px; font-size:14.5px; line-height:1.7; background:var(--paper-card); color:var(--ink);"></textarea>
     <p class="paste-hint" style="margin-top:6px; flex-shrink:0;">一部だけ使いたい場合は、上の本文を選択してから「選択部分を差し込む」を押してください</p>
     <div class="dialog-actions" style="flex-shrink:0;">
+      <button class="cancel" id="sk-wb-preview-edit-btn">📚 保管庫で編集</button>
       <button class="cancel" id="sk-wb-preview-cancel-btn">閉じる</button>
       <button class="confirm" id="sk-wb-preview-partial-btn">選択部分を差し込む</button>
       <button class="confirm" id="sk-wb-preview-insert-btn">全部差し込む</button>
@@ -4517,7 +4518,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const el = $('#sk-editor-genre-indicator');
     const g = notebook.genres.find((x) => x.id === editorGenreId);
     if (!g) { el.classList.remove('show'); return; }
-    el.textContent = g.name; el.style.background = g.color || 'var(--accent)'; el.classList.add('show');
+    el.textContent = g.name + ' ▾'; el.style.background = g.color || 'var(--accent)'; el.classList.add('show');
+    el.title = 'タップしてジャンルを変更'; el.style.cursor = 'pointer';
   }
   function renderGenreMoveChips() {
     const container = $('#sk-genre-move-chips');
@@ -4537,6 +4539,7 @@ window.addEventListener('DOMContentLoaded', () => {
           await saveNotebook();
           renderGenreMoveChips();
           renderStorageView();
+          $('#sk-genre-move-row').style.display = 'none';
           showUndoToast(`「${g.name}」に移動しました`, async () => {
             it.genreId = oldGenreId; it.updatedAt = new Date().toISOString();
             await saveNotebook(); editorGenreId = oldGenreId;
@@ -4600,7 +4603,7 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-editor-text').value = item ? item.text : '';
 
     if (item) {
-      $('#sk-genre-move-row').style.display = 'flex';
+      $('#sk-genre-move-row').style.display = 'none';
       renderGenreMoveChips();
       for (const img of itemImages(item)) {
         const url = await loadImageUrlById(img.imageId, img.imageIv, img.imageMime);
@@ -4612,6 +4615,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     $('#sk-editor-overlay').classList.add('active');
+    adjustEditorOverlayForKeyboard();
     setTimeout(() => $('#sk-editor-text').focus(), 50);
   }
 
@@ -4654,6 +4658,8 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   function closeEditorUI() {
     $('#sk-editor-overlay').classList.remove('active');
+    $('#sk-editor-overlay').style.top = '';
+    $('#sk-editor-overlay').style.height = '';
     editingItemId = null; clearAllPendingImages();
   }
 
@@ -4705,26 +4711,40 @@ window.addEventListener('DOMContentLoaded', () => {
 
     if (anyImages) {
       list.className = 'sk-wb-browser-list sk-wb-browser-grid';
+      $('#sk-wb-reveal-all-btn').style.display = 'inline-block';
       items.forEach((it) => {
         const cell = document.createElement('div');
         cell.className = 'sk-wb-browser-cell';
         const imgs = itemImages(it);
+        const revealed = sk_revealedIds.has(it.id);
         const thumb = document.createElement('div');
         thumb.className = 'sk-wb-browser-cell-thumb' + (imgs.length ? '' : ' sk-wb-browser-cell-noimg');
-        if (imgs.length) {
-          loadFirstImageUrl(it).then((url) => { if (url) thumb.style.backgroundImage = `url(${url})`; });
-        } else {
+        if (!imgs.length) {
           thumb.textContent = '📝';
+          cell.onclick = () => openWbPreviewDialog(it);
+        } else if (revealed) {
+          loadFirstImageUrl(it).then((url) => { if (url) thumb.style.backgroundImage = `url(${url})`; });
+          cell.onclick = () => openWbPreviewDialog(it);
+        } else {
+          const veil = document.createElement('div');
+          veil.className = 'ms-veil-icon';
+          veil.innerHTML = '🖼<span>タップで表示</span>';
+          thumb.appendChild(veil);
+          cell.onclick = async () => {
+            const url = await loadFirstImageUrl(it);
+            if (url) sk_revealedIds.add(it.id);
+            renderWorkbenchBrowser();
+          };
         }
         cell.appendChild(thumb);
         const cap = document.createElement('div');
         cap.className = 'sk-wb-browser-cell-cap';
         cap.textContent = it.title || (it.text || '').slice(0, 16) || '(無題)';
         cell.appendChild(cap);
-        cell.onclick = () => openWbPreviewDialog(it);
         list.appendChild(cell);
       });
     } else {
+      $('#sk-wb-reveal-all-btn').style.display = 'none';
       list.className = 'sk-wb-browser-list';
       items.forEach((it) => {
         const row = document.createElement('div');
@@ -4774,9 +4794,18 @@ window.addEventListener('DOMContentLoaded', () => {
     el.style.height = Math.max(visibleBottom - fixedTop, 120) + 'px';
     el.style.bottom = 'auto';
   }
+  // 編集画面（モーダル）も、キーボード表示中に画面外へずれないよう追従させる
+  function adjustEditorOverlayForKeyboard() {
+    if (!window.visualViewport) return;
+    const overlay = $('#sk-editor-overlay');
+    if (!overlay || !overlay.classList.contains('active')) return;
+    const vv = window.visualViewport;
+    overlay.style.height = vv.height + 'px';
+    overlay.style.top = vv.offsetTop + 'px';
+  }
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', adjustWorkbenchForKeyboard);
-    window.visualViewport.addEventListener('scroll', adjustWorkbenchForKeyboard);
+    window.visualViewport.addEventListener('resize', () => { adjustWorkbenchForKeyboard(); adjustEditorOverlayForKeyboard(); });
+    window.visualViewport.addEventListener('scroll', () => { adjustWorkbenchForKeyboard(); adjustEditorOverlayForKeyboard(); });
   }
 
   // 下段への直接貼り付け→その場でカテゴリを選んで保管庫に保存
@@ -4939,6 +4968,29 @@ window.addEventListener('DOMContentLoaded', () => {
       renderStorageView();
     });
 
+    let sk_wbBulkRevealState = false;
+    $('#sk-wb-reveal-all-btn').addEventListener('click', async () => {
+      const items = notebook.items.filter((it) => it.genreId === wbGenreView && !it.trashed);
+      const btn = $('#sk-wb-reveal-all-btn');
+      if (!sk_wbBulkRevealState) {
+        sk_wbBulkRevealState = true;
+        btn.disabled = true;
+        btn.textContent = '読み込み中…';
+        for (const it of items) {
+          if (!sk_revealedIds.has(it.id)) {
+            const url = await loadFirstImageUrl(it);
+            if (url) sk_revealedIds.add(it.id);
+          }
+        }
+        btn.disabled = false;
+        btn.textContent = '👁 一括表示/非表示';
+      } else {
+        sk_wbBulkRevealState = false;
+        items.forEach((it) => sk_revealedIds.delete(it.id));
+      }
+      renderWorkbenchBrowser();
+    });
+
     $('#sk-new-genre-btn').onclick = async () => {
       const name = prompt('新しいジャンル名');
       if (!name || !name.trim()) return;
@@ -4955,6 +5007,10 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     $('#sk-editor-close-btn').onclick = () => closeEditorSave();
+    $('#sk-editor-genre-indicator').onclick = () => {
+      const row = $('#sk-genre-move-row');
+      row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+    };
     $('#sk-editor-overlay').addEventListener('click', (e) => { if (e.target === $('#sk-editor-overlay')) closeEditorSave(); });
     $('#sk-editor-fav-btn').onclick = () => { editorFavorite = !editorFavorite; updateEditorFavBtn(); };
     $('#sk-editor-trash-btn').onclick = async () => {
@@ -5078,6 +5134,15 @@ window.addEventListener('DOMContentLoaded', () => {
 
     $('#sk-wb-preview-cancel-btn').onclick = () => { $('#sk-wb-preview-overlay').classList.remove('active'); };
     $('#sk-wb-preview-overlay').addEventListener('click', (e) => { if (e.target === $('#sk-wb-preview-overlay')) $('#sk-wb-preview-overlay').classList.remove('active'); });
+    $('#sk-wb-preview-edit-btn').onclick = () => {
+      const item = sk_wbPreviewItem;
+      if (!item) return;
+      $('#sk-wb-preview-overlay').classList.remove('active');
+      currentView = item.genreId;
+      switchToView('storage');
+      renderTabs(); renderStorageView();
+      openEditor(item);
+    };
     $('#sk-wb-preview-insert-btn').onclick = () => {
       if (sk_wbPreviewItem) insertIntoWorkbench(sk_wbPreviewItem.text || '');
       $('#sk-wb-preview-overlay').classList.remove('active');
