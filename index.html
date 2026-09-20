@@ -560,17 +560,6 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 
 
 /* ===================== 創作帳 (Sousaku) 専用スタイル ===================== */
-.sk-view-toggle { display: flex; gap: 8px; padding: 10px 14px 0; }
-.sk-view-toggle button.sk-global-search-btn {
-  flex: 0 0 auto; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--rule-strong);
-  background: var(--paper-card); color: var(--ink-soft); font-size: 14px;
-}
-.sk-view-toggle button {
-  flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--rule-strong);
-  background: var(--paper-card); color: var(--ink-soft); font-size: 13px; font-weight: 600;
-}
-#sk-view-storage-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-#sk-view-workbench-btn.active { background: #5b4a8a; color: #fff; border-color: #5b4a8a; }
 
 .sk-tab-wrap { position: relative; display: inline-flex; align-items: center; margin-right: 14px; }
 .sk-tab-wrap .tab-btn { margin-right: 0; }
@@ -604,13 +593,13 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 .sk-gallery-caption { font-size: 10px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 
 .sk-workbench-view {
-  display: none; flex-direction: column; gap: 10px; padding: 10px 14px;
-  position: fixed; left: 0; right: 0; top: 58px; bottom: calc(54px + env(safe-area-inset-bottom)); overflow-y: auto; -webkit-overflow-scrolling: touch;
-  background: #f2eefa; z-index: 10;
+  display: none; flex-direction: column; gap: 10px; padding: 14px;
+  min-height: calc(100vh - 54px - env(safe-area-inset-bottom));
+  background: #f2eefa;
 }
-.sk-wb-upper { display: flex; flex-direction: column; flex: 0 0 48%; min-height: 140px; flex-shrink: 1; }
+.sk-wb-upper { display: flex; flex-direction: column; flex-shrink: 0; }
 .sk-wb-upper textarea {
-  flex: 1; resize: none; border: 1.5px solid #9a86c9; border-radius: 10px; padding: 12px;
+  height: 34vh; min-height: 160px; resize: none; border: 1.5px solid #9a86c9; border-radius: 10px; padding: 12px;
   font-size: 14px; line-height: 1.6; background: #fff; color: var(--ink); outline: none;
 }
 .sk-wb-upper-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
@@ -620,11 +609,11 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 }
 #sk-wb-save-btn { background: #5b4a8a; color: #fff; border-color: #5b4a8a; }
 
-.sk-wb-lower { display: flex; flex-direction: column; flex: 1; min-height: 60px; border-top: 2px dashed var(--rule-strong); padding-top: 8px; }
+.sk-wb-lower { display: flex; flex-direction: column; flex-shrink: 0; border-top: 2px dashed var(--rule-strong); padding-top: 8px; }
 .sk-wb-tabs-row { width: auto; padding: 0; flex-direction: row; flex-wrap: wrap; margin-bottom: 8px; flex-shrink: 0; min-height: 28px; }
 .sk-wb-lower-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-shrink: 0; }
 .sk-wb-lower-toolbar .sort-mode-select { flex: 1; padding: 6px 6px; font-size: 11px; }
-.sk-wb-browser-list { flex: 1; min-height: 40px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.sk-wb-browser-list { max-height: 42vh; min-height: 120px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .sk-wb-browser-row {
   display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-bottom: 1px solid var(--rule);
   cursor: pointer;
@@ -656,7 +645,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 .sk-toast button { background: transparent; border: none; color: var(--accent-soft); font-weight: 700; font-size: 12px; }
 
 @media (max-width: 720px) {
-  .sk-wb-upper { flex: 0 0 44%; min-height: 150px; }
+  .sk-wb-upper textarea { height: 30vh; min-height: 140px; }
 }
 
 </style>
@@ -676,24 +665,22 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 
 <div id="main-shell" style="display:none;">
   <div class="bottom-nav" id="bottom-nav">
-    <button class="bottom-nav-btn" id="bnav-sousaku-btn"><span class="bnav-icon">📔</span><span class="bnav-label">創作帳</span></button>
+    <button class="bottom-nav-btn" id="bnav-storage-btn"><span class="bnav-icon">📚</span><span class="bnav-label">保管庫</span></button>
+    <button class="bottom-nav-btn" id="bnav-workbench-btn"><span class="bnav-icon">✎</span><span class="bnav-label">作業台</span></button>
     <button class="bottom-nav-btn" id="bnav-material-btn"><span class="bnav-icon">🖼</span><span class="bnav-label">素材帳</span></button>
   </div>
 
 <div id="sousaku-app" class="app-mode">
 <div id="sk-app-screen">
-  <div class="sk-view-toggle">
-    <button id="sk-view-storage-btn" class="active">📚 保管庫</button>
-    <button id="sk-view-workbench-btn">✎ 作業台</button>
-    <button class="sk-global-search-btn" id="global-search-btn" title="全体検索">🔍</button>
-  </div>
-
   <div id="sk-storage-view">
     <div class="spiral"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
     <div class="sk-sidebar-col">
       <div id="sk-total-count" style="font-size:11px; color:var(--ink-soft); padding:6px 14px 0;"></div>
       <div class="tabs" id="sk-tabs-container"></div>
-      <button class="sk-reveal-icon-btn" id="sk-reveal-all-btn" style="display:none; margin:2px 0 0 14px;" title="一括表示/非表示">👁</button>
+      <div style="display:flex; gap:6px; margin:2px 0 0 14px;">
+        <button class="sk-reveal-icon-btn" id="sk-reveal-all-btn" style="display:none;" title="一括表示/非表示">👁</button>
+        <button class="sk-reveal-icon-btn" id="global-search-btn" title="全体検索">🔍</button>
+      </div>
       <div class="tab-add-row"><button id="sk-new-genre-btn">＋ ジャンルを追加</button></div>
     </div>
 
@@ -4788,7 +4775,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     $('#sk-editor-overlay').classList.add('active');
-    adjustEditorOverlayForKeyboard();
     setTimeout(() => $('#sk-editor-text').focus(), 50);
   }
 
@@ -5009,46 +4995,16 @@ window.addEventListener('DOMContentLoaded', () => {
   function switchToView(view) {
     try {
       wbView = view;
-      $('#sk-view-storage-btn').classList.toggle('active', view === 'storage');
-      $('#sk-view-workbench-btn').classList.toggle('active', view === 'workbench');
       $('#sk-storage-view').style.display = view === 'storage' ? 'flex' : 'none';
       $('#sk-workbench-view').style.display = view === 'workbench' ? 'flex' : 'none';
-      // 作業台は独自のスクロール領域を持つ固定表示なので、背景（body）側のスクロールは止めておく
-      // （入力欄にフォーカスした時、背景がわずかにスクロールして上のバーが動いて見えるのを防ぐ）
-      document.body.style.overflow = view === 'workbench' ? 'hidden' : '';
       if (view === 'workbench') {
         renderWorkbenchTabs();
         renderWorkbenchBrowser();
-        adjustWorkbenchForKeyboard();
       }
     } catch (e) {
       console.error('[創作帳] switchToViewでエラー:', e);
       alert(`[診断] 作業台への切り替えでエラー\n${e && e.name}: ${e && e.message}\n${e && e.stack ? e.stack.slice(0, 500) : ''}`);
     }
-  }
-
-  // スマホでキーボードが出た時、画面外にずれないよう追従させる（resizeイベントのみ。高頻度なscrollは監視しない）
-  function adjustWorkbenchForKeyboard() {
-    if (!window.visualViewport) return;
-    const el = $('#sk-workbench-view');
-    if (!el || el.style.display === 'none') return;
-    const vv = window.visualViewport;
-    const fixedTop = 58;
-    el.style.top = fixedTop + 'px';
-    const visibleBottom = vv.height + vv.offsetTop;
-    el.style.height = Math.max(visibleBottom - fixedTop, 120) + 'px';
-    el.style.bottom = 'auto';
-  }
-  function adjustEditorOverlayForKeyboard() {
-    if (!window.visualViewport) return;
-    const overlay = $('#sk-editor-overlay');
-    if (!overlay || !overlay.classList.contains('active')) return;
-    const vv = window.visualViewport;
-    overlay.style.height = vv.height + 'px';
-    overlay.style.top = vv.offsetTop + 'px';
-  }
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => { adjustWorkbenchForKeyboard(); adjustEditorOverlayForKeyboard(); });
   }
 
   // 下段への直接貼り付け→その場でカテゴリを選んで保管庫に保存
@@ -5137,7 +5093,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const it = notebook && notebook.items.find((x) => x.id === id);
     if (!it) return;
     currentView = it.genreId;
-    switchToView('storage');
+    if (window.__activateMode) window.__activateMode('storage'); else switchToView('storage');
     renderTabs(); renderStorageView();
     openEditor(it);
   };
@@ -5160,6 +5116,7 @@ window.addEventListener('DOMContentLoaded', () => {
   };
 
   window.__skIsWorkbenchActive = function () { return wbView === 'workbench'; };
+  window.__skSwitchToView = switchToView;
   window.__skReset = function () {
     encKey = null; cachedSalt = null; notebook = null; currentView = null; editMode = false;
     sk_revealedIds.clear();
@@ -5225,9 +5182,6 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   window.addEventListener('DOMContentLoaded', () => {
-    $('#sk-view-storage-btn').onclick = () => switchToView('storage');
-    $('#sk-view-workbench-btn').onclick = () => switchToView('workbench');
-
     $('#sk-add-new-btn').onclick = () => openEditor(null);
     $('#sk-fab-add-btn').onclick = () => openEditor(null);
     $('#sk-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderStorageView(); });
@@ -5446,7 +5400,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!item) return;
       $('#sk-wb-preview-overlay').classList.remove('active');
       currentView = item.genreId;
-      switchToView('storage');
+      if (window.__activateMode) window.__activateMode('storage');
       renderTabs(); renderStorageView();
       openEditor(item);
     };
@@ -6941,7 +6895,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function showShell() {
     $('#master-login-screen').style.display = 'none';
     $('#main-shell').style.display = 'block';
-    activateMode('sousaku'); // 素材帳は自動復元の対象にしない。それ以外は今は創作帳のみなので固定
+    activateMode('storage'); // 素材帳は自動復元の対象にしない。それ以外は保管庫を初期表示に固定
   }
   function showLogin() {
     $('#main-shell').style.display = 'none';
@@ -6967,19 +6921,20 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function activateMode(mode) {
+    // mode: 'storage' | 'workbench' | 'material'
     document.documentElement.setAttribute('data-mode', mode);
-    $('#sousaku-app').classList.toggle('active', mode === 'sousaku');
+    const inSousaku = mode === 'storage' || mode === 'workbench';
+    $('#sousaku-app').classList.toggle('active', inSousaku);
     $('#material-app').classList.toggle('active', mode === 'material');
-    $('#bnav-sousaku-btn').classList.toggle('active', mode === 'sousaku');
+    $('#bnav-storage-btn').classList.toggle('active', mode === 'storage');
+    $('#bnav-workbench-btn').classList.toggle('active', mode === 'workbench');
     $('#bnav-material-btn').classList.toggle('active', mode === 'material');
-    // 創作帳の作業台は独自スクロール領域を持つため背景（body）を止めているが、
-    // それ以外のモード（素材帳など）に切り替えた時は必ず解除する
-    const stillOnWorkbench = mode === 'sousaku' && window.__skIsWorkbenchActive && window.__skIsWorkbenchActive();
-    document.body.style.overflow = stillOnWorkbench ? 'hidden' : '';
+    if (inSousaku && window.__skSwitchToView) window.__skSwitchToView(mode === 'workbench' ? 'workbench' : 'storage');
     // 素材帳モードは「前回のモード」として記憶しない（リロード時に自動で開かれないようにするため）
     if (mode !== 'material') localStorage.setItem('combinedNotebookMode', mode);
     if (mode === 'material') ensureMaterialLoaded();
   }
+  window.__activateMode = activateMode; // 他モジュール（創作帳など）からモード切り替え・下部ナビ表示更新を行うために公開
 
   async function unlockWithKey(key, salt) {
     masterSalt = salt;
@@ -7404,7 +7359,8 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#master-password-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') attemptUnlock($('#master-password-input').value);
     });
-    $('#bnav-sousaku-btn').onclick = () => activateMode('sousaku');
+    $('#bnav-storage-btn').onclick = () => activateMode('storage');
+    $('#bnav-workbench-btn').onclick = () => activateMode('workbench');
     $('#bnav-material-btn').onclick = () => activateMode('material');
 
     $('#shell-lock-btn').onclick = lockAll;
