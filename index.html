@@ -3864,6 +3864,19 @@ window.addEventListener('DOMContentLoaded', () => {
     if (error) throw error;
     return data;
   }
+  // 複数の画像を1回の問い合わせでまとめて取得する（一括表示など、多数の画像を同時に扱う場面での負荷軽減用）
+  async function fetchRemoteImagesBatch(imageIds) {
+    if (!imageIds.length) return [];
+    const CHUNK = 50; // Supabase側への負荷も考え、50件ずつに分けて問い合わせる
+    const results = [];
+    for (let i = 0; i < imageIds.length; i += CHUNK) {
+      const chunk = imageIds.slice(i, i + CHUNK);
+      const { data, error } = await supabase.from(IMAGES_TABLE).select('image_id, iv, mime, cipher_b64').in('image_id', chunk);
+      if (error) throw error;
+      if (data) results.push(...data);
+    }
+    return results;
+  }
   async function pushRemoteImage(imageId, ivB64, mime, cipherB64) {
     const { error } = await supabase.from(IMAGES_TABLE).upsert({
       image_id: imageId, iv: ivB64, mime, cipher_b64: cipherB64, updated_at: new Date().toISOString(),
@@ -3943,6 +3956,57 @@ window.addEventListener('DOMContentLoaded', () => {
     imageUrlCache.set(imageId, url);
     return url;
   }
+  // 複数アイテム分の画像を、Supabaseへは1回（50件ずつ）の問い合わせでまとめて取得・復号する
+  // （一括表示のように多数の画像を同時に扱う場面向け。1件ずつ問い合わせる loadImageBlobById より高速）
+  async function loadImageBlobsBatch(items) {
+    const targets = []; // { item, img }
+    items.forEach((it) => {
+      const imgs = itemImages(it);
+      if (imgs.length) targets.push({ it, img: imgs[0] });
+    });
+
+    // 既にキャッシュ済みのものは対象から外す
+    const needFetch = [];
+    for (const t of targets) {
+      if (!imageBlobCache.has(t.img.imageId)) needFetch.push(t);
+    }
+    if (needFetch.length) {
+      // まずローカル(IndexedDB)にあるものを確認
+      const stillMissing = [];
+      for (const t of needFetch) {
+        const rec = await idbGet(db, 'images', t.img.imageId);
+        if (rec) {
+          try {
+            const plainBuf = await decryptBytes(t.img.imageIv, rec.cipher, encKey);
+            imageBlobCache.set(t.img.imageId, new Blob([plainBuf], { type: t.img.imageMime || 'image/jpeg' }));
+          } catch (e) { /* 復号失敗はスキップ（個別読み込みに任せる） */ }
+        } else {
+          stillMissing.push(t);
+        }
+      }
+      // ローカルにも無かった分だけ、Supabaseへまとめて問い合わせる
+      if (stillMissing.length) {
+        try {
+          const remoteRecs = await fetchRemoteImagesBatch(stillMissing.map((t) => t.img.imageId));
+          const byId = new Map(remoteRecs.map((r) => [r.image_id, r]));
+          for (const t of stillMissing) {
+            const rec = byId.get(t.img.imageId);
+            if (!rec) continue;
+            try {
+              const cipherBuf = b64ToBuf(rec.cipher_b64);
+              await idbPut(db, 'images', { imageId: t.img.imageId, iv: rec.iv, mime: rec.mime, cipher: cipherBuf });
+              const plainBuf = await decryptBytes(t.img.imageIv, cipherBuf, encKey);
+              imageBlobCache.set(t.img.imageId, new Blob([plainBuf], { type: t.img.imageMime || 'image/jpeg' }));
+            } catch (e) { console.error('画像の復号に失敗しました', e); }
+          }
+        } catch (e) { console.error('画像の一括取得に失敗しました', e); }
+      }
+    }
+    return targets.map((t) => t.it.id).filter((id) => {
+      const t = targets.find((x) => x.it.id === id);
+      return imageBlobCache.has(t.img.imageId);
+    });
+  }
   async function loadFirstImageUrl(it) {
     const imgs = itemImages(it);
     if (!imgs.length) return null;
@@ -3993,19 +4057,28 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!db) db = await openDB();
       cachedSalt = salt;
       let loaded = null;
+      let foundButFailed = false; // データ自体はあったが、この鍵では開けなかった＝合言葉違いの可能性
       try {
         const remoteRow = await fetchRemoteNotebook();
         if (remoteRow) {
-          const data = await decryptJSON(remoteRow.iv, remoteRow.ciphertext, key);
-          loaded = data;
-          await idbPut(db, 'meta', { key: 'notebook', salt: remoteRow.salt, iv: remoteRow.iv, ciphertext: remoteRow.ciphertext });
+          try {
+            loaded = await decryptJSON(remoteRow.iv, remoteRow.ciphertext, key);
+            await idbPut(db, 'meta', { key: 'notebook', salt: remoteRow.salt, iv: remoteRow.iv, ciphertext: remoteRow.ciphertext });
+          } catch (e) { foundButFailed = true; }
         }
       } catch (e) { console.warn('Supabaseからの読み込みに失敗しました（ローカルを試します）', e); }
       if (!loaded) {
         try {
           const localMeta = await idbGet(db, 'meta', 'notebook');
-          if (localMeta) loaded = await decryptJSON(localMeta.iv, localMeta.ciphertext, key);
+          if (localMeta) {
+            try { loaded = await decryptJSON(localMeta.iv, localMeta.ciphertext, key); }
+            catch (e) { foundButFailed = true; }
+          }
         } catch (e) { /* noop */ }
+      }
+      // 保存されているデータ自体はあるのに、この鍵では開けなかった＝合言葉が違う。空のノートで誤魔化さず、はっきりエラーにする
+      if (!loaded && foundButFailed) {
+        throw new Error('WRONG_PASSWORD');
       }
       notebook = loaded || defaultNotebook();
       if (!Array.isArray(notebook.genres)) notebook.genres = [];
@@ -4022,6 +4095,9 @@ window.addEventListener('DOMContentLoaded', () => {
       await enterApp(); // 先に画面を開く。移行・整理処理は重いことがあるため、後追いでバックグラウンド実行する
       runBackgroundMaintenance();
     } catch (e) {
+      if (e && e.message === 'WRONG_PASSWORD') {
+        throw e; // 合言葉違いは呼び出し元（ログイン処理）に伝え、「合言葉が違います」と正しく表示させる
+      }
       console.error('[創作帳] 読み込み処理全体が失敗しました:', e);
       notebook = notebook || defaultNotebook(); // 最低限、画面がnullで落ちないようにしておく
       alert(`[診断] 創作帳の読み込みに失敗しました\n${e && e.name}: ${e && e.message}\n${e && e.stack ? e.stack.slice(0, 400) : ''}`);
@@ -4203,8 +4279,11 @@ window.addEventListener('DOMContentLoaded', () => {
     } catch (e) { /* noop */ }
     if (migrationDone) return;
 
+    // ここまで来るのは「まだ移行が済んでいない」場合だけ。この時だけ旧データ（コピペ帳・プロンプト帳）を読み込む
     const overlay = showMigrationOverlay('過去のデータを確認しています…');
     try {
+      if (!window.__cpNotebookLoaded && window.__cpLoad) { await window.__cpLoad(encKey, cachedSalt); window.__cpNotebookLoaded = true; }
+      if (!window.__pnNotebookLoaded && window.__pnLoad) { await window.__pnLoad(encKey, cachedSalt); window.__pnNotebookLoaded = true; }
       const cpData = window.__cpExportFull
         ? await window.__cpExportFull((done, total) => { overlay.textContent = `コピペ帳を確認中… ${done} / ${total} 件`; })
         : { genres: [], items: [] };
@@ -4767,6 +4846,15 @@ window.addEventListener('DOMContentLoaded', () => {
     try {
       if (!notebook) return;
       const container = $('#sk-wb-tabs');
+      const existingButtons = container.querySelectorAll('button');
+      // ジャンルの数が前回と同じなら、ボタンを作り直さず選択状態（active）だけ更新する
+      // （タップの最中にボタンの実体が入れ替わり、タップが成立しなくなるのを防ぐため）
+      if (existingButtons.length === notebook.genres.length) {
+        notebook.genres.forEach((g, i) => {
+          existingButtons[i].classList.toggle('active', wbGenreView === g.id);
+        });
+        return;
+      }
       container.innerHTML = '';
       notebook.genres.forEach((g) => {
         const btn = document.createElement('button');
@@ -4914,6 +5002,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const caret = start + insertText.length;
     ta.selectionStart = ta.selectionEnd = caret;
     ta.focus();
+    scheduleWbDraftSave();
     showCenterToast('✓ 差し込みました');
   }
 
@@ -4992,11 +5081,39 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-quicksave-overlay').classList.add('active');
   }
 
+  // 作業台の下書き（組み立て中の文章）を自動保存し、次に開いた時に復元する
+  let sk_wbDraftSaveTimer = null;
+  async function saveWbDraft() {
+    try {
+      const text = $('#sk-wb-textarea').value;
+      const { ivB64, ciphertextB64 } = await encryptJSON({ text }, encKey);
+      await idbPut(db, 'meta', { key: 'wbDraft', iv: ivB64, ciphertext: ciphertextB64 });
+    } catch (e) { console.warn('作業台の下書き保存に失敗しました', e); }
+  }
+  function scheduleWbDraftSave() {
+    clearTimeout(sk_wbDraftSaveTimer);
+    sk_wbDraftSaveTimer = setTimeout(saveWbDraft, 800);
+  }
+  async function clearWbDraft() {
+    clearTimeout(sk_wbDraftSaveTimer);
+    try { await idbDelete(db, 'meta', 'wbDraft'); } catch (e) { /* noop */ }
+  }
+  async function loadWbDraft() {
+    try {
+      const rec = await idbGet(db, 'meta', 'wbDraft');
+      if (rec) {
+        const data = await decryptJSON(rec.iv, rec.ciphertext, encKey);
+        if (data && data.text) $('#sk-wb-textarea').value = data.text;
+      }
+    } catch (e) { /* noop */ }
+  }
+
   async function enterApp() {
     currentView = notebook.genres[0] ? notebook.genres[0].id : '__fav__';
     $('#sk-app-screen').classList.add('active');
     renderTabs(); renderStorageView();
     switchToView('storage');
+    loadWbDraft();
   }
 
   // 全体検索用：全ジャンル・全アイテムの検索対象一覧を返す
@@ -5042,6 +5159,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (currentView === g.id) renderStorageView();
   };
 
+  window.__skIsWorkbenchActive = function () { return wbView === 'workbench'; };
   window.__skReset = function () {
     encKey = null; cachedSalt = null; notebook = null; currentView = null; editMode = false;
     sk_revealedIds.clear();
@@ -5130,12 +5248,9 @@ window.addEventListener('DOMContentLoaded', () => {
         sk_bulkRevealState = true;
         btn.disabled = true;
         btn.textContent = '⏳';
-        for (const it of items) {
-          if (!sk_revealedIds.has(it.id)) {
-            const url = await loadFirstImageUrl(it);
-            if (url) sk_revealedIds.add(it.id);
-          }
-        }
+        const needed = items.filter((it) => !sk_revealedIds.has(it.id));
+        const revealedNowIds = await loadImageBlobsBatch(needed);
+        revealedNowIds.forEach((id) => sk_revealedIds.add(id));
         btn.disabled = false;
         btn.textContent = '👁';
       } else {
@@ -5153,12 +5268,9 @@ window.addEventListener('DOMContentLoaded', () => {
         sk_wbBulkRevealState = true;
         btn.disabled = true;
         btn.textContent = '⏳';
-        for (const it of items) {
-          if (!sk_revealedIds.has(it.id)) {
-            const url = await loadFirstImageUrl(it);
-            if (url) sk_revealedIds.add(it.id);
-          }
-        }
+        const needed = items.filter((it) => !sk_revealedIds.has(it.id));
+        const revealedNowIds = await loadImageBlobsBatch(needed);
+        revealedNowIds.forEach((id) => sk_revealedIds.add(id));
         btn.disabled = false;
         btn.textContent = '👁';
       } else {
@@ -5283,10 +5395,11 @@ window.addEventListener('DOMContentLoaded', () => {
         showCenterToast('✕ 貼り付けられる内容が見つかりません');
       } catch (e) { showCenterToast('✕ 貼り付けに失敗しました'); }
     };
+    $('#sk-wb-textarea').addEventListener('input', scheduleWbDraftSave);
     $('#sk-wb-copy-btn').onclick = () => {
       navigator.clipboard.writeText($('#sk-wb-textarea').value).then(() => showCenterToast('✓ コピーしました')).catch(() => showCenterToast('✕ コピーに失敗しました'));
     };
-    $('#sk-wb-clear-btn').onclick = () => { $('#sk-wb-textarea').value = ''; };
+    $('#sk-wb-clear-btn').onclick = () => { $('#sk-wb-textarea').value = ''; clearWbDraft(); };
     $('#sk-wb-save-btn').onclick = () => {
       const text = $('#sk-wb-textarea').value.trim();
       if (!text) { showCenterToast('内容が空です'); return; }
@@ -5341,6 +5454,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (sk_wbPreviewItem) {
         // 「全部差し込む」は、上段に何か書いてあれば消してから差し込む（置き換え）
         $('#sk-wb-textarea').value = sk_wbPreviewItem.text || '';
+        scheduleWbDraftSave();
         await markItemUsed(sk_wbPreviewItem);
       }
       $('#sk-wb-preview-overlay').classList.remove('active');
@@ -6858,6 +6972,10 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#material-app').classList.toggle('active', mode === 'material');
     $('#bnav-sousaku-btn').classList.toggle('active', mode === 'sousaku');
     $('#bnav-material-btn').classList.toggle('active', mode === 'material');
+    // 創作帳の作業台は独自スクロール領域を持つため背景（body）を止めているが、
+    // それ以外のモード（素材帳など）に切り替えた時は必ず解除する
+    const stillOnWorkbench = mode === 'sousaku' && window.__skIsWorkbenchActive && window.__skIsWorkbenchActive();
+    document.body.style.overflow = stillOnWorkbench ? 'hidden' : '';
     // 素材帳モードは「前回のモード」として記憶しない（リロード時に自動で開かれないようにするため）
     if (mode !== 'material') localStorage.setItem('combinedNotebookMode', mode);
     if (mode === 'material') ensureMaterialLoaded();
@@ -6866,15 +6984,15 @@ window.addEventListener('DOMContentLoaded', () => {
   async function unlockWithKey(key, salt) {
     masterSalt = salt;
     masterKeyRef = key;
-    // コピペ帳・プロンプト帳だけをここで読み込む（失敗したら「合言葉が違います」として扱う、本来の判定基準）
-    // 素材帳は読み込まない：実際にモードを開くまで存在に気づかれないようにするため
-    await Promise.all([
-      window.__pnLoad(key, salt),
-      window.__cpLoad(key, salt),
-    ]);
-    // 創作帳はコピペ帳・プロンプト帳からの一回きりの移行に依存するため、両方の読み込み完了後に読み込む
+    // コピペ帳・プロンプト帳は、創作帳側で移行がまだ済んでいない時だけ内部的に読み込まれる（通常はもう読み込まない）
+    // 素材帳も読み込まない：実際にモードを開くまで存在に気づかれないようにするため
     if (window.__skLoad) {
-      try { await window.__skLoad(key, salt); } catch (e) { console.error('[創作帳] 読み込みに失敗しました', e); }
+      try {
+        await window.__skLoad(key, salt);
+      } catch (e) {
+        if (e && e.message === 'WRONG_PASSWORD') throw e; // 合言葉違いはそのまま上に伝える
+        console.error('[創作帳] 読み込みに失敗しました', e);
+      }
     }
     showShell();
   }
@@ -6920,6 +7038,8 @@ window.addEventListener('DOMContentLoaded', () => {
     if (window.__cpReset) window.__cpReset();
     if (window.__pnReset) window.__pnReset();
     if (window.__msReset) window.__msReset();
+    window.__cpNotebookLoaded = false;
+    window.__pnNotebookLoaded = false;
     msLoaded = false;
     msLoading = false;
     masterKeyRef = null;
@@ -7241,6 +7361,18 @@ window.addEventListener('DOMContentLoaded', () => {
 
       progEl.textContent = '創作帳を更新しています（画像を含むため時間がかかる場合があります）…';
       await window.__skReencrypt(oldKey, newKey, newSalt);
+
+      // コピペ帳・プロンプト帳が未読み込みの場合、再暗号化の対象に含めるため先に読み込む（旧鍵で）
+      if (!window.__cpNotebookLoaded && window.__cpLoad) {
+        progEl.textContent = 'コピペ帳を確認しています…';
+        try { await window.__cpLoad(oldKey, masterSalt); window.__cpNotebookLoaded = true; }
+        catch (e) { errEl.textContent = 'コピペ帳の読み込みに失敗したため中断しました（データは変更されていません）'; return; }
+      }
+      if (!window.__pnNotebookLoaded && window.__pnLoad) {
+        progEl.textContent = 'プロンプト帳を確認しています…';
+        try { await window.__pnLoad(oldKey, masterSalt); window.__pnNotebookLoaded = true; }
+        catch (e) { errEl.textContent = 'プロンプト帳の読み込みに失敗したため中断しました（データは変更されていません）'; return; }
+      }
 
       progEl.textContent = 'コピペ帳を更新しています…';
       await window.__cpReencrypt(oldKey, newKey, newSalt);
