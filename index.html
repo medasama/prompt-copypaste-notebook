@@ -304,6 +304,9 @@ textarea, input { font-family: inherit; }
 .card-genre-badge {
   display: inline-block; font-size: 10px; color: #fff; padding: 2px 8px; border-radius: 999px; margin-bottom: 4px;
 }
+.card-genre-badge-bottom {
+  margin-top: 4px; margin-bottom: 0;
+}
 .card-title { font-weight: 700; font-size: 13.5px; margin-bottom: 2px; }
 .card-title.placeholder { color: var(--ink-soft); font-weight: 500; }
 .card-preview { font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
@@ -626,6 +629,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
   display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer;
 }
 .sk-wb-thumb-veiled { opacity: 0.6; }
+.sk-wb-browser-textwrap { flex: 1; min-width: 0; }
 .sk-wb-browser-text { font-size: 12.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sk-wb-browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; align-content: start; }
@@ -4345,6 +4349,11 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-total-count').textContent = `保管庫 合計 ${totalItems}件（${notebook.genres.length}ジャンル）${totalTrashed ? ' ・ ゴミ箱 ' + totalTrashed + '件' : ''}`;
     const container = $('#sk-tabs-container');
     container.innerHTML = '';
+    const allBtn = document.createElement('button');
+    allBtn.className = 'tab-btn' + (currentView === '__all__' ? ' active' : '');
+    allBtn.textContent = 'すべて';
+    allBtn.onclick = () => { currentView = '__all__'; renderTabs(); renderStorageView(); };
+    container.appendChild(allBtn);
     notebook.genres.forEach((g) => {
       const wrap = document.createElement('div');
       wrap.className = 'sk-tab-wrap';
@@ -4414,6 +4423,9 @@ window.addEventListener('DOMContentLoaded', () => {
     if (isSearching) {
       addBtn.style.display = 'none'; if (fab) fab.style.display = 'none';
       items = notebook.items.filter((it) => !it.trashed);
+    } else if (currentView === '__all__') {
+      addBtn.style.display = 'none'; if (fab) fab.style.display = 'none';
+      items = notebook.items.filter((it) => !it.trashed);
     } else if (currentView === '__trash__') {
       addBtn.style.display = 'none'; if (fab) fab.style.display = 'none';
       items = notebook.items.filter((it) => it.trashed);
@@ -4449,7 +4461,7 @@ window.addEventListener('DOMContentLoaded', () => {
       items.forEach((it) => galleryEl.appendChild(renderGalleryCard(it, nearDupIds.has(it.id))));
     } else {
       galleryEl.style.display = 'none'; listEl.style.display = 'block';
-      items.forEach((it) => listEl.appendChild(renderRow(it, isSearching, nearDupIds.has(it.id))));
+      items.forEach((it) => listEl.appendChild(renderRow(it, isSearching || currentView === '__all__', nearDupIds.has(it.id))));
     }
   }
 
@@ -4493,16 +4505,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const main = document.createElement('div');
     main.className = 'item-main';
-    if (showGenreBadge) {
-      const g = notebook.genres.find((x) => x.id === item.genreId);
-      if (g) {
-        const badge = document.createElement('div');
-        badge.className = 'card-genre-badge';
-        badge.style.background = g.color || 'var(--accent)';
-        badge.textContent = g.name;
-        main.appendChild(badge);
-      }
-    }
     const fallback = item.text ? item.text.split('\n')[0].slice(0, 40) : (imgs.length ? '(画像)' : '(無題)');
     const titleEl = document.createElement('div');
     titleEl.className = 'item-title' + (item.title ? '' : ' placeholder');
@@ -4511,6 +4513,16 @@ window.addEventListener('DOMContentLoaded', () => {
     previewEl.className = 'item-preview';
     previewEl.textContent = item.text ? item.text.replace(/\n/g, ' ') : '';
     main.appendChild(titleEl); main.appendChild(previewEl);
+    if (showGenreBadge) {
+      const g = notebook.genres.find((x) => x.id === item.genreId);
+      if (g) {
+        const badge = document.createElement('div');
+        badge.className = 'card-genre-badge card-genre-badge-bottom';
+        badge.style.background = g.color || 'var(--accent)';
+        badge.textContent = g.name;
+        main.appendChild(badge);
+      }
+    }
     row.appendChild(main);
 
     const copyBtn = document.createElement('button');
@@ -4835,13 +4847,20 @@ window.addEventListener('DOMContentLoaded', () => {
       const existingButtons = container.querySelectorAll('button');
       // ジャンルの数が前回と同じなら、ボタンを作り直さず選択状態（active）だけ更新する
       // （タップの最中にボタンの実体が入れ替わり、タップが成立しなくなるのを防ぐため）
-      if (existingButtons.length === notebook.genres.length) {
+      // 先頭の「すべて」ボタンの分、比較する数を+1する
+      if (existingButtons.length === notebook.genres.length + 1) {
+        existingButtons[0].classList.toggle('active', wbGenreView === '__all__');
         notebook.genres.forEach((g, i) => {
-          existingButtons[i].classList.toggle('active', wbGenreView === g.id);
+          existingButtons[i + 1].classList.toggle('active', wbGenreView === g.id);
         });
         return;
       }
       container.innerHTML = '';
+      const allBtn = document.createElement('button');
+      allBtn.className = 'tab-btn' + (wbGenreView === '__all__' ? ' active' : '');
+      allBtn.textContent = 'すべて';
+      allBtn.onclick = () => { wbGenreView = '__all__'; renderWorkbenchTabs(); renderWorkbenchBrowser(); };
+      container.appendChild(allBtn);
       notebook.genres.forEach((g) => {
         const btn = document.createElement('button');
         btn.className = 'tab-btn' + (wbGenreView === g.id ? ' active' : '');
@@ -4930,7 +4949,10 @@ window.addEventListener('DOMContentLoaded', () => {
       list.innerHTML = '';
       list.className = 'sk-wb-browser-list';
       if (!wbGenreView && notebook.genres[0]) wbGenreView = notebook.genres[0].id;
-      let items = notebook.items.filter((it) => it.genreId === wbGenreView && !it.trashed);
+      const isAll = wbGenreView === '__all__';
+      let items = isAll
+        ? notebook.items.filter((it) => !it.trashed)
+        : notebook.items.filter((it) => it.genreId === wbGenreView && !it.trashed);
       if (userSortMode === 'frequency') {
         items.sort((a, b) => (b.useCount || 0) - (a.useCount || 0) || (b.createdAt || '').localeCompare(a.createdAt || ''));
       } else if (userSortMode === 'recent') {
@@ -4966,10 +4988,23 @@ window.addEventListener('DOMContentLoaded', () => {
           }
           row.appendChild(thumb);
         }
+        const textWrap = document.createElement('div');
+        textWrap.className = 'sk-wb-browser-textwrap';
         const text = document.createElement('div');
         text.className = 'sk-wb-browser-text';
         text.textContent = it.title || (it.text || '').slice(0, 40) || '(画像)';
-        row.appendChild(text);
+        textWrap.appendChild(text);
+        if (isAll) {
+          const g = notebook.genres.find((x) => x.id === it.genreId);
+          if (g) {
+            const badge = document.createElement('div');
+            badge.className = 'card-genre-badge card-genre-badge-bottom';
+            badge.style.background = g.color || 'var(--accent)';
+            badge.textContent = g.name;
+            textWrap.appendChild(badge);
+          }
+        }
+        row.appendChild(textWrap);
         row.onclick = () => openWbPreviewDialog(it);
         list.appendChild(row);
       });
@@ -5216,7 +5251,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
     let sk_wbBulkRevealState = false;
     $('#sk-wb-reveal-all-btn').addEventListener('click', async () => {
-      const items = notebook.items.filter((it) => it.genreId === wbGenreView && !it.trashed);
+      const items = wbGenreView === '__all__'
+        ? notebook.items.filter((it) => !it.trashed)
+        : notebook.items.filter((it) => it.genreId === wbGenreView && !it.trashed);
       const btn = $('#sk-wb-reveal-all-btn');
       if (!sk_wbBulkRevealState) {
         sk_wbBulkRevealState = true;
