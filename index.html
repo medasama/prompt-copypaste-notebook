@@ -740,10 +740,12 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
           <option value="frequency">並び替え：よく使う順</option>
           <option value="similar">並び替え：似ている順</option>
         </select>
+        <button class="sk-reveal-icon-btn" id="sk-wb-search-btn" title="検索">🔍</button>
         <button class="sk-reveal-icon-btn" id="sk-wb-reveal-all-btn" style="display:none;" title="一括表示/非表示">👁</button>
       </div>
+      <input type="text" class="search-input" id="sk-wb-search-input" placeholder="🔍 検索（全ジャンル対象）" style="display:none; margin-bottom:6px;">
       <div id="sk-wb-browser-list" class="sk-wb-browser-list"></div>
-      <p class="paste-hint">タップで上の欄に差し込みます。ここに直接貼り付けると、その場で保管庫に保存できます</p>
+      <p class="paste-hint">タップすると内容を確認し、コピーできます。ここに直接貼り付けると、その場で保管庫に保存できます</p>
     </div>
   </div>
 </div>
@@ -4904,6 +4906,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
   let wbGenreView = null;
+  let wbSearchQuery = ''; // 作業台の検索キーワード（入力中はジャンルタブの絞り込みより優先し、全ジャンル対象で探す）
   const sk_revealedIds = new Set(); // タップで表示したギャラリー画像id（セッション限りで永続化しない）
   let sk_bulkRevealState = false;
   let sk_wbPreviewItem = null;
@@ -4979,15 +4982,21 @@ window.addEventListener('DOMContentLoaded', () => {
       list.innerHTML = '';
       list.className = 'sk-wb-browser-list';
       if (!wbGenreView && notebook.genres[0]) wbGenreView = notebook.genres[0].id;
+      const isSearching = !!wbSearchQuery;
       const isAll = wbGenreView === '__all__';
-      let items = isAll
+      const showGenreBadges = isSearching || isAll;
+      let items = (isSearching || isAll)
         ? notebook.items.filter((it) => !it.trashed)
         : notebook.items.filter((it) => itemGenreIds(it).includes(wbGenreView) && !it.trashed);
+      if (isSearching) {
+        const q = wbSearchQuery.toLowerCase();
+        items = items.filter((it) => (it.title || '').toLowerCase().includes(q) || (it.text || '').toLowerCase().includes(q));
+      }
       if (userSortMode === 'frequency') {
         items.sort((a, b) => (b.useCount || 0) - (a.useCount || 0) || (b.createdAt || '').localeCompare(a.createdAt || ''));
       } else if (userSortMode === 'recent') {
         items.sort((a, b) => (b.lastUsedAt || b.createdAt || '').localeCompare(a.lastUsedAt || a.createdAt || ''));
-      } else if (userSortMode === 'similar') {
+      } else if (userSortMode === 'similar' && !isSearching) {
         items = reorderBySimilarity(items);
       } else {
         items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
@@ -5024,7 +5033,7 @@ window.addEventListener('DOMContentLoaded', () => {
         text.className = 'sk-wb-browser-text';
         text.textContent = it.title || (it.text || '').slice(0, 40) || '(画像)';
         textWrap.appendChild(text);
-        if (isAll) {
+        if (showGenreBadges) {
           const gs = itemGenreIds(it).map((id) => notebook.genres.find((x) => x.id === id)).filter(Boolean);
           if (gs.length) {
             const badgeRow = document.createElement('div');
@@ -5265,6 +5274,23 @@ window.addEventListener('DOMContentLoaded', () => {
       $('#sk-sort-mode-select').value = userSortMode;
       renderWorkbenchBrowser();
     });
+    $('#sk-wb-search-btn').onclick = () => {
+      const input = $('#sk-wb-search-input');
+      const opening = input.style.display === 'none';
+      if (opening) {
+        input.style.display = 'block';
+        setTimeout(() => input.focus(), 50);
+      } else {
+        input.style.display = 'none';
+        input.value = '';
+        wbSearchQuery = '';
+        renderWorkbenchBrowser();
+      }
+    };
+    $('#sk-wb-search-input').addEventListener('input', (e) => {
+      wbSearchQuery = e.target.value.trim();
+      renderWorkbenchBrowser();
+    });
     $('#sk-reveal-all-btn').addEventListener('click', async () => {
       const items = notebook.items.filter((it) => itemGenreIds(it).includes(currentView) && !it.trashed);
       const btn = $('#sk-reveal-all-btn');
@@ -5286,9 +5312,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
     let sk_wbBulkRevealState = false;
     $('#sk-wb-reveal-all-btn').addEventListener('click', async () => {
-      const items = wbGenreView === '__all__'
+      let items = (wbSearchQuery || wbGenreView === '__all__')
         ? notebook.items.filter((it) => !it.trashed)
         : notebook.items.filter((it) => itemGenreIds(it).includes(wbGenreView) && !it.trashed);
+      if (wbSearchQuery) {
+        const q = wbSearchQuery.toLowerCase();
+        items = items.filter((it) => (it.title || '').toLowerCase().includes(q) || (it.text || '').toLowerCase().includes(q));
+      }
       const btn = $('#sk-wb-reveal-all-btn');
       if (!sk_wbBulkRevealState) {
         sk_wbBulkRevealState = true;
