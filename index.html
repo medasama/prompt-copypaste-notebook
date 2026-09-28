@@ -182,6 +182,7 @@ textarea, input { font-family: inherit; }
   background: var(--paper); color: var(--ink-soft); cursor: pointer;
 }
 .genre-move-chip.current { background: var(--accent); border-color: var(--accent); color: #fff; cursor: default; }
+.genre-move-chip.checked { background: var(--accent); border-color: var(--accent); color: #fff; cursor: pointer; }
 .genre-move-chip.drag-over { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .paste-hint { font-size: 11px; color: var(--ink-soft); margin-top: 8px; }
 @keyframes paste-target-flash {
@@ -305,7 +306,10 @@ textarea, input { font-family: inherit; }
   display: inline-block; font-size: 10px; color: #fff; padding: 2px 8px; border-radius: 999px; margin-bottom: 4px;
 }
 .card-genre-badge-bottom {
-  margin-top: 4px; margin-bottom: 0;
+  margin-top: 0; margin-bottom: 0;
+}
+.card-genre-badge-row {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;
 }
 .card-title { font-weight: 700; font-size: 13.5px; margin-bottom: 2px; }
 .card-title.placeholder { color: var(--ink-soft); font-weight: 500; }
@@ -796,12 +800,12 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
     <img id="sk-wb-preview-image" style="display:none; width:100%; max-height:220px; object-fit:contain; border-radius:10px; margin-bottom:10px; background:var(--paper-card); flex-shrink:0;">
     <div id="sk-wb-preview-chips" class="sk-wb-preview-chips" style="display:none;"></div>
     <textarea id="sk-wb-preview-text" readonly style="flex:1; min-height:260px; resize:none; border:1px solid var(--rule-strong); border-radius:10px; padding:12px; font-size:14.5px; line-height:1.7; background:var(--paper-card); color:var(--ink);"></textarea>
-    <p class="paste-hint" style="margin-top:6px; flex-shrink:0;">まとまり（空行区切り）をタップすると選択されます。ドラッグで手動選択・微調整もできます。選んだら「選択部分を差し込む」</p>
+    <p class="paste-hint" style="margin-top:6px; flex-shrink:0;">まとまり（空行区切り）をタップすると選択されます。ドラッグで手動選択・微調整もできます。コピーしたら上段の欄にご自身で貼り付けてください</p>
     <div class="dialog-actions" style="flex-shrink:0;">
       <button class="cancel" id="sk-wb-preview-edit-btn">📚 保管庫で編集</button>
       <button class="cancel" id="sk-wb-preview-cancel-btn">閉じる</button>
-      <button class="confirm" id="sk-wb-preview-partial-btn">選択部分を差し込む</button>
-      <button class="confirm" id="sk-wb-preview-insert-btn">全部差し込む</button>
+      <button class="confirm" id="sk-wb-preview-partial-btn">選択部分をコピー</button>
+      <button class="confirm" id="sk-wb-preview-insert-btn">全部コピー</button>
     </div>
   </div>
 </div>
@@ -3883,6 +3887,12 @@ window.addEventListener('DOMContentLoaded', () => {
   const imageBlobCache = new Map();
 
   function itemImages(it) { return Array.isArray(it.images) ? it.images : []; }
+  // アイテムが所属するジャンルid一覧（複数ジャンル対応）。読み込み直後にnotebook.itemsは必ずgenreIds配列を持つよう移行されるが、
+  // 念のための保険としてここでも古い単一genreIdからの復元に対応しておく
+  function itemGenreIds(it) {
+    if (Array.isArray(it.genreIds)) return it.genreIds;
+    return it.genreId ? [it.genreId] : [];
+  }
 
   async function uploadImageBlob(fileOrBlob) {
     const buf = await fileOrBlob.arrayBuffer();
@@ -4074,6 +4084,13 @@ window.addEventListener('DOMContentLoaded', () => {
       notebook = loaded || defaultNotebook();
       if (!Array.isArray(notebook.genres)) notebook.genres = [];
       if (!Array.isArray(notebook.items)) notebook.items = [];
+      // 複数ジャンル対応：古い単一genreIdのアイテムをgenreIds配列へ移行する（初回だけ実質的に効く）
+      notebook.items.forEach((it) => {
+        if (!Array.isArray(it.genreIds)) {
+          it.genreIds = it.genreId ? [it.genreId] : [];
+        }
+        delete it.genreId; // 以後はgenreIds配列のみを正とする
+      });
 
       if (!loaded) {
         const { ivB64, ciphertextB64 } = await encryptJSON(notebook, key);
@@ -4169,7 +4186,10 @@ window.addEventListener('DOMContentLoaded', () => {
       else byName.set(key, g.id);
     });
     if (!remap.size) return;
-    notebook.items.forEach((it) => { if (remap.has(it.genreId)) it.genreId = remap.get(it.genreId); });
+    notebook.items.forEach((it) => {
+      const ids = itemGenreIds(it).map((id) => remap.has(id) ? remap.get(id) : id);
+      it.genreIds = [...new Set(ids)];
+    });
     notebook.genres = notebook.genres.filter((g) => !remap.has(g.id));
     await saveNotebook();
   }
@@ -4199,7 +4219,11 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!target || !source || target.id === source.id) return;
     let moved = false;
     notebook.items.forEach((it) => {
-      if (it.genreId === source.id) { it.genreId = target.id; moved = true; }
+      const ids = itemGenreIds(it);
+      if (ids.includes(source.id)) {
+        it.genreIds = [...new Set(ids.map((id) => id === source.id ? target.id : id))];
+        moved = true;
+      }
     });
     notebook.genres = notebook.genres.filter((g) => g.id !== source.id);
     if (moved || true) await saveNotebook(); // ジャンル自体を消したので中身が0件でも保存する
@@ -4213,7 +4237,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const toRemove = [];
     notebook.items.forEach((it) => {
       if (it.trashed) return;
-      const key = it.genreId + '|' + norm(it.title) + '|' + norm(it.text);
+      const key = itemGenreIds(it).slice().sort().join(',') + '|' + norm(it.title) + '|' + norm(it.text);
       if (seen.has(key)) {
         const existing = seen.get(key);
         // 画像が付いている方を優先して残す
@@ -4316,7 +4340,7 @@ window.addEventListener('DOMContentLoaded', () => {
           try { images.push(await uploadImageBlob(blob)); } catch (e) { console.warn('移行画像のアップロードに失敗:', e); }
         }
         notebook.items.push({
-          id: uid(), genreId, title: it.title || '', text: it.text || '',
+          id: uid(), genreIds: [genreId], title: it.title || '', text: it.text || '',
           images, favorite: !!it.favorite, trashed: false,
           useCount: it.useCount || 0, lastUsedAt: it.lastUsedAt || null,
           createdAt: it.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(),
@@ -4363,7 +4387,7 @@ window.addEventListener('DOMContentLoaded', () => {
       btn.textContent = g.name;
       btn.onclick = () => { currentView = g.id; renderTabs(); renderStorageView(); renderWorkbenchTabs(); };
       wrap.appendChild(btn);
-      const itemCount = notebook.items.filter((it) => it.genreId === g.id && !it.trashed).length;
+      const itemCount = notebook.items.filter((it) => itemGenreIds(it).includes(g.id) && !it.trashed).length;
       if (itemCount === 0) {
         const delBtn = document.createElement('button');
         delBtn.className = 'sk-tab-del-btn';
@@ -4434,7 +4458,7 @@ window.addEventListener('DOMContentLoaded', () => {
       items = notebook.items.filter((it) => it.favorite && !it.trashed);
     } else {
       addBtn.style.display = 'block'; if (fab) fab.style.display = 'flex';
-      items = notebook.items.filter((it) => it.genreId === currentView && !it.trashed);
+      items = notebook.items.filter((it) => itemGenreIds(it).includes(currentView) && !it.trashed);
     }
 
     if (userSortMode === 'frequency') {
@@ -4514,13 +4538,18 @@ window.addEventListener('DOMContentLoaded', () => {
     previewEl.textContent = item.text ? item.text.replace(/\n/g, ' ') : '';
     main.appendChild(titleEl); main.appendChild(previewEl);
     if (showGenreBadge) {
-      const g = notebook.genres.find((x) => x.id === item.genreId);
-      if (g) {
-        const badge = document.createElement('div');
-        badge.className = 'card-genre-badge card-genre-badge-bottom';
-        badge.style.background = g.color || 'var(--accent)';
-        badge.textContent = g.name;
-        main.appendChild(badge);
+      const gs = itemGenreIds(item).map((id) => notebook.genres.find((x) => x.id === id)).filter(Boolean);
+      if (gs.length) {
+        const badgeRow = document.createElement('div');
+        badgeRow.className = 'card-genre-badge-row';
+        gs.forEach((g) => {
+          const badge = document.createElement('div');
+          badge.className = 'card-genre-badge card-genre-badge-bottom';
+          badge.style.background = g.color || 'var(--accent)';
+          badge.textContent = g.name;
+          badgeRow.appendChild(badge);
+        });
+        main.appendChild(badgeRow);
       }
     }
     row.appendChild(main);
@@ -4677,7 +4706,7 @@ window.addEventListener('DOMContentLoaded', () => {
   let editingItemId = null;
   let editorOriginalSnapshot = null;
   let editorFavorite = false;
-  let editorGenreId = null;
+  let editorGenreIds = []; // 編集中アイテムが所属するジャンルid一覧（複数選択可）
   let pendingNewImages = [];
   let existingEditorImages = [];
 
@@ -4688,37 +4717,38 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   function updateEditorGenreIndicator() {
     const el = $('#sk-editor-genre-indicator');
-    const g = notebook.genres.find((x) => x.id === editorGenreId);
-    if (!g) { el.classList.remove('show'); return; }
-    el.textContent = g.name + ' ▾'; el.style.background = g.color || 'var(--accent)'; el.classList.add('show');
-    el.title = 'タップしてジャンルを変更'; el.style.cursor = 'pointer';
+    const gs = editorGenreIds.map((id) => notebook.genres.find((x) => x.id === id)).filter(Boolean);
+    if (!gs.length) { el.classList.remove('show'); return; }
+    el.textContent = gs.map((g) => g.name).join(' / ') + ' ▾';
+    el.style.background = gs[0].color || 'var(--accent)';
+    el.classList.add('show');
+    el.title = 'タップしてジャンルを変更（複数選択できます）'; el.style.cursor = 'pointer';
   }
+  // ジャンルチップをタップするたびに、そのジャンルへの所属をON/OFFする（複数選択可・即保存）
   function renderGenreMoveChips() {
     const container = $('#sk-genre-move-chips');
     container.innerHTML = '';
     notebook.genres.forEach((g) => {
+      const checked = editorGenreIds.includes(g.id);
       const el = document.createElement('div');
-      el.className = 'genre-move-chip' + (g.id === editorGenreId ? ' current' : '');
-      el.textContent = g.name;
-      if (g.id !== editorGenreId) {
-        el.onclick = async () => {
-          const it = notebook.items.find((x) => x.id === editingItemId);
-          if (!it) return;
-          const oldGenreId = it.genreId;
-          it.genreId = g.id; it.updatedAt = new Date().toISOString();
-          editorGenreId = g.id;
-          updateEditorGenreIndicator();
+      el.className = 'genre-move-chip' + (checked ? ' checked' : '');
+      el.textContent = (checked ? '✓ ' : '') + g.name;
+      el.onclick = async () => {
+        if (checked) {
+          if (editorGenreIds.length <= 1) { showCenterToast('少なくとも1つのジャンルが必要です'); return; }
+          editorGenreIds = editorGenreIds.filter((id) => id !== g.id);
+        } else {
+          editorGenreIds = [...editorGenreIds, g.id];
+        }
+        const it = notebook.items.find((x) => x.id === editingItemId);
+        if (it) {
+          it.genreIds = editorGenreIds.slice(); it.updatedAt = new Date().toISOString();
           await saveNotebook();
-          renderGenreMoveChips();
           renderStorageView();
-          $('#sk-genre-move-row').style.display = 'none';
-          showUndoToast(`「${g.name}」に移動しました`, async () => {
-            it.genreId = oldGenreId; it.updatedAt = new Date().toISOString();
-            await saveNotebook(); editorGenreId = oldGenreId;
-            renderGenreMoveChips(); updateEditorGenreIndicator(); renderStorageView();
-          });
-        };
-      }
+        }
+        updateEditorGenreIndicator();
+        renderGenreMoveChips();
+      };
       container.appendChild(el);
     });
   }
@@ -4766,7 +4796,7 @@ window.addEventListener('DOMContentLoaded', () => {
   async function openEditor(item) {
     editingItemId = item ? item.id : null;
     editorFavorite = item ? !!item.favorite : false;
-    editorGenreId = item ? item.genreId : (currentGenre() ? currentGenre().id : (notebook.genres[0] && notebook.genres[0].id));
+    editorGenreIds = item ? itemGenreIds(item).slice() : (currentGenre() ? [currentGenre().id] : (notebook.genres[0] ? [notebook.genres[0].id] : []));
     editorOriginalSnapshot = item ? { title: item.title || '', text: item.text || '', favorite: !!item.favorite, imageCount: itemImages(item).length } : null;
     updateEditorFavBtn(); updateEditorGenreIndicator();
     clearAllPendingImages();
@@ -4798,12 +4828,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
     if (!editingItemId) {
       if (!text && !pendingNewImages.length) { closeEditorUI(); return; }
-      const g = notebook.genres.find((x) => x.id === editorGenreId) || notebook.genres[0];
-      if (!g) { closeEditorUI(); return; }
+      const genreIds = editorGenreIds.length ? editorGenreIds.slice() : (notebook.genres[0] ? [notebook.genres[0].id] : []);
+      if (!genreIds.length) { closeEditorUI(); return; }
       const uploaded = [];
       for (const p of pendingNewImages) uploaded.push(await uploadImageBlob(p.file));
       const it = {
-        id: uid(), genreId: g.id, title, text, favorite: editorFavorite, trashed: false,
+        id: uid(), genreIds, title, text, favorite: editorFavorite, trashed: false,
         images: uploaded, useCount: 0, lastUsedAt: null,
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       };
@@ -4952,7 +4982,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const isAll = wbGenreView === '__all__';
       let items = isAll
         ? notebook.items.filter((it) => !it.trashed)
-        : notebook.items.filter((it) => it.genreId === wbGenreView && !it.trashed);
+        : notebook.items.filter((it) => itemGenreIds(it).includes(wbGenreView) && !it.trashed);
       if (userSortMode === 'frequency') {
         items.sort((a, b) => (b.useCount || 0) - (a.useCount || 0) || (b.createdAt || '').localeCompare(a.createdAt || ''));
       } else if (userSortMode === 'recent') {
@@ -4995,13 +5025,18 @@ window.addEventListener('DOMContentLoaded', () => {
         text.textContent = it.title || (it.text || '').slice(0, 40) || '(画像)';
         textWrap.appendChild(text);
         if (isAll) {
-          const g = notebook.genres.find((x) => x.id === it.genreId);
-          if (g) {
-            const badge = document.createElement('div');
-            badge.className = 'card-genre-badge card-genre-badge-bottom';
-            badge.style.background = g.color || 'var(--accent)';
-            badge.textContent = g.name;
-            textWrap.appendChild(badge);
+          const gs = itemGenreIds(it).map((id) => notebook.genres.find((x) => x.id === id)).filter(Boolean);
+          if (gs.length) {
+            const badgeRow = document.createElement('div');
+            badgeRow.className = 'card-genre-badge-row';
+            gs.forEach((g) => {
+              const badge = document.createElement('div');
+              badge.className = 'card-genre-badge card-genre-badge-bottom';
+              badge.style.background = g.color || 'var(--accent)';
+              badge.textContent = g.name;
+              badgeRow.appendChild(badge);
+            });
+            textWrap.appendChild(badgeRow);
           }
         }
         row.appendChild(textWrap);
@@ -5057,7 +5092,7 @@ window.addEventListener('DOMContentLoaded', () => {
       chip.textContent = g.name;
       chip.onclick = async () => {
         const it = {
-          id: uid(), genreId: g.id, title: $('#sk-quicksave-memo').value.trim(), text: wbQuickSaveText,
+          id: uid(), genreIds: [g.id], title: $('#sk-quicksave-memo').value.trim(), text: wbQuickSaveText,
           images: wbQuickSaveBlob ? [await uploadImageBlob(wbQuickSaveBlob)] : [],
           favorite: false, trashed: false, useCount: 0, lastUsedAt: null,
           createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
@@ -5111,8 +5146,8 @@ window.addEventListener('DOMContentLoaded', () => {
   window.__skGetSearchIndex = function () {
     if (!notebook) return [];
     return notebook.items.filter((it) => !it.trashed).map((it) => {
-      const g = notebook.genres.find((x) => x.id === it.genreId);
-      return { id: it.id, title: it.title || '', text: it.text || '', genreName: g ? g.name : '', hasImage: itemImages(it).length > 0 };
+      const gs = itemGenreIds(it).map((id) => notebook.genres.find((x) => x.id === id)).filter(Boolean);
+      return { id: it.id, title: it.title || '', text: it.text || '', genreName: gs.map((g) => g.name).join(' / '), hasImage: itemImages(it).length > 0 };
     });
   };
   window.__skCopyById = function (id) {
@@ -5127,7 +5162,7 @@ window.addEventListener('DOMContentLoaded', () => {
   window.__skOpenEditorById = function (id) {
     const it = notebook && notebook.items.find((x) => x.id === id);
     if (!it) return;
-    currentView = it.genreId;
+    currentView = itemGenreIds(it)[0] || currentView;
     if (window.__activateMode) window.__activateMode('storage'); else switchToView('storage');
     renderTabs(); renderStorageView();
     openEditor(it);
@@ -5142,7 +5177,7 @@ window.addEventListener('DOMContentLoaded', () => {
       try { images.push(await uploadImageBlob(imageBlob)); } catch (e) { console.warn('[創作帳] 取込画像の処理に失敗:', e); }
     }
     notebook.items.push({
-      id: uid(), genreId: g.id, title: title || '', text: text || '', images,
+      id: uid(), genreIds: [g.id], title: title || '', text: text || '', images,
       favorite: false, trashed: false, useCount: 0, lastUsedAt: null,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     });
@@ -5231,7 +5266,7 @@ window.addEventListener('DOMContentLoaded', () => {
       renderWorkbenchBrowser();
     });
     $('#sk-reveal-all-btn').addEventListener('click', async () => {
-      const items = notebook.items.filter((it) => it.genreId === currentView && !it.trashed);
+      const items = notebook.items.filter((it) => itemGenreIds(it).includes(currentView) && !it.trashed);
       const btn = $('#sk-reveal-all-btn');
       if (!sk_bulkRevealState) {
         sk_bulkRevealState = true;
@@ -5253,7 +5288,7 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-wb-reveal-all-btn').addEventListener('click', async () => {
       const items = wbGenreView === '__all__'
         ? notebook.items.filter((it) => !it.trashed)
-        : notebook.items.filter((it) => it.genreId === wbGenreView && !it.trashed);
+        : notebook.items.filter((it) => itemGenreIds(it).includes(wbGenreView) && !it.trashed);
       const btn = $('#sk-wb-reveal-all-btn');
       if (!sk_wbBulkRevealState) {
         sk_wbBulkRevealState = true;
@@ -5436,27 +5471,31 @@ window.addEventListener('DOMContentLoaded', () => {
       const item = sk_wbPreviewItem;
       if (!item) return;
       $('#sk-wb-preview-overlay').classList.remove('active');
-      currentView = item.genreId;
+      currentView = itemGenreIds(item)[0] || currentView;
       if (window.__activateMode) window.__activateMode('storage');
       renderTabs(); renderStorageView();
       openEditor(item);
     };
+    // カーソル位置に依存する「差し込み」は分かりにくいため廃止し、クリップボードにコピーするだけにする。
+    // 挿入は上段の📥貼り付けボタン、または標準のペースト操作でご自身に行ってもらう
     $('#sk-wb-preview-insert-btn').onclick = async () => {
-      if (sk_wbPreviewItem) {
-        // 「全部差し込む」は、上段に何か書いてあれば消してから差し込む（置き換え）
-        $('#sk-wb-textarea').value = sk_wbPreviewItem.text || '';
-        scheduleWbDraftSave();
+      if (!sk_wbPreviewItem) return;
+      try {
+        await navigator.clipboard.writeText(sk_wbPreviewItem.text || '');
         await markItemUsed(sk_wbPreviewItem);
-      }
+        showCenterToast('✓ コピーしました　上の欄に貼り付けてください');
+      } catch (e) { showCenterToast('✕ コピーに失敗しました'); }
       $('#sk-wb-preview-overlay').classList.remove('active');
     };
     $('#sk-wb-preview-partial-btn').onclick = async () => {
       const ta = $('#sk-wb-preview-text');
       const selected = ta.value.slice(ta.selectionStart, ta.selectionEnd);
       if (!selected) { alert('本文の一部を選択してから押してください'); return; }
-      // 「選択部分を差し込む」は、既存内容を消さずカーソル位置に追加する
-      insertIntoWorkbench(selected);
-      if (sk_wbPreviewItem) await markItemUsed(sk_wbPreviewItem);
+      try {
+        await navigator.clipboard.writeText(selected);
+        if (sk_wbPreviewItem) await markItemUsed(sk_wbPreviewItem);
+        showCenterToast('✓ 選択部分をコピーしました　上の欄に貼り付けてください');
+      } catch (e) { showCenterToast('✕ コピーに失敗しました'); }
       $('#sk-wb-preview-overlay').classList.remove('active');
     };
   });
