@@ -4765,6 +4765,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   async function openEditor(item) {
+    sk_editorSaving = false; $('#sk-editor-close-btn').disabled = false; // 念のため、前回の保存ロックが残っていないことを保証する
     editingItemId = item ? item.id : null;
     editorFavorite = item ? !!item.favorite : false;
     editorGenreIds = item ? itemGenreIds(item).slice() : (currentGenre() ? [currentGenre().id] : (notebook.genres[0] ? [notebook.genres[0].id] : []));
@@ -4791,41 +4792,50 @@ window.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => $('#sk-editor-text').focus(), 50);
   }
 
+  let sk_editorSaving = false; // 保存中の連打・二重タップによる重複登録を防ぐロック
   async function closeEditorSave() {
-    const title = $('#sk-editor-title').value.trim();
-    const text = $('#sk-editor-text').value.trim();
-    const keptExisting = existingEditorImages.filter((img) => img.kept).map((img) => ({ imageId: img.imageId, imageIv: img.imageIv, imageMime: img.imageMime }));
-    const removedExisting = existingEditorImages.filter((img) => !img.kept);
+    if (sk_editorSaving) return; // 保存処理が終わるまでは何度呼ばれても無視する
+    sk_editorSaving = true;
+    $('#sk-editor-close-btn').disabled = true;
+    try {
+      const title = $('#sk-editor-title').value.trim();
+      const text = $('#sk-editor-text').value.trim();
+      const keptExisting = existingEditorImages.filter((img) => img.kept).map((img) => ({ imageId: img.imageId, imageIv: img.imageIv, imageMime: img.imageMime }));
+      const removedExisting = existingEditorImages.filter((img) => !img.kept);
 
-    if (!editingItemId) {
-      if (!text && !pendingNewImages.length) { closeEditorUI(); return; }
-      const genreIds = editorGenreIds.length ? editorGenreIds.slice() : (notebook.genres[0] ? [notebook.genres[0].id] : []);
-      if (!genreIds.length) { closeEditorUI(); return; }
-      const uploaded = [];
-      for (const p of pendingNewImages) uploaded.push(await uploadImageBlob(p.file));
-      const it = {
-        id: uid(), genreIds, title, text, favorite: editorFavorite, trashed: false,
-        images: uploaded, useCount: 0, lastUsedAt: null,
-        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-      };
-      notebook.items.push(it);
-      await saveNotebook(); closeEditorUI(); renderStorageView();
-      showCenterToast('✓ 保存しました');
-    } else {
-      const it = notebook.items.find((x) => x.id === editingItemId);
-      if (it) {
-        const imageWillChange = pendingNewImages.length > 0 || removedExisting.length > 0;
-        const snap = editorOriginalSnapshot;
-        const changed = !snap || snap.title !== title || snap.text !== text || snap.favorite !== editorFavorite || imageWillChange;
-        for (const img of removedExisting) await deleteImageById(img.imageId);
+      if (!editingItemId) {
+        if (!text && !pendingNewImages.length) { closeEditorUI(); return; }
+        const genreIds = editorGenreIds.length ? editorGenreIds.slice() : (notebook.genres[0] ? [notebook.genres[0].id] : []);
+        if (!genreIds.length) { closeEditorUI(); return; }
         const uploaded = [];
         for (const p of pendingNewImages) uploaded.push(await uploadImageBlob(p.file));
-        it.title = title; it.text = text; it.favorite = editorFavorite;
-        it.images = [...keptExisting, ...uploaded];
-        if (changed) it.updatedAt = new Date().toISOString();
+        const it = {
+          id: uid(), genreIds, title, text, favorite: editorFavorite, trashed: false,
+          images: uploaded, useCount: 0, lastUsedAt: null,
+          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        };
+        notebook.items.push(it);
         await saveNotebook(); closeEditorUI(); renderStorageView();
-        if (changed) showCenterToast('✓ 保存しました');
-      } else { closeEditorUI(); }
+        showCenterToast('✓ 保存しました');
+      } else {
+        const it = notebook.items.find((x) => x.id === editingItemId);
+        if (it) {
+          const imageWillChange = pendingNewImages.length > 0 || removedExisting.length > 0;
+          const snap = editorOriginalSnapshot;
+          const changed = !snap || snap.title !== title || snap.text !== text || snap.favorite !== editorFavorite || imageWillChange;
+          for (const img of removedExisting) await deleteImageById(img.imageId);
+          const uploaded = [];
+          for (const p of pendingNewImages) uploaded.push(await uploadImageBlob(p.file));
+          it.title = title; it.text = text; it.favorite = editorFavorite;
+          it.images = [...keptExisting, ...uploaded];
+          if (changed) it.updatedAt = new Date().toISOString();
+          await saveNotebook(); closeEditorUI(); renderStorageView();
+          if (changed) showCenterToast('✓ 保存しました');
+        } else { closeEditorUI(); }
+      }
+    } finally {
+      sk_editorSaving = false;
+      $('#sk-editor-close-btn').disabled = false;
     }
   }
   function closeEditorUI() {
@@ -5058,7 +5068,9 @@ window.addEventListener('DOMContentLoaded', () => {
   // 下段への直接貼り付け→その場でカテゴリを選んで保管庫に保存
   let wbQuickSaveBlob = null;
   let wbQuickSaveText = '';
+  let sk_quicksaveSaving = false; // 連打・二重タップによる重複登録を防ぐロック
   function openWbQuickSaveDialog(blob, text) {
+    sk_quicksaveSaving = false;
     wbQuickSaveBlob = blob || null;
     wbQuickSaveText = text || '';
     $('#sk-quicksave-memo').value = '';
@@ -5069,16 +5081,22 @@ window.addEventListener('DOMContentLoaded', () => {
       chip.className = 'genre-move-chip';
       chip.textContent = g.name;
       chip.onclick = async () => {
-        const it = {
-          id: uid(), genreIds: [g.id], title: $('#sk-quicksave-memo').value.trim(), text: wbQuickSaveText,
-          images: wbQuickSaveBlob ? [await uploadImageBlob(wbQuickSaveBlob)] : [],
-          favorite: false, trashed: false, useCount: 0, lastUsedAt: null,
-          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        };
-        notebook.items.push(it);
-        await saveNotebook();
-        $('#sk-quicksave-overlay').classList.remove('active');
-        showCenterToast('✓ 保管庫に保存しました');
+        if (sk_quicksaveSaving) return; // 保存処理が終わるまでは何度押されても無視する
+        sk_quicksaveSaving = true;
+        try {
+          const it = {
+            id: uid(), genreIds: [g.id], title: $('#sk-quicksave-memo').value.trim(), text: wbQuickSaveText,
+            images: wbQuickSaveBlob ? [await uploadImageBlob(wbQuickSaveBlob)] : [],
+            favorite: false, trashed: false, useCount: 0, lastUsedAt: null,
+            createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+          };
+          notebook.items.push(it);
+          await saveNotebook();
+          $('#sk-quicksave-overlay').classList.remove('active');
+          showCenterToast('✓ 保管庫に保存しました');
+        } finally {
+          sk_quicksaveSaving = false;
+        }
       };
       catRow.appendChild(chip);
     });
@@ -5421,6 +5439,7 @@ window.addEventListener('DOMContentLoaded', () => {
     };
     document.addEventListener('paste', (e) => {
       if (wbView !== 'workbench' || !document.getElementById('sousaku-app').classList.contains('active')) return;
+      if ($('#sk-editor-overlay').classList.contains('active')) return; // 編集画面が開いている間は、そちら側の貼り付け処理に任せる（二重反応の防止）
       if (e.target === $('#sk-wb-textarea')) return; // 本文欄への直接貼り付けはブラウザ標準動作に任せる
       const items = e.clipboardData && e.clipboardData.items;
       if (!items) return;
@@ -5465,24 +5484,30 @@ window.addEventListener('DOMContentLoaded', () => {
     };
     // カーソル位置に依存する「差し込み」は分かりにくいため廃止し、クリップボードにコピーするだけにする。
     // 挿入は上段の📥貼り付けボタン、または標準のペースト操作でご自身に行ってもらう
+    let sk_wbPreviewCopying = false; // 連打で使用実績が二重にカウントされるのを防ぐロック
     $('#sk-wb-preview-insert-btn').onclick = async () => {
-      if (!sk_wbPreviewItem) return;
+      if (!sk_wbPreviewItem || sk_wbPreviewCopying) return;
+      sk_wbPreviewCopying = true;
       try {
         await navigator.clipboard.writeText(sk_wbPreviewItem.text || '');
         await markItemUsed(sk_wbPreviewItem);
         showCenterToast('✓ コピーしました　上の欄に貼り付けてください');
       } catch (e) { showCenterToast('✕ コピーに失敗しました'); }
+      finally { sk_wbPreviewCopying = false; }
       $('#sk-wb-preview-overlay').classList.remove('active');
     };
     $('#sk-wb-preview-partial-btn').onclick = async () => {
+      if (sk_wbPreviewCopying) return;
       const ta = $('#sk-wb-preview-text');
       const selected = ta.value.slice(ta.selectionStart, ta.selectionEnd);
       if (!selected) { alert('本文の一部を選択してから押してください'); return; }
+      sk_wbPreviewCopying = true;
       try {
         await navigator.clipboard.writeText(selected);
         if (sk_wbPreviewItem) await markItemUsed(sk_wbPreviewItem);
         showCenterToast('✓ 選択部分をコピーしました　上の欄に貼り付けてください');
       } catch (e) { showCenterToast('✕ コピーに失敗しました'); }
+      finally { sk_wbPreviewCopying = false; }
       $('#sk-wb-preview-overlay').classList.remove('active');
     };
   });
@@ -7236,29 +7261,32 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!targets.length) { alert('選択された内容がありません'); return; }
     const btn = $('#keep-import-execute-btn');
     const progEl = $('#keep-import-progress');
+    if (btn.disabled) return; // 連打・二重タップによる二重取り込みを防ぐ
     btn.disabled = true;
+    try {
+      if (targets.some((n) => n.destination === 'ms' || n.destination === 'both')) {
+        progEl.textContent = '素材帳を確認しています…';
+        await ensureMaterialLoaded();
+      }
 
-    if (targets.some((n) => n.destination === 'ms' || n.destination === 'both')) {
-      progEl.textContent = '素材帳を確認しています…';
-      await ensureMaterialLoaded();
+      let done = 0;
+      for (const note of targets) {
+        progEl.textContent = `取り込み中… ${done + 1} / ${targets.length}`;
+        try {
+          if ((note.destination === 'sk' || note.destination === 'both') && window.__skImportOne) {
+            await window.__skImportOne({ title: note.title, text: note.text, imageBlob: note.imageBlob });
+          }
+          if ((note.destination === 'ms' || note.destination === 'both') && note.imageBlob && window.__msImportOne) {
+            await window.__msImportOne({ imageBlob: note.imageBlob, memo: note.title || '' });
+          }
+        } catch (e) { console.error('[Keep取込] 追加に失敗:', note, e); }
+        done++;
+      }
+      progEl.textContent = `完了：${done}件取り込みました`;
+      showCenterToast(`✓ ${done}件取り込みました`);
+    } finally {
+      btn.disabled = false;
     }
-
-    let done = 0;
-    for (const note of targets) {
-      progEl.textContent = `取り込み中… ${done + 1} / ${targets.length}`;
-      try {
-        if ((note.destination === 'sk' || note.destination === 'both') && window.__skImportOne) {
-          await window.__skImportOne({ title: note.title, text: note.text, imageBlob: note.imageBlob });
-        }
-        if ((note.destination === 'ms' || note.destination === 'both') && note.imageBlob && window.__msImportOne) {
-          await window.__msImportOne({ imageBlob: note.imageBlob, memo: note.title || '' });
-        }
-      } catch (e) { console.error('[Keep取込] 追加に失敗:', note, e); }
-      done++;
-    }
-    progEl.textContent = `完了：${done}件取り込みました`;
-    btn.disabled = false;
-    showCenterToast(`✓ ${done}件取り込みました`);
   }
 
   // ============== 合言葉の変更 ==============
