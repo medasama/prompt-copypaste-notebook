@@ -153,6 +153,17 @@ textarea, input { font-family: inherit; }
 .search-input::placeholder { color: var(--ink-soft); }
 .search-input:focus { border-color: var(--accent); }
 
+/* 検索欄の右側に置く「すぐ消せる✕」ボタン */
+.search-input-wrap { position: relative; flex: 1 1 160px; display: flex; }
+.search-input-wrap .search-input { flex: 1 1 auto; padding-right: 32px; }
+.search-clear-btn {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  border: none; background: transparent; color: var(--ink-soft); font-size: 15px; line-height: 1;
+  padding: 6px 7px; border-radius: 50%; cursor: pointer; display: none;
+}
+.search-clear-btn.visible { display: block; }
+.search-clear-btn:hover { background: var(--rule-strong); color: var(--ink); }
+
 .empty-state { color: var(--ink-soft); font-size: 13px; padding: 30px 0; text-align: center; }
 
 /* ============== 編集ポップアップ（共通シェル） ============== */
@@ -334,6 +345,9 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
   .add-new-btn { padding: 8px 12px; font-size: 12.5px; }
   #sk-add-new-btn { display: none; } /* 右下の＋ボタン（FAB）で代用するため隠す */
   .search-input { padding: 7px 10px; font-size: 12px; flex: 1 1 auto; }
+  .search-input-wrap { flex: 1 1 auto; }
+  .search-input-wrap .search-input { padding-right: 30px; }
+  .search-clear-btn { padding: 5px 6px; font-size: 13px; }
   .sort-mode-select { padding: 7px 6px; font-size: 10.5px; flex: 0 1 auto; }
   #sk-reveal-all-btn { padding: 7px 8px; font-size: 10.5px; white-space: nowrap; }
 
@@ -690,7 +704,10 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
           <option value="similar">並び替え：似ている順</option>
         </select>
       </div>
-      <input type="text" class="search-input" id="sk-search-input" placeholder="🔍 検索（全ジャンル対象）" style="display:none; margin-bottom:10px; width:100%;">
+      <span class="search-input-wrap" id="sk-search-wrap" style="display:none; margin-bottom:10px; width:100%;">
+        <input type="text" class="search-input" id="sk-search-input" placeholder="🔍 検索（全ジャンル対象）">
+        <button type="button" class="search-clear-btn" id="sk-search-clear-btn" title="検索をクリア">✕</button>
+      </span>
 
       <button class="fab-add-btn" id="sk-fab-add-btn" title="新規追加">＋</button>
 
@@ -722,7 +739,10 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
         <button class="sk-reveal-icon-btn" id="sk-wb-search-btn" title="検索">🔍</button>
         <button class="sk-reveal-icon-btn" id="sk-wb-reveal-all-btn" style="display:none;" title="一括表示/非表示">👁</button>
       </div>
-      <input type="text" class="search-input" id="sk-wb-search-input" placeholder="🔍 検索（全ジャンル対象）" style="display:none; margin-bottom:6px;">
+      <span class="search-input-wrap" id="sk-wb-search-wrap" style="display:none; margin-bottom:6px; width:100%;">
+        <input type="text" class="search-input" id="sk-wb-search-input" placeholder="🔍 検索（全ジャンル対象）">
+        <button type="button" class="search-clear-btn" id="sk-wb-search-clear-btn" title="検索をクリア">✕</button>
+      </span>
       <div id="sk-wb-browser-list" class="sk-wb-browser-list"></div>
       <p class="paste-hint">タップすると内容を確認し、コピーできます。ここに直接貼り付けると、その場で保管庫に保存できます</p>
     </div>
@@ -814,7 +834,10 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 
     <div class="list-toolbar">
       <button class="add-new-btn" id="cp-add-new-btn">＋ 新規追加</button>
-      <input type="text" class="search-input" id="cp-search-input" placeholder="🔍 検索">
+      <span class="search-input-wrap">
+        <input type="text" class="search-input" id="cp-search-input" placeholder="🔍 検索">
+        <button type="button" class="search-clear-btn" id="cp-search-clear-btn" title="検索をクリア">✕</button>
+      </span>
       <select class="sort-mode-select" id="cp-sort-mode-select">
         <option value="created">並び替え：追加順</option>
         <option value="frequency">並び替え：よく使う順</option>
@@ -894,7 +917,10 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 
     <div class="list-toolbar">
       <button class="add-new-btn" id="pn-add-new-btn">＋ 新しいプロンプトを追加</button>
-      <input type="text" class="search-input" id="pn-search-input" placeholder="🔍 検索">
+      <span class="search-input-wrap">
+        <input type="text" class="search-input" id="pn-search-input" placeholder="🔍 検索">
+        <button type="button" class="search-clear-btn" id="pn-search-clear-btn" title="検索をクリア">✕</button>
+      </span>
       <select class="sort-mode-select" id="pn-sort-mode-select">
         <option value="created">並び替え：追加順</option>
         <option value="recent">並び替え：最近使った順</option>
@@ -2298,7 +2324,19 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   $('#cp-add-new-btn').onclick = () => openEditor(null);
   $('#cp-fab-add-btn').onclick = () => openEditor(null);
-  $('#cp-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderView(); });
+  $('#cp-search-input').addEventListener('input', (e) => {
+    searchQuery = e.target.value.trim();
+    $('#cp-search-clear-btn').classList.toggle('visible', !!searchQuery);
+    renderView();
+  });
+  $('#cp-search-clear-btn').onclick = () => {
+    const input = $('#cp-search-input');
+    input.value = '';
+    searchQuery = '';
+    $('#cp-search-clear-btn').classList.remove('visible');
+    input.focus();
+    renderView();
+  };
   $('#cp-sort-mode-select').addEventListener('change', (e) => { userSortMode = e.target.value; renderView(); });
   $('#cp-genre-cancel-btn').onclick = closeGenreDialog;
   $('#cp-genre-confirm-btn').onclick = confirmAddGenre;
@@ -3513,7 +3551,19 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   $('#pn-add-new-btn').onclick = () => openEditor(null);
   $('#pn-fab-add-btn').onclick = () => openEditor(null);
-  $('#pn-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderView(); });
+  $('#pn-search-input').addEventListener('input', (e) => {
+    searchQuery = e.target.value.trim();
+    $('#pn-search-clear-btn').classList.toggle('visible', !!searchQuery);
+    renderView();
+  });
+  $('#pn-search-clear-btn').onclick = () => {
+    const input = $('#pn-search-input');
+    input.value = '';
+    searchQuery = '';
+    $('#pn-search-clear-btn').classList.remove('visible');
+    input.focus();
+    renderView();
+  };
   $('#pn-sort-mode-select').addEventListener('change', (e) => { userSortMode = e.target.value; renderView(); });
   $('#pn-genre-cancel-btn').onclick = closeGenreDialog;
   $('#pn-genre-confirm-btn').onclick = confirmAddGenre;
@@ -4099,8 +4149,17 @@ window.addEventListener('DOMContentLoaded', () => {
   window.__skLoad = loadOrCreateNotebook;
 
   async function saveNotebook() {
-    const { ivB64, ciphertextB64 } = await encryptJSON(notebook, encKey);
-    await idbPut(db, 'meta', { key: 'notebook', salt: cachedSalt, iv: ivB64, ciphertext: ciphertextB64 });
+    let ivB64, ciphertextB64;
+    try {
+      ({ ivB64, ciphertextB64 } = await encryptJSON(notebook, encKey));
+      await idbPut(db, 'meta', { key: 'notebook', salt: cachedSalt, iv: ivB64, ciphertext: ciphertextB64 });
+    } catch (e) {
+      // 端末側の保存（暗号化・IndexedDB）自体が失敗した場合は、画面を閉じた後の保存なので
+      // 気づけるようにはっきり知らせる（Supabase側の失敗はローカルに残っているので警告のみ）
+      console.error('[創作帳] ローカル保存に失敗しました:', e);
+      alert('保存に失敗しました。お手数ですが、もう一度同じ内容を入力し直してください。\n' + (e && e.message ? e.message : ''));
+      throw e;
+    }
     try { await pushRemoteNotebook(ivB64, ciphertextB64); }
     catch (e) { console.warn('Supabaseへの保存に失敗しました（ローカルには保存済みです）', e); }
   }
@@ -4791,6 +4850,16 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   let sk_editorSaving = false; // 保存中の連打・二重タップによる重複登録を防ぐロック
+  let sk_saveChain = Promise.resolve(); // 暗号化・DB書き込みをバックグラウンドで順番に行うための待ち行列
+  // notebookの暗号化→IndexedDB保存→Supabase送信は重い処理なので、画面は待たせずバックグラウンドで実行する。
+  // 呼び出された順番のまま直列に実行することで、編集を続けて連続保存しても新しい状態が古い状態で
+  // 上書きされてしまう事故を防ぐ。
+  function saveNotebookBackground() {
+    sk_saveChain = sk_saveChain.then(() => saveNotebook()).catch((e) => {
+      console.error('[創作帳] バックグラウンド保存でエラー:', e);
+    });
+    return sk_saveChain;
+  }
   async function closeEditorSave() {
     if (sk_editorSaving) return; // 保存処理が終わるまでは何度呼ばれても無視する
     sk_editorSaving = true;
@@ -4813,8 +4882,9 @@ window.addEventListener('DOMContentLoaded', () => {
           createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
         };
         notebook.items.push(it);
-        await saveNotebook(); closeEditorUI(); renderStorageView();
+        closeEditorUI(); renderStorageView();
         showCenterToast('✓ 保存しました');
+        saveNotebookBackground();
       } else {
         const it = notebook.items.find((x) => x.id === editingItemId);
         if (it) {
@@ -4827,8 +4897,9 @@ window.addEventListener('DOMContentLoaded', () => {
           it.title = title; it.text = text; it.favorite = editorFavorite;
           it.images = [...keptExisting, ...uploaded];
           if (changed) it.updatedAt = new Date().toISOString();
-          await saveNotebook(); closeEditorUI(); renderStorageView();
+          closeEditorUI(); renderStorageView();
           if (changed) showCenterToast('✓ 保存しました');
+          if (changed) saveNotebookBackground();
         } else { closeEditorUI(); }
       }
     } finally {
@@ -4856,11 +4927,12 @@ window.addEventListener('DOMContentLoaded', () => {
       const existingButtons = container.querySelectorAll('button');
       // ジャンルの数が前回と同じなら、ボタンを作り直さず選択状態（active）だけ更新する
       // （タップの最中にボタンの実体が入れ替わり、タップが成立しなくなるのを防ぐため）
-      // 先頭の「すべて」ボタンの分、比較する数を+1する
-      if (existingButtons.length === notebook.genres.length + 1) {
+      // 先頭の「すべて」「★お気に入り」ボタンの分、比較する数を+2する
+      if (existingButtons.length === notebook.genres.length + 2) {
         existingButtons[0].classList.toggle('active', wbGenreView === '__all__');
+        existingButtons[1].classList.toggle('active', wbGenreView === '__fav__');
         notebook.genres.forEach((g, i) => {
-          existingButtons[i + 1].classList.toggle('active', wbGenreView === g.id);
+          existingButtons[i + 2].classList.toggle('active', wbGenreView === g.id);
         });
         return;
       }
@@ -4870,6 +4942,11 @@ window.addEventListener('DOMContentLoaded', () => {
       allBtn.textContent = 'すべて';
       allBtn.onclick = () => { wbGenreView = '__all__'; renderWorkbenchTabs(); renderWorkbenchBrowser(); };
       container.appendChild(allBtn);
+      const favBtn = document.createElement('button');
+      favBtn.className = 'tab-btn' + (wbGenreView === '__fav__' ? ' active' : '');
+      favBtn.textContent = '★ お気に入り';
+      favBtn.onclick = () => { wbGenreView = '__fav__'; renderWorkbenchTabs(); renderWorkbenchBrowser(); };
+      container.appendChild(favBtn);
       notebook.genres.forEach((g) => {
         const btn = document.createElement('button');
         btn.className = 'tab-btn' + (wbGenreView === g.id ? ' active' : '');
@@ -4961,10 +5038,15 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!wbGenreView && notebook.genres[0]) wbGenreView = notebook.genres[0].id;
       const isSearching = !!wbSearchQuery;
       const isAll = wbGenreView === '__all__';
-      const showGenreBadges = isSearching || isAll;
-      let items = (isSearching || isAll)
+      const isFav = wbGenreView === '__fav__';
+      const showGenreBadges = isSearching || isAll || isFav;
+      let items = isSearching
         ? notebook.items.filter((it) => !it.trashed)
-        : notebook.items.filter((it) => itemGenreIds(it).includes(wbGenreView) && !it.trashed);
+        : isFav
+          ? notebook.items.filter((it) => it.favorite && !it.trashed)
+          : isAll
+            ? notebook.items.filter((it) => !it.trashed)
+            : notebook.items.filter((it) => itemGenreIds(it).includes(wbGenreView) && !it.trashed);
       if (isSearching) {
         const q = wbSearchQuery.toLowerCase();
         items = items.filter((it) => (it.title || '').toLowerCase().includes(q) || (it.text || '').toLowerCase().includes(q));
@@ -5224,19 +5306,33 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-add-new-btn').onclick = () => openEditor(null);
     $('#sk-fab-add-btn').onclick = () => openEditor(null);
     $('#sk-search-toggle-btn').onclick = () => {
+      const wrap = $('#sk-search-wrap');
       const input = $('#sk-search-input');
-      const opening = input.style.display === 'none';
+      const opening = wrap.style.display === 'none';
       if (opening) {
-        input.style.display = 'block';
+        wrap.style.display = 'flex';
         setTimeout(() => input.focus(), 50);
       } else {
-        input.style.display = 'none';
+        wrap.style.display = 'none';
         input.value = '';
         searchQuery = '';
+        $('#sk-search-clear-btn').classList.remove('visible');
         renderStorageView();
       }
     };
-    $('#sk-search-input').addEventListener('input', (e) => { searchQuery = e.target.value.trim(); renderStorageView(); });
+    $('#sk-search-input').addEventListener('input', (e) => {
+      searchQuery = e.target.value.trim();
+      $('#sk-search-clear-btn').classList.toggle('visible', !!searchQuery);
+      renderStorageView();
+    });
+    $('#sk-search-clear-btn').onclick = () => {
+      const input = $('#sk-search-input');
+      input.value = '';
+      searchQuery = '';
+      $('#sk-search-clear-btn').classList.remove('visible');
+      input.focus();
+      renderStorageView();
+    };
     $('#sk-sort-mode-select').addEventListener('change', (e) => {
       userSortMode = e.target.value;
       $('#sk-wb-sort-mode-select').value = userSortMode;
@@ -5248,22 +5344,33 @@ window.addEventListener('DOMContentLoaded', () => {
       renderWorkbenchBrowser();
     });
     $('#sk-wb-search-btn').onclick = () => {
+      const wrap = $('#sk-wb-search-wrap');
       const input = $('#sk-wb-search-input');
-      const opening = input.style.display === 'none';
+      const opening = wrap.style.display === 'none';
       if (opening) {
-        input.style.display = 'block';
+        wrap.style.display = 'flex';
         setTimeout(() => input.focus(), 50);
       } else {
-        input.style.display = 'none';
+        wrap.style.display = 'none';
         input.value = '';
         wbSearchQuery = '';
+        $('#sk-wb-search-clear-btn').classList.remove('visible');
         renderWorkbenchBrowser();
       }
     };
     $('#sk-wb-search-input').addEventListener('input', (e) => {
       wbSearchQuery = e.target.value.trim();
+      $('#sk-wb-search-clear-btn').classList.toggle('visible', !!wbSearchQuery);
       renderWorkbenchBrowser();
     });
+    $('#sk-wb-search-clear-btn').onclick = () => {
+      const input = $('#sk-wb-search-input');
+      input.value = '';
+      wbSearchQuery = '';
+      $('#sk-wb-search-clear-btn').classList.remove('visible');
+      input.focus();
+      renderWorkbenchBrowser();
+    };
     $('#sk-reveal-all-btn').addEventListener('click', async () => {
       const items = notebook.items.filter((it) => itemGenreIds(it).includes(currentView) && !it.trashed);
       const btn = $('#sk-reveal-all-btn');
@@ -5285,9 +5392,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
     let sk_wbBulkRevealState = false;
     $('#sk-wb-reveal-all-btn').addEventListener('click', async () => {
-      let items = (wbSearchQuery || wbGenreView === '__all__')
+      let items = wbSearchQuery
         ? notebook.items.filter((it) => !it.trashed)
-        : notebook.items.filter((it) => itemGenreIds(it).includes(wbGenreView) && !it.trashed);
+        : wbGenreView === '__fav__'
+          ? notebook.items.filter((it) => it.favorite && !it.trashed)
+          : wbGenreView === '__all__'
+            ? notebook.items.filter((it) => !it.trashed)
+            : notebook.items.filter((it) => itemGenreIds(it).includes(wbGenreView) && !it.trashed);
       if (wbSearchQuery) {
         const q = wbSearchQuery.toLowerCase();
         items = items.filter((it) => (it.title || '').toLowerCase().includes(q) || (it.text || '').toLowerCase().includes(q));
