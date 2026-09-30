@@ -5219,13 +5219,18 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // 外部（Google Keep等）からの一括取り込み用：1件分を追加する
-  window.__skImportOne = async function ({ title, text, imageBlob }) {
+  window.__skImportOne = async function ({ title, text, imageBlobs }) {
     if (!notebook) return;
     const g = notebook.genres[0];
     if (!g) return;
     const images = [];
-    if (imageBlob) {
-      try { images.push(await uploadImageBlob(imageBlob)); } catch (e) { console.warn('[創作帳] 取込画像の処理に失敗:', e); }
+    for (const blob of (imageBlobs || [])) {
+      // 保管庫は参照用（プロンプトの確認・コピー用）なので、フル解像度である必要はない。
+      // 素材帳・手動アップロードと同じ設定（2048px・画質90%）に圧縮してからアップロードし、
+      // Supabaseの容量と通信量を節約する。圧縮自体に失敗しても、元画像のまま取り込みは続ける。
+      let toUpload = blob;
+      try { toUpload = (await resizeImageBlob(blob, 2048, 0.90)) || blob; } catch (e) { /* noop：元画像のまま使う */ }
+      try { images.push(await uploadImageBlob(toUpload)); } catch (e) { console.warn('[創作帳] 取込画像の処理に失敗:', e); }
     }
     notebook.items.push({
       id: uid(), genreIds: [g.id], title: title || '', text: text || '', images,
@@ -5436,6 +5441,29 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     $('#sk-editor-close-btn').onclick = () => closeEditorSave();
+
+    // PC（マウス操作が前提の端末）では、入力し終えてEnterキーを押すだけで保存できるようにする。
+    // 日本語入力の変換確定Enterで誤って保存されないよう、IME変換中は無視する。
+    // 改行を入力したい場合はShift+Enterで、これは従来通り改行される。
+    {
+      const isPointerFine = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
+      if (isPointerFine) {
+        let sk_composing = false;
+        const titleEl = $('#sk-editor-title');
+        const textEl = $('#sk-editor-text');
+        [titleEl, textEl].forEach((el) => {
+          el.addEventListener('compositionstart', () => { sk_composing = true; });
+          el.addEventListener('compositionend', () => { sk_composing = false; });
+          el.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' || e.shiftKey) return;
+            if (sk_composing || e.isComposing || e.keyCode === 229) return; // IMEの変換確定は無視
+            e.preventDefault();
+            closeEditorSave();
+          });
+        });
+      }
+    }
+
     $('#sk-editor-genre-indicator').onclick = () => {
       const row = $('#sk-genre-move-row');
       row.style.display = row.style.display === 'none' ? 'flex' : 'none';
@@ -7238,26 +7266,28 @@ window.addEventListener('DOMContentLoaded', () => {
             text = data.listContent.map((li) => li.text).filter(Boolean).join('\n');
           }
           const title = data.title || '';
-          let imageBlob = null;
+          // 1メモに画像が複数枚添付されている場合があるので、1枚目だけでなく全部拾う
+          const imageBlobs = [];
           if (Array.isArray(data.attachments) && data.attachments.length) {
-            const att = data.attachments[0];
-            const path = att.filePath || '';
-            const baseDir = name.substring(0, name.lastIndexOf('/') + 1);
-            const targetName = path.split('/').pop();
-            const candidates = [path, baseDir + path, baseDir + targetName];
-            let fileEntry = candidates.map((c) => zip.files[c]).find(Boolean);
-            if (!fileEntry && targetName) {
-              const foundKey = Object.keys(zip.files).find((k) => k.endsWith('/' + targetName) || k === targetName);
-              if (foundKey) fileEntry = zip.files[foundKey];
-            }
-            if (fileEntry) {
-              const buf = await fileEntry.async('arraybuffer');
-              imageBlob = new Blob([buf], { type: att.mimetype || 'image/jpeg' });
+            for (const att of data.attachments) {
+              const path = att.filePath || '';
+              const baseDir = name.substring(0, name.lastIndexOf('/') + 1);
+              const targetName = path.split('/').pop();
+              const candidates = [path, baseDir + path, baseDir + targetName];
+              let fileEntry = candidates.map((c) => zip.files[c]).find(Boolean);
+              if (!fileEntry && targetName) {
+                const foundKey = Object.keys(zip.files).find((k) => k.endsWith('/' + targetName) || k === targetName);
+                if (foundKey) fileEntry = zip.files[foundKey];
+              }
+              if (fileEntry) {
+                const buf = await fileEntry.async('arraybuffer');
+                imageBlobs.push(new Blob([buf], { type: att.mimetype || 'image/jpeg' }));
+              }
             }
           }
-          if (!text && !imageBlob) continue;
-          const destination = imageBlob && text ? 'sk' : (imageBlob ? 'ms' : 'sk');
-          notes.push({ id: keepUid(), title, text, imageBlob, destination, selected: true });
+          if (!text && !imageBlobs.length) continue;
+          const destination = imageBlobs.length && text ? 'sk' : (imageBlobs.length ? 'ms' : 'sk');
+          notes.push({ id: keepUid(), title, text, imageBlobs, destination, selected: true });
         } catch (e) { console.warn('[Keep取込] メモの解析に失敗:', name, e); }
       }
       if (!notes.length) {
@@ -7287,11 +7317,21 @@ window.addEventListener('DOMContentLoaded', () => {
     checkLabel.appendChild(checkbox);
     row.appendChild(checkLabel);
 
-    if (note.imageBlob) {
+    if (note.imageBlobs && note.imageBlobs.length) {
+      const thumbWrap = document.createElement('div');
+      thumbWrap.style.cssText = 'position:relative; flex-shrink:0;';
       const img = document.createElement('img');
       img.className = 'keep-import-thumb';
-      img.src = URL.createObjectURL(note.imageBlob);
-      row.appendChild(img);
+      img.src = URL.createObjectURL(note.imageBlobs[0]);
+      thumbWrap.appendChild(img);
+      if (note.imageBlobs.length > 1) {
+        const badge = document.createElement('span');
+        badge.textContent = `+${note.imageBlobs.length - 1}`;
+        badge.title = `画像が${note.imageBlobs.length}枚あります（全て取り込まれます）`;
+        badge.style.cssText = 'position:absolute; right:-4px; bottom:-4px; background:var(--accent, #2c6e77); color:#fff; font-size:10px; line-height:1; padding:2px 4px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.3);';
+        thumbWrap.appendChild(badge);
+      }
+      row.appendChild(thumbWrap);
     }
 
     const textWrap = document.createElement('div');
@@ -7383,10 +7423,13 @@ window.addEventListener('DOMContentLoaded', () => {
         progEl.textContent = `取り込み中… ${done + 1} / ${targets.length}`;
         try {
           if ((note.destination === 'sk' || note.destination === 'both') && window.__skImportOne) {
-            await window.__skImportOne({ title: note.title, text: note.text, imageBlob: note.imageBlob });
+            await window.__skImportOne({ title: note.title, text: note.text, imageBlobs: note.imageBlobs });
           }
-          if ((note.destination === 'ms' || note.destination === 'both') && note.imageBlob && window.__msImportOne) {
-            await window.__msImportOne({ imageBlob: note.imageBlob, memo: note.title || '' });
+          if ((note.destination === 'ms' || note.destination === 'both') && note.imageBlobs && note.imageBlobs.length && window.__msImportOne) {
+            // 素材帳は1アイテム=画像1枚の構造なので、複数枚あれば1枚ずつ別アイテムとして登録する
+            for (const blob of note.imageBlobs) {
+              await window.__msImportOne({ imageBlob: blob, memo: note.title || '' });
+            }
           }
         } catch (e) { console.error('[Keep取込] 追加に失敗:', note, e); }
         done++;
