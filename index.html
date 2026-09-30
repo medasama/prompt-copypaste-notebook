@@ -5219,7 +5219,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // 外部（Google Keep等）からの一括取り込み用：1件分を追加する
-  window.__skImportOne = async function ({ title, text, imageBlobs }) {
+  window.__skImportOne = async function ({ title, text, imageBlobs, skipSave }) {
     if (!notebook) return;
     const g = notebook.genres[0];
     if (!g) return;
@@ -5237,8 +5237,16 @@ window.addEventListener('DOMContentLoaded', () => {
       favorite: false, trashed: false, useCount: 0, lastUsedAt: null,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     });
-    await saveNotebook();
-    if (currentView === g.id) renderStorageView();
+    if (!skipSave) {
+      await saveNotebook();
+      if (currentView === g.id) renderStorageView();
+    }
+  };
+  // Keep一括取込用：1件ごとの保存（重い全体再暗号化＋アップロード）を省き、最後に1回だけ保存する
+  window.__skFlushImportSave = async function () {
+    if (!notebook) return;
+    await saveNotebookBackground();
+    renderStorageView();
   };
 
   window.__skIsWorkbenchActive = function () { return wbView === 'workbench'; };
@@ -5994,7 +6002,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 合言葉変更用：画像を含めて丸ごと再暗号化する（フェーズ1/2は計算のみ、フェーズ3で保存）
   // 外部（Google Keep等）からの一括取り込み用：1件分の画像を追加する
-  window.__msImportOne = async function ({ imageBlob, memo }) {
+  window.__msImportOne = async function ({ imageBlob, memo, skipSave }) {
     if (!stock || !imageBlob) return;
     const blob = await resizeImageBlob(imageBlob, 2048, 0.90);
     const { imageId, imageIv, imageMime } = await uploadImage(blob);
@@ -6003,6 +6011,14 @@ window.addEventListener('DOMContentLoaded', () => {
       memo: memo || '', category: CATEGORIES[0], favorite: false,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     });
+    if (!skipSave) {
+      await saveStock();
+      renderGrid();
+    }
+  };
+  // Keep一括取込用：1件ごとの保存を省き、最後に1回だけ保存する
+  window.__msFlushImportSave = async function () {
+    if (!stock) return;
     await saveStock();
     renderGrid();
   };
@@ -7419,21 +7435,37 @@ window.addEventListener('DOMContentLoaded', () => {
       }
 
       let done = 0;
+      let skTouched = false;
+      let msTouched = false;
       for (const note of targets) {
         progEl.textContent = `取り込み中… ${done + 1} / ${targets.length}`;
         try {
+          // 1件ごとに保管庫全体・素材帳全体を再保存すると件数が多いときに非常に遅くなるため、
+          // ループ中はメモリ上に積むだけにして、最後に1回だけまとめて保存する（skipSave）
           if ((note.destination === 'sk' || note.destination === 'both') && window.__skImportOne) {
-            await window.__skImportOne({ title: note.title, text: note.text, imageBlobs: note.imageBlobs });
+            await window.__skImportOne({ title: note.title, text: note.text, imageBlobs: note.imageBlobs, skipSave: true });
+            skTouched = true;
           }
           if ((note.destination === 'ms' || note.destination === 'both') && note.imageBlobs && note.imageBlobs.length && window.__msImportOne) {
             // 素材帳は1アイテム=画像1枚の構造なので、複数枚あれば1枚ずつ別アイテムとして登録する
             for (const blob of note.imageBlobs) {
-              await window.__msImportOne({ imageBlob: blob, memo: note.title || '' });
+              await window.__msImportOne({ imageBlob: blob, memo: note.title || '', skipSave: true });
+              msTouched = true;
             }
           }
         } catch (e) { console.error('[Keep取込] 追加に失敗:', note, e); }
         done++;
       }
+
+      if (skTouched && window.__skFlushImportSave) {
+        progEl.textContent = '保管庫に保存しています…';
+        await window.__skFlushImportSave();
+      }
+      if (msTouched && window.__msFlushImportSave) {
+        progEl.textContent = '素材帳に保存しています…';
+        await window.__msFlushImportSave();
+      }
+
       progEl.textContent = `完了：${done}件取り込みました`;
       showCenterToast(`✓ ${done}件取り込みました`);
     } finally {
