@@ -4761,21 +4761,22 @@ window.addEventListener('DOMContentLoaded', () => {
       const el = document.createElement('div');
       el.className = 'genre-move-chip' + (checked ? ' checked' : '');
       el.textContent = (checked ? '✓ ' : '') + g.name;
-      el.onclick = async () => {
+      el.onclick = () => {
         if (checked) {
-          if (editorGenreIds.length <= 1) { showCenterToast('少なくとも1つのジャンルが必要です'); return; }
+          if (editorGenreIds.length <= 1) { showCenterToast('少なくとも1つのジャンルが必要です（先に別のジャンルを選んでから外してください）'); return; }
           editorGenreIds = editorGenreIds.filter((id) => id !== g.id);
         } else {
           editorGenreIds = [...editorGenreIds, g.id];
         }
+        // 見た目（チップ・ジャンル表示）は先に即反映し、重い保存はバックグラウンドで行う（タップのたびに待たされない）
+        updateEditorGenreIndicator();
+        renderGenreMoveChips();
         const it = notebook.items.find((x) => x.id === editingItemId);
         if (it) {
           it.genreIds = editorGenreIds.slice(); it.updatedAt = new Date().toISOString();
-          await saveNotebook();
           renderStorageView();
+          saveNotebookBackground();
         }
-        updateEditorGenreIndicator();
-        renderGenreMoveChips();
       };
       container.appendChild(el);
     });
@@ -4833,16 +4834,17 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-editor-title').value = item ? (item.title || '') : '';
     $('#sk-editor-text').value = item ? item.text : '';
 
+    // 新規・既存どちらでも、開くたびにジャンルチップを今の状態で作り直す
+    // （新規のときに作り直していなかったため、前に開いたアイテムの古いチップ（2つチェック済みなど）が残って表示されていた）
+    $('#sk-genre-move-row').style.display = 'none';
+    renderGenreMoveChips();
+
     if (item) {
-      $('#sk-genre-move-row').style.display = 'none';
-      renderGenreMoveChips();
       for (const img of itemImages(item)) {
         const url = await loadImageUrlById(img.imageId, img.imageIv, img.imageMime);
         existingEditorImages.push({ imageId: img.imageId, imageIv: img.imageIv, imageMime: img.imageMime, previewUrl: url, kept: true });
       }
       renderPendingImageGrid();
-    } else {
-      $('#sk-genre-move-row').style.display = 'none';
     }
 
     $('#sk-editor-overlay').classList.add('active');
@@ -5853,17 +5855,28 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // 画像1枚をクリップボードへコピーする共通処理（アプリ内共有クリップボードにも保存する）
+  const pngBlobCache = new Map();
+  async function getPngBlobCached(it) {
+    if (pngBlobCache.has(it.id)) return pngBlobCache.get(it.id);
+    const blob = await loadImageBlob(it);
+    if (!blob) return null;
+    const png = await blobToPngBlob(blob);
+    if (png) pngBlobCache.set(it.id, png);
+    return png;
+  }
   function copyImageItem(it, onDone) {
     if (!navigator.clipboard || !navigator.clipboard.write) {
       showToast('お使いのブラウザは画像コピーに対応していません');
       return;
     }
+    // 変換に時間がかかっても「押せていない」と感じないよう、即座に反応を出す
+    if (!pngBlobCache.has(it.id)) showToast('コピー中…');
     navigator.clipboard.write([
       new ClipboardItem({
         'image/png': (async () => {
-          const blob = await loadImageBlob(it);
-          if (!blob) throw new Error('画像の読み込みに失敗しました');
-          return await blobToPngBlob(blob);
+          const png = await getPngBlobCached(it);
+          if (!png) throw new Error('画像の読み込みに失敗しました');
+          return png;
         })(),
       }),
     ]).then(() => {
@@ -6243,7 +6256,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
   function attachDragMergeHandlers(card, itemId) {
     card.draggable = true;
+    // クリック時の数ピクセルのブレがドラッグ扱いになってクリックが消えるのを防ぐ
+    let downX = 0, downY = 0;
+    card.addEventListener('mousedown', (e) => { downX = e.clientX; downY = e.clientY; });
     card.addEventListener('dragstart', (e) => {
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) < 10) { e.preventDefault(); return; }
       if (selectionMode && selectedItemIds.size > 1 && selectedItemIds.has(itemId)) {
         dragSourceItemIds = [...selectedItemIds];
         e.dataTransfer.setData('text/x-ms-item-ids', JSON.stringify(dragSourceItemIds));
@@ -6451,6 +6468,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!url) { showToast('画像の読み込みに失敗しました'); return; }
       revealedIds.add(it.id);
       ensureDataUrlCached(it).catch(() => {});
+      getPngBlobCached(it).catch(() => {}); // 表示した時点でコピー用PNGを先に作っておく
       renderGrid();
     };
     card.appendChild(thumb);
