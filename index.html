@@ -7271,6 +7271,11 @@ window.addEventListener('DOMContentLoaded', () => {
   function keepUid() { return crypto.randomUUID ? crypto.randomUUID() : 'id' + Date.now() + Math.random().toString(16).slice(2); }
 
   function openKeepImportDialog() {
+    // 読み込み済みの一覧が残っていれば、そのまま再表示する（読み直しに時間がかかるため）
+    if (keepImportNotes.length) {
+      $('#keep-import-overlay').classList.add('active');
+      return;
+    }
     keepImportNotes = [];
     $('#keep-import-step1').style.display = 'block';
     $('#keep-import-step2').style.display = 'none';
@@ -7503,6 +7508,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
       progEl.textContent = `完了：${done}件取り込みました`;
       showCenterToast(`✓ ${done}件取り込みました`);
+      keepImportNotes = []; // 取り込み済み。次に開いたときは最初の画面から
     } finally {
       btn.disabled = false;
     }
@@ -7619,7 +7625,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     $('#shell-keep-import-btn').onclick = openKeepImportDialog;
     $('#keep-import-close-btn').onclick = closeKeepImportDialog;
-    $('#keep-import-overlay').addEventListener('click', (e) => { if (e.target === $('#keep-import-overlay')) closeKeepImportDialog(); });
+    // 誤タップで閉じて読み込み結果が消えないよう、外枠クリックでは閉じない（✕ボタンのみ）
     $('#keep-import-zip-input').addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) handleKeepZipFile(e.target.files[0]);
     });
