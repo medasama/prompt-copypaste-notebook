@@ -1100,8 +1100,10 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
     <div id="keep-import-step2" style="display:none; flex:1; min-height:0; flex-direction:column;">
       <div class="keep-import-toolbar">
         <span id="keep-import-count" style="font-size:12px; color:var(--ink-soft);"></span>
-        <button class="lock-btn" id="keep-import-all-prompt-btn">選択分→プロンプト帳</button>
+        <button class="lock-btn" id="keep-import-all-prompt-btn">選択分→創作帳</button>
         <button class="lock-btn" id="keep-import-all-material-btn">選択分→素材帳</button>
+        <button class="lock-btn" id="keep-import-all-both-btn">選択分→両方</button>
+        <button class="lock-btn" id="keep-import-img-only-btn">画像付きだけ選択</button>
         <button class="lock-btn" id="keep-import-all-skip-btn">全解除</button>
       </div>
       <div id="keep-import-list" style="overflow-y:auto; flex:1; margin-top:8px;"></div>
@@ -5223,7 +5225,9 @@ window.addEventListener('DOMContentLoaded', () => {
   // 外部（Google Keep等）からの一括取り込み用：1件分を追加する
   window.__skImportOne = async function ({ title, text, imageBlobs, skipSave }) {
     if (!notebook) return;
-    const g = notebook.genres[0];
+    // 画像付き（プロンプト＋画像のセット）は「完成品」ジャンルへ。画像なしのテキストだけのメモは先頭のジャンルへ。
+    const completedGenre = notebook.genres.find((x) => x.name === '完成品');
+    const g = ((imageBlobs && imageBlobs.length && completedGenre) ? completedGenre : notebook.genres[0]);
     if (!g) return;
     const images = [];
     for (const blob of (imageBlobs || [])) {
@@ -7629,8 +7633,11 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#keep-import-zip-input').addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) handleKeepZipFile(e.target.files[0]);
     });
-    $('#keep-import-all-prompt-btn').onclick = () => { keepImportNotes.forEach((n) => { if (n.selected) n.destination = 'pn'; }); renderKeepImportList(); };
-    $('#keep-import-all-material-btn').onclick = () => { keepImportNotes.forEach((n) => { if (n.selected) n.destination = 'ms'; }); renderKeepImportList(); };
+    $('#keep-import-all-prompt-btn').onclick = () => { keepImportNotes.forEach((n) => { if (n.selected) n.destination = 'sk'; }); renderKeepImportList(); };
+    // 素材帳は画像が必須なので、画像のないメモは素材帳／両方にしても取り込まれない → 創作帳のままにする
+    $('#keep-import-all-material-btn').onclick = () => { keepImportNotes.forEach((n) => { if (n.selected && n.imageBlobs && n.imageBlobs.length) n.destination = 'ms'; }); renderKeepImportList(); };
+    $('#keep-import-all-both-btn').onclick = () => { keepImportNotes.forEach((n) => { if (n.selected && n.imageBlobs && n.imageBlobs.length) n.destination = 'both'; }); renderKeepImportList(); };
+    $('#keep-import-img-only-btn').onclick = () => { keepImportNotes.forEach((n) => { n.selected = !!(n.imageBlobs && n.imageBlobs.length); }); renderKeepImportList(); };
     $('#keep-import-all-skip-btn').onclick = () => { keepImportNotes.forEach((n) => { n.selected = false; }); renderKeepImportList(); };
     $('#keep-import-execute-btn').onclick = executeKeepImport;
 
