@@ -722,6 +722,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
       <textarea id="sk-wb-textarea" placeholder="ここに要素を貼り付け・入力して組み立てます…"></textarea>
       <div class="sk-wb-upper-actions">
         <button id="sk-wb-paste-btn">📥 貼り付け</button>
+        <button id="sk-wb-undo-btn" title="直前の貼り付け・差し込み・クリアを一つ戻す">↩ 戻す</button>
         <button id="sk-wb-copy-btn">📋 コピー</button>
         <button id="sk-wb-clear-btn">✕ クリア</button>
         <button id="sk-wb-save-btn">💾 保管庫に保存</button>
@@ -755,6 +756,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
     <div class="editor-topbar">
       <input type="text" id="sk-editor-title" placeholder="タイトル（任意）">
       <button id="sk-editor-paste-btn" title="クリップボードから貼り付け（画像優先）">📥</button>
+      <button id="sk-editor-undo-btn" title="直前の貼り付け（文字・画像）を一つ戻す">↩</button>
       <button id="sk-editor-copy-btn" title="コピー">📋</button>
       <button id="sk-editor-fav-btn" title="お気に入り">☆</button>
       <button id="sk-editor-trash-btn" title="ゴミ箱へ">🗑</button>
@@ -4807,13 +4809,51 @@ window.addEventListener('DOMContentLoaded', () => {
       cell.appendChild(imgEl); cell.appendChild(removeBtn); grid.appendChild(cell);
     });
   }
+  // ---- 「一つ戻す」の履歴（編集画面／作業台） ----
+  const edUndoStack = []; // 編集画面：戻す処理（関数）を積む。文字の貼り付けも画像の追加も同じ履歴
+  const wbUndoStack = []; // 作業台：直前までの本文を積む
+  function edPushTextUndo() {
+    const ta = $('#sk-editor-text');
+    const prev = ta.value;
+    edUndoStack.push(() => { ta.value = prev; ta.focus(); ta.selectionStart = ta.selectionEnd = prev.length; });
+    if (edUndoStack.length > 50) edUndoStack.shift();
+  }
+  function edUndo() {
+    const fn = edUndoStack.pop();
+    if (!fn) { showCenterToast('これ以上戻せません'); return; }
+    fn();
+    showCenterToast('↩ 一つ戻しました');
+  }
+  function wbPushUndo() {
+    wbUndoStack.push($('#sk-wb-textarea').value);
+    if (wbUndoStack.length > 50) wbUndoStack.shift();
+  }
+  function wbUndo() {
+    if (!wbUndoStack.length) { showCenterToast('これ以上戻せません'); return; }
+    const ta = $('#sk-wb-textarea');
+    ta.value = wbUndoStack.pop();
+    ta.focus();
+    ta.selectionStart = ta.selectionEnd = ta.value.length;
+    scheduleWbDraftSave();
+    showCenterToast('↩ 一つ戻しました');
+  }
+
   async function addPendingImages(fileList) {
     const files = Array.from(fileList).filter((f) => f && f.type && f.type.startsWith('image/'));
+    const before = pendingNewImages.length;
     for (const file of files) {
       let resized = file;
       try { resized = await resizeImageBlob(file, 2048, 0.90); } catch (e) { /* noop */ }
       const previewUrl = URL.createObjectURL(resized);
       pendingNewImages.push({ file: resized, previewUrl });
+    }
+    const added = pendingNewImages.slice(before);
+    if (added.length) {
+      edUndoStack.push(() => {
+        added.forEach((img) => { const i = pendingNewImages.indexOf(img); if (i >= 0) { URL.revokeObjectURL(img.previewUrl); pendingNewImages.splice(i, 1); } });
+        renderPendingImageGrid();
+      });
+      if (edUndoStack.length > 50) edUndoStack.shift();
     }
     renderPendingImageGrid();
   }
@@ -4832,6 +4872,7 @@ window.addEventListener('DOMContentLoaded', () => {
     editorOriginalSnapshot = item ? { title: item.title || '', text: item.text || '', favorite: !!item.favorite, imageCount: itemImages(item).length } : null;
     updateEditorFavBtn(); updateEditorGenreIndicator();
     clearAllPendingImages();
+    edUndoStack.length = 0; // 編集画面を開き直したら戻す履歴もリセット
 
     $('#sk-editor-title').value = item ? (item.title || '') : '';
     $('#sk-editor-text').value = item ? item.text : '';
@@ -5121,6 +5162,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
   function insertIntoWorkbench(text) {
+    wbPushUndo();
     const ta = $('#sk-wb-textarea');
     const start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
     const end = ta.selectionEnd != null ? ta.selectionEnd : ta.value.length;
@@ -5506,6 +5548,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (e.target !== $('#sk-editor-text')) {
         const text = e.clipboardData.getData('text/plain');
         if (text) {
+          edPushTextUndo();
           const ta = $('#sk-editor-text');
           const start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
           const end = ta.selectionEnd != null ? ta.selectionEnd : ta.value.length;
@@ -5539,6 +5582,7 @@ window.addEventListener('DOMContentLoaded', () => {
           if (sc.kind === 'text' && sc.text) text = sc.text;
         }
         if (!text) { showCenterToast('✕ 貼り付けられる内容が見つかりません'); return; }
+        edPushTextUndo();
         const ta = $('#sk-editor-text');
         const start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
         const end = ta.selectionEnd != null ? ta.selectionEnd : ta.value.length;
@@ -5577,11 +5621,20 @@ window.addEventListener('DOMContentLoaded', () => {
         showCenterToast('✕ 貼り付けられる内容が見つかりません');
       } catch (e) { showCenterToast('✕ 貼り付けに失敗しました'); }
     };
+    $('#sk-editor-undo-btn').onclick = edUndo;
+    $('#sk-wb-undo-btn').onclick = wbUndo;
+    // 本文欄へ直接貼り付けた場合（Ctrl+Vや長押し貼り付け）も、貼り付け前の状態を履歴に残す
+    $('#sk-editor-text').addEventListener('paste', (e) => {
+      if (e.clipboardData && e.clipboardData.getData('text/plain')) edPushTextUndo();
+    });
+    $('#sk-wb-textarea').addEventListener('paste', (e) => {
+      if (e.clipboardData && e.clipboardData.getData('text/plain')) wbPushUndo();
+    });
     $('#sk-wb-textarea').addEventListener('input', scheduleWbDraftSave);
     $('#sk-wb-copy-btn').onclick = () => {
       navigator.clipboard.writeText($('#sk-wb-textarea').value).then(() => showCenterToast('✓ コピーしました')).catch(() => showCenterToast('✕ コピーに失敗しました'));
     };
-    $('#sk-wb-clear-btn').onclick = () => { $('#sk-wb-textarea').value = ''; clearWbDraft(); };
+    $('#sk-wb-clear-btn').onclick = () => { if ($('#sk-wb-textarea').value) wbPushUndo(); $('#sk-wb-textarea').value = ''; clearWbDraft(); };
     $('#sk-wb-save-btn').onclick = () => {
       const text = $('#sk-wb-textarea').value.trim();
       if (!text) { showCenterToast('内容が空です'); return; }
