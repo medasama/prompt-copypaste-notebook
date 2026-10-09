@@ -7285,12 +7285,29 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   async function handleKeepZipFile(file) {
-    $('#keep-import-loading').style.display = 'block';
+    const loadingEl = $('#keep-import-loading');
+    loadingEl.style.display = 'block';
+    const sleepFrame = () => new Promise((r) => setTimeout(r, 0));
     try {
+      loadingEl.textContent = `ZIPを開いています…（${(file.size / 1048576).toFixed(0)}MB・数十秒かかることがあります。画面を閉じずにお待ちください）`;
+      await sleepFrame();
       const zip = await JSZip.loadAsync(file);
-      const jsonNames = Object.keys(zip.files).filter((name) => name.toLowerCase().endsWith('.json') && !zip.files[name].dir);
+      const allKeys = Object.keys(zip.files);
+      // ファイル名 → エントリの索引を先に作る（画像探索を毎回全件走査しないため）
+      const byBaseName = new Map();
+      for (const k of allKeys) {
+        const base = k.substring(k.lastIndexOf('/') + 1);
+        if (base && !byBaseName.has(base)) byBaseName.set(base, k);
+      }
+      const jsonNames = allKeys.filter((name) => name.toLowerCase().endsWith('.json') && !zip.files[name].dir);
       const notes = [];
+      let processed = 0;
       for (const name of jsonNames) {
+        processed++;
+        if (processed % 5 === 0 || processed === jsonNames.length) {
+          loadingEl.textContent = `メモを読み込み中… ${processed} / ${jsonNames.length} 件（取り込み候補 ${notes.length} 件）`;
+          await sleepFrame();
+        }
         try {
           const content = await zip.files[name].async('string');
           const data = JSON.parse(content);
@@ -7310,7 +7327,7 @@ window.addEventListener('DOMContentLoaded', () => {
               const candidates = [path, baseDir + path, baseDir + targetName];
               let fileEntry = candidates.map((c) => zip.files[c]).find(Boolean);
               if (!fileEntry && targetName) {
-                const foundKey = Object.keys(zip.files).find((k) => k.endsWith('/' + targetName) || k === targetName);
+                const foundKey = byBaseName.get(targetName);
                 if (foundKey) fileEntry = zip.files[foundKey];
               }
               if (fileEntry) {
