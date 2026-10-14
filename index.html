@@ -1280,6 +1280,25 @@ async function runInBatches(items, batchSize, worker, onProgress) {
   }
 }
 
+// ============== 検索の共通部品 ==============
+// スペース（半角・全角）区切りで複数の語を入力すると、すべての語を含むものだけに絞り込む（AND検索）。
+// 全角/半角・大文字/小文字・ひらがな/カタカナの違いは区別しない（「ｔシャツ」で「Tシャツ」、「てぃ」で「ティ」もヒットする）。
+const __searchNormCache = new WeakMap();
+function normalizeForSearch(str) {
+  return String(str || '').normalize('NFKC').toLowerCase()
+    .replace(/[\u30A1-\u30F6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+}
+function searchMatcher(query) {
+  const words = normalizeForSearch(query).split(/\s+/).filter(Boolean);
+  return (obj, ...fields) => {
+    if (!words.length) return true;
+    const raw = fields.filter(Boolean).join('\n');
+    let cached = __searchNormCache.get(obj);
+    if (!cached || cached.raw !== raw) { cached = { raw, norm: normalizeForSearch(raw) }; __searchNormCache.set(obj, cached); }
+    return words.every((w) => cached.norm.includes(w));
+  };
+}
+
 function showCenterToast(msg) {
   let el = document.getElementById('shared-center-toast');
   if (!el) {
@@ -1874,8 +1893,7 @@ function renderView() {
   }
 
   if (searchQuery) {
-    const q = searchQuery.toLowerCase();
-    items = items.filter((it) => (it.title || '').toLowerCase().includes(q) || (it.text || '').toLowerCase().includes(q));
+    const m = searchMatcher(searchQuery); items = items.filter((it) => m(it, it.title, it.text));
   }
 
   if (userSortMode === 'similar' && !searchQuery) {
@@ -3049,8 +3067,7 @@ function renderView() {
   }
 
   if (searchQuery) {
-    const q = searchQuery.toLowerCase();
-    items = items.filter((p) => (p.title || '').toLowerCase().includes(q) || (p.text || '').toLowerCase().includes(q));
+    const m = searchMatcher(searchQuery); items = items.filter((p) => m(p, p.title, p.text));
   }
 
   if (useUserSort && userSortMode === 'similar' && !searchQuery) {
@@ -4502,8 +4519,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      items = items.filter((it) => (it.title || '').toLowerCase().includes(q) || (it.text || '').toLowerCase().includes(q));
+      const m = searchMatcher(searchQuery); items = items.filter((it) => m(it, it.title, it.text));
     }
     if (userSortMode === 'similar' && !searchQuery) items = reorderBySimilarity(items);
 
@@ -5093,8 +5109,7 @@ window.addEventListener('DOMContentLoaded', () => {
             ? notebook.items.filter((it) => !it.trashed)
             : notebook.items.filter((it) => itemGenreIds(it).includes(wbGenreView) && !it.trashed);
       if (isSearching) {
-        const q = wbSearchQuery.toLowerCase();
-        items = items.filter((it) => (it.title || '').toLowerCase().includes(q) || (it.text || '').toLowerCase().includes(q));
+        const m = searchMatcher(wbSearchQuery); items = items.filter((it) => m(it, it.title, it.text));
       }
       if (userSortMode === 'frequency') {
         items.sort((a, b) => (b.useCount || 0) - (a.useCount || 0) || (b.createdAt || '').localeCompare(a.createdAt || ''));
@@ -5461,8 +5476,7 @@ window.addEventListener('DOMContentLoaded', () => {
             ? notebook.items.filter((it) => !it.trashed)
             : notebook.items.filter((it) => itemGenreIds(it).includes(wbGenreView) && !it.trashed);
       if (wbSearchQuery) {
-        const q = wbSearchQuery.toLowerCase();
-        items = items.filter((it) => (it.title || '').toLowerCase().includes(q) || (it.text || '').toLowerCase().includes(q));
+        const m = searchMatcher(wbSearchQuery); items = items.filter((it) => m(it, it.title, it.text));
       }
       const btn = $('#sk-wb-reveal-all-btn');
       if (!sk_wbBulkRevealState) {
@@ -6202,12 +6216,8 @@ window.addEventListener('DOMContentLoaded', () => {
       list = [...list].sort((a, b) => (Number(!!b.favorite) - Number(!!a.favorite)) || (b.createdAt || '').localeCompare(a.createdAt || ''));
     }
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter((it) =>
-        (it.memo || '').toLowerCase().includes(q) ||
-        (it.category || '').toLowerCase().includes(q) ||
-        itemSubCats(it).some((s) => s.toLowerCase().includes(q))
-      );
+      const m = searchMatcher(searchQuery);
+      list = list.filter((it) => m(it, it.memo, it.category, ...itemSubCats(it)));
     }
     return list;
   }
