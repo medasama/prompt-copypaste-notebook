@@ -214,6 +214,10 @@ textarea, input { font-family: inherit; }
   border: none; background: var(--danger); color: #fff; font-size: 11px; line-height: 1; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
+.pending-image-cell .send-ms-btn {
+  top: auto; right: auto; bottom: -6px; left: -6px; width: auto; min-width: 20px; padding: 0 6px; height: 18px;
+  border-radius: 9px; background: var(--accent, #2c6e77); font-size: 10px; white-space: nowrap;
+}
 .file-label { font-size: 12px; color: var(--ink-soft); cursor: pointer; }
 
 .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: var(--radius); font-size: 13px; display: flex; gap: 14px; align-items: center; box-shadow: var(--shadow); z-index: 400; }
@@ -806,6 +810,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
     <p class="paste-hint" style="margin-top:6px; flex-shrink:0;">まとまり（空行区切り）をタップすると選択されます。ドラッグで手動選択・微調整もできます。コピーしたら上段の欄にご自身で貼り付けてください</p>
     <div class="dialog-actions" style="flex-shrink:0;">
       <button class="cancel" id="sk-wb-preview-edit-btn">📚 保管庫で編集</button>
+      <button class="cancel" id="sk-wb-preview-ms-btn" style="display:none;" title="画像を素材帳へ送る（ジャンルが「服」なら「服」、それ以外は「モデル」）">→素材帳へ</button>
       <button class="cancel" id="sk-wb-preview-cancel-btn">閉じる</button>
       <button class="confirm" id="sk-wb-preview-partial-btn">選択部分をコピー</button>
       <button class="confirm" id="sk-wb-preview-insert-btn">全部コピー</button>
@@ -1869,8 +1874,8 @@ function renderView() {
   let items = [];
   const isSearching = !!searchQuery;
   if (isSearching) {
-    addBtn.style.display = 'none';
-    if (fab) fab.style.display = 'none';
+    addBtn.style.display = 'block'; // 検索中も追加ボタンは残す
+    if (fab) fab.style.display = 'flex';
     items = notebook.items.filter((it) => !it.trashed);
   } else if (currentView === '__trash__') {
     addBtn.style.display = 'none';
@@ -3035,8 +3040,8 @@ function renderView() {
 
   if (isSearching) {
     // 検索中は今のジャンルタブに関係なく、全ジャンルを横断して対象にする
-    addBtn.style.display = 'none';
-    if (fab) fab.style.display = 'none';
+    addBtn.style.display = 'block'; // 検索中も追加ボタンは残す
+    if (fab) fab.style.display = 'flex';
     items = notebook.prompts.filter((p) => !p.trashed);
     useUserSort = true;
   } else if (currentView === '__trash__') {
@@ -4494,7 +4499,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const isGallery = g && g.gallery && !isSearching;
 
     if (isSearching) {
-      addBtn.style.display = 'none'; if (fab) fab.style.display = 'none';
+      addBtn.style.display = 'block'; if (fab) fab.style.display = 'flex'; // 検索中も追加ボタンは残す
       items = notebook.items.filter((it) => !it.trashed);
     } else if (currentView === '__all__') {
       addBtn.style.display = 'none'; if (fab) fab.style.display = 'none';
@@ -4802,6 +4807,48 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ---- 保管庫の画像 → 素材帳へワンタップで送る ----
+  // 振り分け：ジャンルに「服」があれば素材帳の「服」、それ以外は「モデル」
+  const skSentToMs = new Set(); // 同じ画像の二重送信に気づけるよう、このセッションで送った画像を覚えておく
+  function skMaterialCategoryFor(genreIds) {
+    const names = (genreIds || []).map((id) => { const g = notebook.genres.find((x) => x.id === id); return g ? g.name : ''; });
+    return names.includes('服') ? '服' : 'モデル';
+  }
+  async function skSendBlobsToMaterial(entries, memo, genreIds) {
+    // entries: [{ key, getBlob }]
+    if (!window.__ensureMaterialLoaded || !window.__msImportOne) { showCenterToast('✕ 素材帳を利用できません'); return 0; }
+    if (entries.some((e) => skSentToMs.has(e.key)) && !confirm('すでに素材帳へ送った画像が含まれています。もう一度追加しますか？')) return 0;
+    const category = skMaterialCategoryFor(genreIds);
+    showCenterToast('素材帳へ送っています…');
+    try {
+      await window.__ensureMaterialLoaded();
+      for (let i = 0; i < 25 && !(window.__msIsReady && window.__msIsReady()); i++) await new Promise((r) => setTimeout(r, 200)); // 読み込み中なら待つ（最大5秒）
+      if (!(window.__msIsReady && window.__msIsReady())) { showCenterToast('✕ 素材帳の読み込みが終わっていません。少し待ってからもう一度お試しください'); return 0; }
+      let n = 0;
+      for (const e of entries) {
+        const blob = await e.getBlob();
+        if (!blob) continue;
+        const added = await window.__msImportOne({ imageBlob: blob, memo: memo || '', category, noResize: true, skipSave: true });
+        if (added) { n++; skSentToMs.add(e.key); }
+      }
+      if (n && window.__msFlushImportSave) await window.__msFlushImportSave();
+      if (n) showCenterToast(`✓ 素材帳（${category}）に${n}枚追加しました`);
+      else showCenterToast('✕ 追加できる画像がありませんでした');
+      return n;
+    } catch (err) {
+      console.error('[創作帳] 素材帳への送信に失敗:', err);
+      showCenterToast('✕ 素材帳への追加に失敗しました');
+      return 0;
+    }
+  }
+  function makeSendMsBtn(onClick) {
+    const b = document.createElement('button');
+    b.className = 'send-ms-btn'; b.textContent = '→素材'; b.type = 'button';
+    b.title = '素材帳に追加（ジャンルが「服」なら素材帳の「服」、それ以外は「モデル」）';
+    b.onclick = (e) => { e.stopPropagation(); onClick(); };
+    return b;
+  }
+
   function renderPendingImageGrid() {
     const grid = $('#sk-pending-image-grid');
     grid.innerHTML = '';
@@ -4813,7 +4860,10 @@ window.addEventListener('DOMContentLoaded', () => {
       imgEl.onclick = () => { if (img.previewUrl) openImageModal(img.previewUrl); };
       const removeBtn = document.createElement('button'); removeBtn.textContent = '✕';
       removeBtn.onclick = () => { img.kept = false; renderPendingImageGrid(); };
-      cell.appendChild(imgEl); cell.appendChild(removeBtn); grid.appendChild(cell);
+      const sendBtn = makeSendMsBtn(() => skSendBlobsToMaterial(
+        [{ key: img.imageId, getBlob: () => loadImageBlobById(img.imageId, img.imageIv, img.imageMime) }],
+        $('#sk-editor-title').value.trim(), editorGenreIds));
+      cell.appendChild(imgEl); cell.appendChild(removeBtn); cell.appendChild(sendBtn); grid.appendChild(cell);
     });
     pendingNewImages.forEach((img, idx) => {
       const cell = document.createElement('div');
@@ -4822,7 +4872,10 @@ window.addEventListener('DOMContentLoaded', () => {
       imgEl.onclick = () => openImageModal(img.previewUrl);
       const removeBtn = document.createElement('button'); removeBtn.textContent = '✕';
       removeBtn.onclick = () => { URL.revokeObjectURL(img.previewUrl); pendingNewImages.splice(idx, 1); renderPendingImageGrid(); };
-      cell.appendChild(imgEl); cell.appendChild(removeBtn); grid.appendChild(cell);
+      const sendBtn = makeSendMsBtn(() => skSendBlobsToMaterial(
+        [{ key: 'new:' + img.previewUrl, getBlob: async () => img.file }],
+        $('#sk-editor-title').value.trim(), editorGenreIds));
+      cell.appendChild(imgEl); cell.appendChild(removeBtn); cell.appendChild(sendBtn); grid.appendChild(cell);
     });
   }
   // ---- 「一つ戻す」の履歴（編集画面／作業台） ----
@@ -5079,6 +5132,7 @@ window.addEventListener('DOMContentLoaded', () => {
     updateWbPreviewFavBtn();
     renderWbPreviewChips(item.text || '');
     const imgs = itemImages(item);
+    $('#sk-wb-preview-ms-btn').style.display = imgs.length ? '' : 'none';
     const imgEl = $('#sk-wb-preview-image');
     imgEl.classList.remove('sk-wb-preview-image-expanded');
     if (imgs.length) {
@@ -5691,6 +5745,13 @@ window.addEventListener('DOMContentLoaded', () => {
         $('#sk-wb-preview-image').classList.remove('sk-wb-preview-image-expanded');
       }
     });
+    $('#sk-wb-preview-ms-btn').onclick = () => {
+      const item = sk_wbPreviewItem;
+      if (!item) return;
+      skSendBlobsToMaterial(
+        itemImages(item).map((img) => ({ key: img.imageId, getBlob: () => loadImageBlobById(img.imageId, img.imageIv, img.imageMime) })),
+        item.title || '', itemGenreIds(item));
+    };
     $('#sk-wb-preview-edit-btn').onclick = () => {
       const item = sk_wbPreviewItem;
       if (!item) return;
@@ -6086,19 +6147,23 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 合言葉変更用：画像を含めて丸ごと再暗号化する（フェーズ1/2は計算のみ、フェーズ3で保存）
   // 外部（Google Keep等）からの一括取り込み用：1件分の画像を追加する
-  window.__msImportOne = async function ({ imageBlob, memo, skipSave }) {
-    if (!stock || !imageBlob) return;
-    const blob = await resizeImageBlob(imageBlob, 2048, 0.90);
+  // category：素材帳のカテゴリ名（省略時は先頭の「モデル」）／noResize：すでに圧縮済みの画像を再圧縮しない（保管庫からの送信用）
+  window.__msIsReady = function () { return !!stock; };
+  window.__msImportOne = async function ({ imageBlob, memo, category, noResize, skipSave }) {
+    if (!stock || !imageBlob) return null;
+    const blob = noResize ? imageBlob : await resizeImageBlob(imageBlob, 2048, 0.90);
     const { imageId, imageIv, imageMime } = await uploadImage(blob);
-    stock.items.push({
+    const newItem = {
       id: uid(), imageId, imageIv, imageMime, groupId: null,
-      memo: memo || '', category: CATEGORIES[0], favorite: false,
+      memo: memo || '', category: category || CATEGORIES[0], favorite: false,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    });
+    };
+    stock.items.push(newItem);
     if (!skipSave) {
       await saveStock();
       renderGrid();
     }
+    return newItem;
   };
   // Keep一括取込用：1件ごとの保存を省き、最後に1回だけ保存する
   window.__msFlushImportSave = async function () {
@@ -6323,11 +6388,21 @@ window.addEventListener('DOMContentLoaded', () => {
 
   function attachDragMergeHandlers(card, itemId) {
     card.draggable = true;
-    // クリック時の数ピクセルのブレがドラッグ扱いになってクリックが消えるのを防ぐ
-    let downX = 0, downY = 0;
-    card.addEventListener('mousedown', (e) => { downX = e.clientX; downY = e.clientY; });
+    // クリックしたつもりが数ピクセル動いてドラッグ扱いになり、クリックが消えるのを防ぐ。
+    // ドラッグは通常どおり開始させ（まとめる操作を妨げない）、ほとんど動かないまま離した場合だけ、画像のクリックとして扱う
+    let downX = 0, downY = 0, downOnThumb = false;
+    card.addEventListener('mousedown', (e) => {
+      downX = e.clientX; downY = e.clientY;
+      downOnThumb = !!(e.target && e.target.closest && e.target.closest('.ms-thumb'));
+    });
+    card.addEventListener('dragend', (e) => {
+      if (!downOnThumb) return;
+      if (!e.clientX && !e.clientY) return; // 座標が取れない環境では何もしない
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) >= 10) return;
+      const thumbEl = card.querySelector('.ms-thumb');
+      if (thumbEl) thumbEl.click();
+    });
     card.addEventListener('dragstart', (e) => {
-      if (Math.hypot(e.clientX - downX, e.clientY - downY) < 10) { e.preventDefault(); return; }
       if (selectionMode && selectedItemIds.size > 1 && selectedItemIds.has(itemId)) {
         dragSourceItemIds = [...selectedItemIds];
         e.dataTransfer.setData('text/x-ms-item-ids', JSON.stringify(dragSourceItemIds));
@@ -7277,6 +7352,8 @@ window.addEventListener('DOMContentLoaded', () => {
       msLoading = false;
     }
   }
+
+  window.__ensureMaterialLoaded = ensureMaterialLoaded; // 保管庫から素材帳へ画像を送るときに使う
 
   function activateMode(mode) {
     // mode: 'storage' | 'workbench' | 'material'
