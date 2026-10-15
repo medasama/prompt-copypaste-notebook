@@ -1358,16 +1358,27 @@ function jaccardSim(setA, setB) {
 // notes は {id, title?, text?} を含むオブジェクトの配列
 function computeSimilarityGroups(notes, threshold = 0.55) {
   const n = notes.length;
-  if (n > 1500) return notes.map((note, i) => ({ ...note, groupId: i, groupSize: 1 }));
-  const bigramSets = notes.map((note) => textBigrams((note.title || '') + ' ' + (note.text || '')));
   const parent = notes.map((_, i) => i);
   function find(x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
   function union(a, b) { const ra = find(a); const rb = find(b); if (ra !== rb) parent[ra] = rb; }
-  for (let i = 0; i < n; i++) {
-    if (bigramSets[i].size < 3) continue; // 短すぎる内容（本文なし等）は判定対象外
-    for (let j = i + 1; j < n; j++) {
-      if (bigramSets[j].size < 3) continue;
-      if (jaccardSim(bigramSets[i], bigramSets[j]) >= threshold) union(i, j);
+  // 1) 本文が完全一致（🔴印と同じ基準：空白・改行・句読点は無視）のものは、必ず同じグループにする。
+  //    件数が多くても、タイトルが違っても、本文が短くても、これだけは確実に隣り合わせる
+  const normExact = (t) => (t || '').replace(/[\s\u3000]+/g, '').replace(/[、。，．,.!?！？]+/g, '');
+  const exactFirst = new Map();
+  notes.forEach((note, i) => {
+    const k = normExact(note.text);
+    if (!k) return;
+    if (exactFirst.has(k)) union(exactFirst.get(k), i); else exactFirst.set(k, i);
+  });
+  // 2) 完全一致ではないが似ているもの（件数が多すぎる場合は重くなるためこの判定だけスキップ）
+  if (n <= 1500) {
+    const bigramSets = notes.map((note) => textBigrams((note.title || '') + ' ' + (note.text || '')));
+    for (let i = 0; i < n; i++) {
+      if (bigramSets[i].size < 3) continue; // 短すぎる内容（本文なし等）は判定対象外
+      for (let j = i + 1; j < n; j++) {
+        if (bigramSets[j].size < 3) continue;
+        if (jaccardSim(bigramSets[i], bigramSets[j]) >= threshold) union(i, j);
+      }
     }
   }
   const sizeByRoot = {};
@@ -4283,15 +4294,17 @@ window.addEventListener('DOMContentLoaded', () => {
     if (moved || true) await saveNotebook(); // ジャンル自体を消したので中身が0件でも保存する
   }
 
-  // 同じジャンル・同じ内容（タイトル・本文）のアイテムが複数できてしまっている場合、1つにまとめる
+  // 同じジャンル・同じ内容（タイトル・本文）・同じ画像のアイテムが複数できてしまっている場合だけ、1つにまとめる
   // （移行を複数回試みた際に重複登録されてしまったケースの救済）
+  // ※画像まで同じものだけを対象にする。「同じプロンプトで違う画像」や「文字なしの画像だけのメモ」は別物として残す
   async function removeDuplicateItems() {
     const norm = (t) => (t || '').replace(/[\s\u3000]+/g, '');
     const seen = new Map(); // key -> 残すアイテム
     const toRemove = [];
     notebook.items.forEach((it) => {
       if (it.trashed) return;
-      const key = itemGenreIds(it).slice().sort().join(',') + '|' + norm(it.title) + '|' + norm(it.text);
+      const imgKey = itemImages(it).map((img) => img.imageId).sort().join(',');
+      const key = itemGenreIds(it).slice().sort().join(',') + '|' + norm(it.title) + '|' + norm(it.text) + '|' + imgKey;
       if (seen.has(key)) {
         const existing = seen.get(key);
         // 画像が付いている方を優先して残す
@@ -4308,8 +4321,13 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!toRemove.length) return;
     const overlay = showMigrationOverlay(`重複データを整理しています… 0 / ${toRemove.length}件`);
     let done = 0;
+    // 残すアイテムが使っている画像は、同じ画像を共有していても消さない
+    const removeIdSet = new Set(toRemove.map((it) => it.id));
+    const keptImageIds = new Set();
+    notebook.items.forEach((it) => { if (!removeIdSet.has(it.id)) itemImages(it).forEach((img) => keptImageIds.add(img.imageId)); });
     for (const it of toRemove) {
       for (const img of itemImages(it)) {
+        if (keptImageIds.has(img.imageId)) continue;
         try { await deleteImageById(img.imageId); } catch (e) { /* noop */ }
       }
       done++;
