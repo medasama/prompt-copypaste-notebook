@@ -1112,6 +1112,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
         <button class="lock-btn" id="keep-import-all-both-btn">選択分→両方</button>
         <button class="lock-btn" id="keep-import-img-only-btn">画像付きだけ選択</button>
         <button class="lock-btn" id="keep-import-all-skip-btn">全解除</button>
+        <button class="lock-btn" id="keep-import-fix-dates-btn" title="すでに保管庫へ取り込み済みのメモの追加日を、Keepの元の作成日に直します">取り込み済みの日付を修正</button>
       </div>
       <div id="keep-import-list" style="overflow-y:auto; flex:1; margin-top:8px;"></div>
       <div id="keep-import-progress" style="font-size:12px; color:var(--ink-soft); min-height:16px; margin-top:8px;"></div>
@@ -5352,7 +5353,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // 外部（Google Keep等）からの一括取り込み用：1件分を追加する
-  window.__skImportOne = async function ({ title, text, imageBlobs, skipSave }) {
+  window.__skImportOne = async function ({ title, text, imageBlobs, createdAt, skipSave }) {
     if (!notebook) return;
     // 画像付き（プロンプト＋画像のセット）は「完成品」ジャンルへ。画像なしのテキストだけのメモは先頭のジャンルへ。
     const completedGenre = notebook.genres.find((x) => x.name === '完成品');
@@ -5370,7 +5371,7 @@ window.addEventListener('DOMContentLoaded', () => {
     notebook.items.push({
       id: uid(), genreIds: [g.id], title: title || '', text: text || '', images,
       favorite: false, trashed: false, useCount: 0, lastUsedAt: null,
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      createdAt: (createdAt || new Date().toISOString()), updatedAt: (createdAt || new Date().toISOString()),
     });
     if (!skipSave) {
       await saveNotebook();
@@ -5378,6 +5379,41 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   };
   // Keep一括取込用：1件ごとの保存（重い全体再暗号化＋アップロード）を省き、最後に1回だけ保存する
+  // すでに取り込み済みの保管庫メモの「追加日」を、Keepの元の作成日に直す
+  // 本文・タイトルが同じメモ同士を突き合わせ、日付を「より古い方へ」だけ動かす（新しくはしない）。
+  // 同じ内容が複数あって件数が合わないものは、取り違えを避けるため触らない
+  window.__skFixCreatedDates = async function (entries) {
+    if (!notebook) return { fixed: 0, skipped: 0 };
+    const norm = (t) => (t || '').replace(/[\s\u3000]+/g, '');
+    const keyOf = (t, x) => norm(t) + '|' + norm(x);
+    const entByKey = new Map();
+    entries.forEach((e) => {
+      if (!e.createdAt) return;
+      const k = keyOf(e.title, e.text);
+      if (k === '|') return;
+      if (!entByKey.has(k)) entByKey.set(k, []);
+      entByKey.get(k).push(e);
+    });
+    const itemsByKey = new Map();
+    notebook.items.forEach((it) => {
+      const k = keyOf(it.title, it.text);
+      if (!entByKey.has(k)) return;
+      if (!itemsByKey.has(k)) itemsByKey.set(k, []);
+      itemsByKey.get(k).push(it);
+    });
+    let fixed = 0, skipped = 0;
+    itemsByKey.forEach((items, k) => {
+      const ents = entByKey.get(k);
+      if (items.length !== ents.length) { skipped += items.length; return; }
+      ents.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      items.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+      items.forEach((it, i) => {
+        if (ents[i].createdAt < (it.createdAt || '9999')) { it.createdAt = ents[i].createdAt; fixed++; }
+      });
+    });
+    if (fixed) { await saveNotebook(); renderStorageView(); }
+    return { fixed, skipped };
+  };
   window.__skFlushImportSave = async function () {
     if (!notebook) return;
     await saveNotebookBackground();
@@ -6167,14 +6203,14 @@ window.addEventListener('DOMContentLoaded', () => {
   // 外部（Google Keep等）からの一括取り込み用：1件分の画像を追加する
   // category：素材帳のカテゴリ名（省略時は先頭の「モデル」）／noResize：すでに圧縮済みの画像を再圧縮しない（保管庫からの送信用）
   window.__msIsReady = function () { return !!stock; };
-  window.__msImportOne = async function ({ imageBlob, memo, category, noResize, skipSave }) {
+  window.__msImportOne = async function ({ imageBlob, memo, category, noResize, createdAt, skipSave }) {
     if (!stock || !imageBlob) return null;
     const blob = noResize ? imageBlob : await resizeImageBlob(imageBlob, 2048, 0.90);
     const { imageId, imageIv, imageMime } = await uploadImage(blob);
     const newItem = {
       id: uid(), imageId, imageIv, imageMime, groupId: null,
       memo: memo || '', category: category || CATEGORIES[0], favorite: false,
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      createdAt: (createdAt || new Date().toISOString()), updatedAt: (createdAt || new Date().toISOString()),
     };
     stock.items.push(newItem);
     if (!skipSave) {
@@ -7537,7 +7573,10 @@ window.addEventListener('DOMContentLoaded', () => {
           }
           if (!text && !imageBlobs.length) continue;
           const destination = imageBlobs.length && text ? 'sk' : (imageBlobs.length ? 'ms' : 'sk');
-          notes.push({ id: keepUid(), title, text, imageBlobs, destination, selected: true });
+          // Keepのメモ自体が持つ作成日時（マイクロ秒）を引き継ぐ。取り込んだ日ではなく、元の日付で並ぶようにするため
+          const tsUsec = Number(data.createdTimestampUsec || data.userEditedTimestampUsec || 0);
+          const createdAt = tsUsec > 0 && isFinite(tsUsec) ? new Date(tsUsec / 1000).toISOString() : null;
+          notes.push({ id: keepUid(), title, text, imageBlobs, destination, selected: true, createdAt });
         } catch (e) { console.warn('[Keep取込] メモの解析に失敗:', name, e); }
       }
       if (!notes.length) {
@@ -7677,13 +7716,13 @@ window.addEventListener('DOMContentLoaded', () => {
           // 1件ごとに保管庫全体・素材帳全体を再保存すると件数が多いときに非常に遅くなるため、
           // ループ中はメモリ上に積むだけにして、最後に1回だけまとめて保存する（skipSave）
           if ((note.destination === 'sk' || note.destination === 'both') && window.__skImportOne) {
-            await window.__skImportOne({ title: note.title, text: note.text, imageBlobs: note.imageBlobs, skipSave: true });
+            await window.__skImportOne({ title: note.title, text: note.text, imageBlobs: note.imageBlobs, createdAt: note.createdAt, skipSave: true });
             skTouched = true;
           }
           if ((note.destination === 'ms' || note.destination === 'both') && note.imageBlobs && note.imageBlobs.length && window.__msImportOne) {
             // 素材帳は1アイテム=画像1枚の構造なので、複数枚あれば1枚ずつ別アイテムとして登録する
             for (const blob of note.imageBlobs) {
-              await window.__msImportOne({ imageBlob: blob, memo: note.title || '', skipSave: true });
+              await window.__msImportOne({ imageBlob: blob, memo: note.title || '', createdAt: note.createdAt, skipSave: true });
               msTouched = true;
             }
           }
@@ -7828,6 +7867,12 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#keep-import-all-material-btn').onclick = () => { keepImportNotes.forEach((n) => { if (n.selected && n.imageBlobs && n.imageBlobs.length) n.destination = 'ms'; }); renderKeepImportList(); };
     $('#keep-import-all-both-btn').onclick = () => { keepImportNotes.forEach((n) => { if (n.selected && n.imageBlobs && n.imageBlobs.length) n.destination = 'both'; }); renderKeepImportList(); };
     $('#keep-import-img-only-btn').onclick = () => { keepImportNotes.forEach((n) => { n.selected = !!(n.imageBlobs && n.imageBlobs.length); }); renderKeepImportList(); };
+    $('#keep-import-fix-dates-btn').onclick = async () => {
+      if (!keepImportNotes.length || !window.__skFixCreatedDates) return;
+      if (!confirm('すでに保管庫に取り込み済みのメモのうち、タイトルと本文がKeepのメモと同じものについて、「追加日」をKeepの元の作成日に直します。\n（日付は古い方向にだけ直し、新しくすることはありません。内容は変わりません）\n\n実行しますか？')) return;
+      const r = await window.__skFixCreatedDates(keepImportNotes.map((n) => ({ title: n.title, text: n.text, createdAt: n.createdAt })));
+      showCenterToast(`✓ ${r.fixed}件の日付を直しました${r.skipped ? `（同じ内容が複数あり件数が合わない${r.skipped}件はそのままです）` : ''}`);
+    };
     $('#keep-import-all-skip-btn').onclick = () => { keepImportNotes.forEach((n) => { n.selected = false; }); renderKeepImportList(); };
     $('#keep-import-execute-btn').onclick = executeKeepImport;
 
