@@ -6303,8 +6303,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============== 小さな横プレビュー（切り取られていない全体像を、カードの横に小さく出す） ==============
-  // ・PC：画像にマウスを乗せて少し待つと表示／離すと消える
-  // ・スマホ・PC共通：カード右下の🔍を押すと表示（もう一度押す／どこかをタップ／Escで消える）
+  // ・カード右下の🔍を押すと表示（PC・スマホ共通。マウスを乗せただけでは出さない）（もう一度押す／どこかをタップ／Escで消える）
   // ・伏せている（まだ表示していない）画像では出さない。大きさは最大でも幅150px・高さ210px程度
   let peekEl = null, peekTimer = null, peekSticky = false, peekSeq = 0, peekAnchor = null;
   function peekHide() {
@@ -6338,14 +6337,6 @@ window.addEventListener('DOMContentLoaded', () => {
     place();
   }
   function attachPeek(thumb, it) {
-    if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
-      thumb.addEventListener('mouseenter', () => {
-        if (peekSticky) return;
-        clearTimeout(peekTimer);
-        peekTimer = setTimeout(() => peekShow(thumb, it, false), 350);
-      });
-      thumb.addEventListener('mouseleave', () => { if (!peekSticky) peekHide(); });
-    }
     const btn = document.createElement('button');
     btn.className = 'ms-peek-btn'; btn.type = 'button'; btn.textContent = '🔍';
     btn.title = '全体像を小さく表示';
