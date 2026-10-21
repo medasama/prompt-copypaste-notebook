@@ -117,7 +117,7 @@ textarea, input { font-family: inherit; }
 .tab-btn:hover { opacity: 0.9; transform: translateX(2px); }
 .tab-btn.active { opacity: 1; margin-right: 0; transform: translateX(0); }
 .tab-btn.trash-tab { background: var(--ink-soft) !important; margin-top: 18px; }
-.tab-btn.fav-tab { background: var(--gold) !important; }
+.tab-btn.fav-tab { background: #f2c230 !important; color: #3b2f00; font-weight: 600; } /* お気に入りは黄色でひと目で分かるように */
 .tab-add-row { padding: 10px 14px 0; }
 .tab-add-row button { width: 100%; border: 1px dashed var(--rule-strong); background: transparent; color: var(--ink-soft); border-radius: var(--radius); padding: 8px; font-size: 12px; }
 .tab-add-row button:hover { background: var(--paper-card); }
@@ -125,6 +125,7 @@ textarea, input { font-family: inherit; }
 .main { flex: 1; padding: 40px 48px; max-width: 860px; min-width: 0; }
 .main-header { display: flex; align-items: baseline; justify-content: flex-end; margin-bottom: 8px; flex-wrap: wrap; gap: 8px 14px; }
 .header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+.sk-reveal-icon-btn.on { border-color: var(--danger); background: rgba(191,81,71,0.15); }
 .sk-reveal-icon-btn {
   border: 1px solid var(--rule-strong); background: var(--paper-card); border-radius: 8px;
   width: 30px; height: 30px; font-size: 16px; line-height: 1; cursor: pointer;
@@ -428,6 +429,16 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
   display: flex; align-items: center; justify-content: center;
 }
 .ms-fav-btn.on { color: var(--ms-star); }
+.ms-peek-btn {
+  position: absolute; bottom: 4px; right: 4px; width: 20px; height: 20px; border-radius: 6px; border: none;
+  background: rgba(0,0,0,.5); color: #fff; font-size: 11px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+}
+#ms-peek {
+  display: none; position: fixed; z-index: 5000; background: var(--ms-surface, #222); border: 1px solid var(--ms-border, #444);
+  border-radius: 10px; padding: 3px; box-shadow: 0 6px 20px rgba(0,0,0,.4); pointer-events: none;
+}
+#ms-peek img { display: block; max-width: min(150px, 38vw); max-height: 210px; border-radius: 7px; }
 .ms-memo {
   font-size: 10px; color: var(--ms-text); font-family: 'IBM Plex Mono', monospace; min-height: 12px;
   border-bottom: 1px dashed transparent; cursor: text; line-height: 1.3;
@@ -596,6 +607,10 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
   background: rgba(0,0,0,.55); color: #fff; font-size: 10px; cursor: pointer;
 }
 .sk-gallery-dup { position: absolute; top: 4px; left: 4px; font-size: 10px; }
+.sk-gallery-send {
+  position: absolute; bottom: 4px; left: 4px; height: 20px; padding: 0 6px; border-radius: 10px; border: none;
+  background: var(--accent, #2c6e77); color: #fff; font-size: 10px; cursor: pointer; white-space: nowrap;
+}
 .sk-gallery-caption { font-size: 10px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 
 .sk-workbench-view {
@@ -701,6 +716,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
         <button class="add-new-btn" id="sk-add-new-btn">＋ 新規追加</button>
         <button class="sk-reveal-icon-btn" id="sk-reveal-all-btn" style="display:none;" title="一括表示/非表示">👁</button>
         <button class="sk-reveal-icon-btn" id="sk-search-toggle-btn" title="検索">🔍</button>
+        <button class="sk-reveal-icon-btn" id="sk-dup-filter-btn" title="重複（🔴）だけ表示">🔴</button>
         <select class="sort-mode-select" id="sk-sort-mode-select">
           <option value="created">並び替え：追加順</option>
           <option value="recent">並び替え：最近使った順</option>
@@ -1891,11 +1907,11 @@ function renderView() {
     items = notebook.items.filter((it) => !it.trashed);
   } else if (currentView === '__trash__') {
     addBtn.style.display = 'none';
-    if (fab) fab.style.display = 'none';
+    if (fab) fab.style.display = 'flex'; // いつでも表示
     items = notebook.items.filter((it) => it.trashed);
   } else if (currentView === '__fav__') {
     addBtn.style.display = 'none';
-    if (fab) fab.style.display = 'none';
+    if (fab) fab.style.display = 'flex'; // いつでも表示
     items = notebook.items.filter((it) => it.favorite && !it.trashed);
   } else {
     addBtn.style.display = 'block';
@@ -2281,7 +2297,7 @@ async function closeEditorSave() {
 
   if (!editingItemId) {
     if (!text && !pendingNewImages.length) { closeEditorUI(); return; }
-    const g = currentGenre();
+    const g = currentGenre() || notebook.genres[0]; // お気に入り・ゴミ箱・検索中に追加した場合は先頭のジャンルへ
     if (!g) { closeEditorUI(); return; }
     const uploaded = [];
     for (const pending of pendingNewImages) {
@@ -3058,11 +3074,11 @@ function renderView() {
     useUserSort = true;
   } else if (currentView === '__trash__') {
     addBtn.style.display = 'none';
-    if (fab) fab.style.display = 'none';
+    if (fab) fab.style.display = 'flex'; // いつでも表示
     items = notebook.prompts.filter((p) => p.trashed);
   } else if (currentView === '__fav__') {
     addBtn.style.display = 'none';
-    if (fab) fab.style.display = 'none';
+    if (fab) fab.style.display = 'flex'; // いつでも表示
     items = notebook.prompts.filter((p) => p.favorite && !p.trashed);
   } else {
     addBtn.style.display = 'block';
@@ -3493,7 +3509,7 @@ async function closeEditorSave() {
 
     if (!editingPromptId) {
       if (!text) { closeEditorUI(); return; }
-      const g = currentGenre();
+      const g = currentGenre() || notebook.genres[0]; // お気に入り・ゴミ箱・検索中に追加した場合は先頭のジャンルへ
       if (!g) { closeEditorUI(); return; }
       const p = {
         id: uid(), genreId: g.id, title, text, favorite: editorFavorite, trashed: false,
@@ -4173,12 +4189,10 @@ window.addEventListener('DOMContentLoaded', () => {
   // 移行・重複整理・自己修復処理をまとめてバックグラウンドで実行する（ログイン自体をブロックしないため）
   async function runBackgroundMaintenance() {
     try {
-      await runMigrationIfNeeded();
-      await mergeDuplicateGenres();
-      await renameOldCompletedGenre();
-      await fixGalleryGenreFlag();
-      await mergeImageGenIntoCompleted();
-      await removeDuplicateItems();
+      await runMigrationIfNeeded();   // 済んでいれば何もしない（記録済みフラグを1回読むだけ）
+      await mergeDuplicateGenres();   // 同名ジャンルの統合（メモの中身は消さない）
+      await fixGalleryGenreFlag();    // 「完成品」のギャラリー表示の自己修復
+      // ※重複メモの自動削除・旧ジャンル名の自動改名／統合は廃止。重複は🔴で見つけて、自分で整理する
       renderTabs(); renderStorageView();
     } catch (e) {
       console.error('[創作帳] バックグラウンド処理でエラー:', e);
@@ -4261,14 +4275,6 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // 「完成品」ジャンルは必ずギャラリー表示にする（重複統合などの過程でフラグが失われた場合の自己修復）
-  // 旧名称「完成プロンプト」を使っていた場合、「完成品」に改名する（一回だけ）
-  async function renameOldCompletedGenre() {
-    const g = notebook.genres.find((x) => x.name === '完成プロンプト');
-    if (!g) return;
-    g.name = '完成品';
-    await saveNotebook();
-  }
-
   async function fixGalleryGenreFlag() {
     let changed = false;
     notebook.genres.forEach((g) => {
@@ -4276,69 +4282,6 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!!g.gallery !== shouldBeGallery) { g.gallery = shouldBeGallery; changed = true; }
     });
     if (changed) await saveNotebook();
-  }
-
-  // 旧プロンプト帳の「画像生成用」ジャンルの中身を、新しい「完成品」ジャンルへ統合する（一回だけ）
-  async function mergeImageGenIntoCompleted() {
-    const target = notebook.genres.find((g) => g.name === '完成品');
-    const source = notebook.genres.find((g) => g.name === '画像生成用');
-    if (!target || !source || target.id === source.id) return;
-    let moved = false;
-    notebook.items.forEach((it) => {
-      const ids = itemGenreIds(it);
-      if (ids.includes(source.id)) {
-        it.genreIds = [...new Set(ids.map((id) => id === source.id ? target.id : id))];
-        moved = true;
-      }
-    });
-    notebook.genres = notebook.genres.filter((g) => g.id !== source.id);
-    if (moved || true) await saveNotebook(); // ジャンル自体を消したので中身が0件でも保存する
-  }
-
-  // 同じジャンル・同じ内容（タイトル・本文）・同じ画像のアイテムが複数できてしまっている場合だけ、1つにまとめる
-  // （移行を複数回試みた際に重複登録されてしまったケースの救済）
-  // ※画像まで同じものだけを対象にする。「同じプロンプトで違う画像」や「文字なしの画像だけのメモ」は別物として残す
-  async function removeDuplicateItems() {
-    const norm = (t) => (t || '').replace(/[\s\u3000]+/g, '');
-    const seen = new Map(); // key -> 残すアイテム
-    const toRemove = [];
-    notebook.items.forEach((it) => {
-      if (it.trashed) return;
-      const imgKey = itemImages(it).map((img) => img.imageId).sort().join(',');
-      const key = itemGenreIds(it).slice().sort().join(',') + '|' + norm(it.title) + '|' + norm(it.text) + '|' + imgKey;
-      if (seen.has(key)) {
-        const existing = seen.get(key);
-        // 画像が付いている方を優先して残す
-        if (itemImages(it).length > itemImages(existing).length) {
-          toRemove.push(existing);
-          seen.set(key, it);
-        } else {
-          toRemove.push(it);
-        }
-      } else {
-        seen.set(key, it);
-      }
-    });
-    if (!toRemove.length) return;
-    const overlay = showMigrationOverlay(`重複データを整理しています… 0 / ${toRemove.length}件`);
-    let done = 0;
-    // 残すアイテムが使っている画像は、同じ画像を共有していても消さない
-    const removeIdSet = new Set(toRemove.map((it) => it.id));
-    const keptImageIds = new Set();
-    notebook.items.forEach((it) => { if (!removeIdSet.has(it.id)) itemImages(it).forEach((img) => keptImageIds.add(img.imageId)); });
-    for (const it of toRemove) {
-      for (const img of itemImages(it)) {
-        if (keptImageIds.has(img.imageId)) continue;
-        try { await deleteImageById(img.imageId); } catch (e) { /* noop */ }
-      }
-      done++;
-      overlay.textContent = `重複データを整理しています… ${done} / ${toRemove.length}件`;
-    }
-    const removeIds = new Set(toRemove.map((it) => it.id));
-    notebook.items = notebook.items.filter((it) => !removeIds.has(it.id));
-    await saveNotebook();
-    hideMigrationOverlay();
-    alert(`重複していた${toRemove.length}件を整理しました。保管庫の現在の件数: ${notebook.items.length}件`);
   }
 
   // ============== 旧コピペ帳・プロンプト帳からの一回きりの移行 ==============
@@ -4479,7 +4422,7 @@ window.addEventListener('DOMContentLoaded', () => {
       container.appendChild(wrap);
     });
     const favBtn = document.createElement('button');
-    favBtn.className = 'tab-btn trash-tab' + (currentView === '__fav__' ? ' active' : '');
+    favBtn.className = 'tab-btn fav-tab' + (currentView === '__fav__' ? ' active' : '');
     favBtn.textContent = '★ お気に入り';
     favBtn.onclick = () => { currentView = '__fav__'; renderTabs(); renderStorageView(); };
     container.appendChild(favBtn);
@@ -4521,13 +4464,13 @@ window.addEventListener('DOMContentLoaded', () => {
       addBtn.style.display = 'block'; if (fab) fab.style.display = 'flex'; // 検索中も追加ボタンは残す
       items = notebook.items.filter((it) => !it.trashed);
     } else if (currentView === '__all__') {
-      addBtn.style.display = 'none'; if (fab) fab.style.display = 'none';
+      addBtn.style.display = 'none'; if (fab) fab.style.display = 'flex'; // いつでも表示
       items = notebook.items.filter((it) => !it.trashed);
     } else if (currentView === '__trash__') {
-      addBtn.style.display = 'none'; if (fab) fab.style.display = 'none';
+      addBtn.style.display = 'none'; if (fab) fab.style.display = 'flex'; // いつでも表示
       items = notebook.items.filter((it) => it.trashed);
     } else if (currentView === '__fav__') {
-      addBtn.style.display = 'none'; if (fab) fab.style.display = 'none';
+      addBtn.style.display = 'none'; if (fab) fab.style.display = 'flex'; // いつでも表示
       items = notebook.items.filter((it) => it.favorite && !it.trashed);
     } else {
       addBtn.style.display = 'block'; if (fab) fab.style.display = 'flex';
@@ -4548,6 +4491,9 @@ window.addEventListener('DOMContentLoaded', () => {
     if (userSortMode === 'similar' && !searchQuery) items = reorderBySimilarity(items);
 
     const nearDupIds = computeNearDuplicateIds(items);
+    if (skDupOnly) items = reorderBySimilarity(items.filter((it) => nearDupIds.has(it.id))); // 🔴のものだけを、同じ内容同士が隣り合う形で表示
+    $('#sk-dup-filter-btn').classList.toggle('on', skDupOnly);
+    $('#sk-empty-state').textContent = skDupOnly ? '重複している（🔴の付いた）ものはありません。' : 'まだ何もありません。「＋新規追加」から作成してください。';
     $('#sk-empty-state').style.display = items.length ? 'none' : 'block';
 
     $('#sk-reveal-all-btn').style.display = isGallery ? 'block' : 'none';
@@ -4676,6 +4622,19 @@ window.addEventListener('DOMContentLoaded', () => {
       copyBtn.title = 'コピー';
       copyBtn.onclick = (e) => { e.stopPropagation(); copyItem(item); };
       thumb.appendChild(copyBtn);
+    }
+    if (itemImages(item).length) {
+      // 画像を素材帳へワンタップで送る（ジャンルに「服」があれば素材帳の「服」、それ以外は「モデル」）
+      const sendBtn = document.createElement('button');
+      sendBtn.className = 'sk-gallery-send'; sendBtn.type = 'button'; sendBtn.textContent = '→素材';
+      sendBtn.title = '素材帳に追加（ジャンルが「服」なら素材帳の「服」、それ以外は「モデル」）';
+      sendBtn.onclick = (e) => {
+        e.stopPropagation();
+        skSendBlobsToMaterial(
+          itemImages(item).map((img) => ({ key: img.imageId, getBlob: () => loadImageBlobById(img.imageId, img.imageIv, img.imageMime) })),
+          item.title || '', itemGenreIds(item));
+      };
+      thumb.appendChild(sendBtn);
     }
     card.appendChild(thumb);
     const cap = document.createElement('div');
@@ -4983,6 +4942,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   let sk_editorSaving = false; // 保存中の連打・二重タップによる重複登録を防ぐロック
+  let skDupOnly = false; // 重複（🔴）だけを表示するフィルタ
   let sk_saveChain = Promise.resolve(); // 暗号化・DB書き込みをバックグラウンドで順番に行うための待ち行列
   // notebookの暗号化→IndexedDB保存→Supabase送信は重い処理なので、画面は待たせずバックグラウンドで実行する。
   // 呼び出された順番のまま直列に実行することで、編集を続けて連続保存しても新しい状態が古い状態で
@@ -5076,7 +5036,7 @@ window.addEventListener('DOMContentLoaded', () => {
       allBtn.onclick = () => { wbGenreView = '__all__'; renderWorkbenchTabs(); renderWorkbenchBrowser(); };
       container.appendChild(allBtn);
       const favBtn = document.createElement('button');
-      favBtn.className = 'tab-btn' + (wbGenreView === '__fav__' ? ' active' : '');
+      favBtn.className = 'tab-btn fav-tab' + (wbGenreView === '__fav__' ? ' active' : '');
       favBtn.textContent = '★ お気に入り';
       favBtn.onclick = () => { wbGenreView = '__fav__'; renderWorkbenchTabs(); renderWorkbenchBrowser(); };
       container.appendChild(favBtn);
@@ -5489,6 +5449,7 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('DOMContentLoaded', () => {
     $('#sk-add-new-btn').onclick = () => openEditor(null);
     $('#sk-fab-add-btn').onclick = () => openEditor(null);
+    $('#sk-dup-filter-btn').onclick = () => { skDupOnly = !skDupOnly; renderStorageView(); };
     $('#sk-search-toggle-btn').onclick = () => {
       const wrap = $('#sk-search-wrap');
       const input = $('#sk-search-input');
@@ -6341,7 +6302,70 @@ window.addEventListener('DOMContentLoaded', () => {
     return list;
   }
 
+  // ============== 小さな横プレビュー（切り取られていない全体像を、カードの横に小さく出す） ==============
+  // ・PC：画像にマウスを乗せて少し待つと表示／離すと消える
+  // ・スマホ・PC共通：カード右下の🔍を押すと表示（もう一度押す／どこかをタップ／Escで消える）
+  // ・伏せている（まだ表示していない）画像では出さない。大きさは最大でも幅150px・高さ210px程度
+  let peekEl = null, peekTimer = null, peekSticky = false, peekSeq = 0, peekAnchor = null;
+  function peekHide() {
+    clearTimeout(peekTimer); peekSeq++; peekSticky = false; peekAnchor = null;
+    if (peekEl) peekEl.style.display = 'none';
+  }
+  async function peekShow(anchorEl, it, sticky) {
+    const seq = ++peekSeq;
+    const url = imageUrlCache.get(it.id) || await loadImageUrl(it);
+    if (!url || seq !== peekSeq) return;
+    if (!peekEl) {
+      peekEl = document.createElement('div'); peekEl.id = 'ms-peek';
+      peekEl.appendChild(document.createElement('img'));
+      document.body.appendChild(peekEl);
+    }
+    const img = peekEl.querySelector('img');
+    const place = () => {
+      if (!anchorEl.isConnected) { peekHide(); return; }
+      const r = anchorEl.getBoundingClientRect();
+      const pw = peekEl.offsetWidth, ph = peekEl.offsetHeight;
+      let left = r.right + 8;
+      if (left + pw > window.innerWidth - 6) left = r.left - pw - 8;
+      if (left < 6) left = Math.max(6, Math.min(window.innerWidth - pw - 6, r.left));
+      const top = Math.max(6, Math.min(r.top, window.innerHeight - ph - 6));
+      peekEl.style.left = left + 'px'; peekEl.style.top = top + 'px';
+    };
+    img.onload = place;
+    img.src = url;
+    peekEl.style.display = 'block';
+    peekSticky = !!sticky; peekAnchor = anchorEl;
+    place();
+  }
+  function attachPeek(thumb, it) {
+    if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      thumb.addEventListener('mouseenter', () => {
+        if (peekSticky) return;
+        clearTimeout(peekTimer);
+        peekTimer = setTimeout(() => peekShow(thumb, it, false), 350);
+      });
+      thumb.addEventListener('mouseleave', () => { if (!peekSticky) peekHide(); });
+    }
+    const btn = document.createElement('button');
+    btn.className = 'ms-peek-btn'; btn.type = 'button'; btn.textContent = '🔍';
+    btn.title = '全体像を小さく表示';
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      if (peekSticky && peekAnchor === thumb) { peekHide(); return; }
+      peekShow(thumb, it, true);
+    };
+    thumb.appendChild(btn);
+  }
+  document.addEventListener('click', (e) => {
+    if (!peekSticky) return;
+    if (e.target && e.target.closest && e.target.closest('.ms-peek-btn')) return;
+    peekHide();
+  }, true);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') peekHide(); });
+  window.addEventListener('scroll', () => peekHide(), true);
+
   function renderGrid() {
+    peekHide();
     renderTabs(); // タブ一覧（新しいカテゴリの反映）も常に最新化する
     const grid = $('#ms-grid');
     $('#ms-open-add-btn').style.display = activeTab === '__trash__' ? 'none' : 'flex';
@@ -6457,6 +6481,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (thumbEl) thumbEl.click();
     });
     card.addEventListener('dragstart', (e) => {
+      peekHide();
       if (selectionMode && selectedItemIds.size > 1 && selectedItemIds.has(itemId)) {
         dragSourceItemIds = [...selectedItemIds];
         e.dataTransfer.setData('text/x-ms-item-ids', JSON.stringify(dragSourceItemIds));
@@ -6582,6 +6607,7 @@ window.addEventListener('DOMContentLoaded', () => {
       checkBadge.textContent = selectedItemIds.has(cover.id) ? '✓' : '';
       thumb.appendChild(checkBadge);
     }
+    if (revealed && !selectionMode) attachPeek(thumb, cover);
     thumb.onclick = async () => {
       if (selectionMode) {
         if (selectedItemIds.has(cover.id)) selectedItemIds.delete(cover.id);
@@ -6652,6 +6678,7 @@ window.addEventListener('DOMContentLoaded', () => {
       checkBadge.textContent = selectedItemIds.has(it.id) ? '✓' : '';
       thumb.appendChild(checkBadge);
     }
+    if (revealed && !selectionMode) attachPeek(thumb, it);
     thumb.onclick = async () => {
       if (selectionMode && activeTab !== '__trash__') {
         if (selectedItemIds.has(it.id)) selectedItemIds.delete(it.id);
@@ -6953,6 +6980,7 @@ window.addEventListener('DOMContentLoaded', () => {
     veil.className = 'ms-veil-icon';
     veil.innerHTML = '🖼<span>タップで表示</span>';
     thumb.appendChild(veil);
+    if (revealed) attachPeek(thumb, it);
     thumb.onclick = async () => {
       if (revealedIds.has(it.id)) { copyImageItem(it); return; } // 表示済みの画像を再タップするとコピー（編集は✎ボタンから）
       const url = await loadImageUrl(it);
