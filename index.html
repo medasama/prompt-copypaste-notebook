@@ -607,10 +607,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
   background: rgba(0,0,0,.55); color: #fff; font-size: 10px; cursor: pointer;
 }
 .sk-gallery-dup { position: absolute; top: 4px; left: 4px; font-size: 10px; }
-.sk-gallery-send {
-  position: absolute; bottom: 4px; left: 4px; height: 20px; padding: 0 6px; border-radius: 10px; border: none;
-  background: var(--accent, #2c6e77); color: #fff; font-size: 10px; cursor: pointer; white-space: nowrap;
-}
+.sk-peek-left { right: auto !important; left: 4px; }
 .sk-gallery-caption { font-size: 10px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 
 .sk-workbench-view {
@@ -647,6 +644,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
   display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer;
 }
 .sk-wb-thumb-veiled { opacity: 0.6; }
+.sk-wb-peek-btn { flex-shrink: 0; width: 28px; height: 28px; border: 1px solid var(--rule-strong); background: var(--paper-card); border-radius: 8px; font-size: 13px; cursor: pointer; padding: 0; }
 .sk-wb-browser-textwrap { flex: 1; min-width: 0; }
 .sk-wb-browser-text { font-size: 12.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -1320,6 +1318,60 @@ function searchMatcher(query) {
     return words.every((w) => cached.norm.includes(w));
   };
 }
+
+// ============== 小さな横プレビュー（共通部品） ==============
+// 🔍ボタンを押すと、切り取られていない全体像を、元の画像の横に小さく出す（最大でも幅150px・高さ210px程度）。
+// もう一度押す／どこかをタップ／Esc／スクロールで消える。素材帳・保管庫・作業台で共通に使う。
+let peekEl = null, peekSticky = false, peekSeq = 0, peekAnchor = null;
+function peekHide() {
+  peekSeq++; peekSticky = false; peekAnchor = null;
+  if (peekEl) peekEl.style.display = 'none';
+}
+async function peekShow(anchorEl, getUrl) {
+  const seq = ++peekSeq;
+  const url = await getUrl();
+  if (!url || seq !== peekSeq) return;
+  if (!peekEl) {
+    peekEl = document.createElement('div'); peekEl.id = 'ms-peek';
+    peekEl.appendChild(document.createElement('img'));
+    document.body.appendChild(peekEl);
+  }
+  const img = peekEl.querySelector('img');
+  const place = () => {
+    if (!anchorEl.isConnected) { peekHide(); return; }
+    const r = anchorEl.getBoundingClientRect();
+    const pw = peekEl.offsetWidth, ph = peekEl.offsetHeight;
+    let left = r.right + 8;
+    if (left + pw > window.innerWidth - 6) left = r.left - pw - 8;
+    if (left < 6) left = Math.max(6, Math.min(window.innerWidth - pw - 6, r.left));
+    const top = Math.max(6, Math.min(r.top, window.innerHeight - ph - 6));
+    peekEl.style.left = left + 'px'; peekEl.style.top = top + 'px';
+  };
+  img.onload = place;
+  img.src = url;
+  peekEl.style.display = 'block';
+  peekSticky = true; peekAnchor = anchorEl;
+  place();
+}
+function makePeekButton(anchorEl, getUrl, className) {
+  const btn = document.createElement('button');
+  btn.className = className || 'ms-peek-btn'; btn.type = 'button'; btn.textContent = '🔍';
+  btn.title = '全体像を小さく表示';
+  btn.dataset.peek = '1';
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    if (peekSticky && peekAnchor === anchorEl) { peekHide(); return; }
+    peekShow(anchorEl, getUrl);
+  };
+  return btn;
+}
+document.addEventListener('click', (e) => {
+  if (!peekSticky) return;
+  if (e.target && e.target.closest && e.target.closest('[data-peek]')) return;
+  peekHide();
+}, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') peekHide(); });
+window.addEventListener('scroll', () => peekHide(), true);
 
 function showCenterToast(msg) {
   let el = document.getElementById('shared-center-toast');
@@ -4453,6 +4505,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const fab = $('#sk-fab-add-btn');
     const listEl = $('#sk-item-list');
     const galleryEl = $('#sk-gallery-grid');
+    peekHide();
     listEl.innerHTML = ''; galleryEl.innerHTML = '';
 
     let items = [];
@@ -4622,19 +4675,7 @@ window.addEventListener('DOMContentLoaded', () => {
       copyBtn.title = 'コピー';
       copyBtn.onclick = (e) => { e.stopPropagation(); copyItem(item); };
       thumb.appendChild(copyBtn);
-    }
-    if (itemImages(item).length) {
-      // 画像を素材帳へワンタップで送る（ジャンルに「服」があれば素材帳の「服」、それ以外は「モデル」）
-      const sendBtn = document.createElement('button');
-      sendBtn.className = 'sk-gallery-send'; sendBtn.type = 'button'; sendBtn.textContent = '→素材';
-      sendBtn.title = '素材帳に追加（ジャンルが「服」なら素材帳の「服」、それ以外は「モデル」）';
-      sendBtn.onclick = (e) => {
-        e.stopPropagation();
-        skSendBlobsToMaterial(
-          itemImages(item).map((img) => ({ key: img.imageId, getBlob: () => loadImageBlobById(img.imageId, img.imageIv, img.imageMime) })),
-          item.title || '', itemGenreIds(item));
-      };
-      thumb.appendChild(sendBtn);
+      thumb.appendChild(makePeekButton(thumb, () => loadFirstImageUrl(item), 'ms-peek-btn sk-peek-left')); // 🔍 全体像を小さく表示
     }
     card.appendChild(thumb);
     const cap = document.createElement('div');
@@ -5124,6 +5165,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderWorkbenchBrowser() {
+    peekHide();
     try {
       if (!notebook) return;
       const list = $('#sk-wb-browser-list');
@@ -5201,6 +5243,10 @@ window.addEventListener('DOMContentLoaded', () => {
           }
         }
         row.appendChild(textWrap);
+        if (itemImages(it).length && sk_revealedIds.has(it.id)) {
+          const thumbEl = row.querySelector('.sk-wb-browser-thumb-box');
+          if (thumbEl) row.appendChild(makePeekButton(thumbEl, () => loadFirstImageUrl(it), 'sk-wb-peek-btn')); // 🔍 全体像を小さく表示
+        }
         row.onclick = () => openWbPreviewDialog(it);
         list.appendChild(row);
       });
@@ -6302,58 +6348,10 @@ window.addEventListener('DOMContentLoaded', () => {
     return list;
   }
 
-  // ============== 小さな横プレビュー（切り取られていない全体像を、カードの横に小さく出す） ==============
-  // ・カード右下の🔍を押すと表示（PC・スマホ共通。マウスを乗せただけでは出さない）（もう一度押す／どこかをタップ／Escで消える）
-  // ・伏せている（まだ表示していない）画像では出さない。大きさは最大でも幅150px・高さ210px程度
-  let peekEl = null, peekTimer = null, peekSticky = false, peekSeq = 0, peekAnchor = null;
-  function peekHide() {
-    clearTimeout(peekTimer); peekSeq++; peekSticky = false; peekAnchor = null;
-    if (peekEl) peekEl.style.display = 'none';
-  }
-  async function peekShow(anchorEl, it, sticky) {
-    const seq = ++peekSeq;
-    const url = imageUrlCache.get(it.id) || await loadImageUrl(it);
-    if (!url || seq !== peekSeq) return;
-    if (!peekEl) {
-      peekEl = document.createElement('div'); peekEl.id = 'ms-peek';
-      peekEl.appendChild(document.createElement('img'));
-      document.body.appendChild(peekEl);
-    }
-    const img = peekEl.querySelector('img');
-    const place = () => {
-      if (!anchorEl.isConnected) { peekHide(); return; }
-      const r = anchorEl.getBoundingClientRect();
-      const pw = peekEl.offsetWidth, ph = peekEl.offsetHeight;
-      let left = r.right + 8;
-      if (left + pw > window.innerWidth - 6) left = r.left - pw - 8;
-      if (left < 6) left = Math.max(6, Math.min(window.innerWidth - pw - 6, r.left));
-      const top = Math.max(6, Math.min(r.top, window.innerHeight - ph - 6));
-      peekEl.style.left = left + 'px'; peekEl.style.top = top + 'px';
-    };
-    img.onload = place;
-    img.src = url;
-    peekEl.style.display = 'block';
-    peekSticky = !!sticky; peekAnchor = anchorEl;
-    place();
-  }
+  // 素材帳のカードの🔍（全体像の小さな横プレビュー。共通部品 makePeekButton を使う）
   function attachPeek(thumb, it) {
-    const btn = document.createElement('button');
-    btn.className = 'ms-peek-btn'; btn.type = 'button'; btn.textContent = '🔍';
-    btn.title = '全体像を小さく表示';
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      if (peekSticky && peekAnchor === thumb) { peekHide(); return; }
-      peekShow(thumb, it, true);
-    };
-    thumb.appendChild(btn);
+    thumb.appendChild(makePeekButton(thumb, () => imageUrlCache.get(it.id) || loadImageUrl(it), 'ms-peek-btn'));
   }
-  document.addEventListener('click', (e) => {
-    if (!peekSticky) return;
-    if (e.target && e.target.closest && e.target.closest('.ms-peek-btn')) return;
-    peekHide();
-  }, true);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') peekHide(); });
-  window.addEventListener('scroll', () => peekHide(), true);
 
   function renderGrid() {
     peekHide();
