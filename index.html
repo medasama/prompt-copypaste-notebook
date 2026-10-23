@@ -118,6 +118,21 @@ html[data-mode="storage"] body.ms-panel-open .fab-add-btn, html[data-mode="workb
   html[data-mode="storage"] body.ms-panel-open .fab-add-btn, html[data-mode="workbench"] body.ms-panel-open .fab-add-btn { right: 18px; }
 }
 
+/* 直前コピー表示・最近コピーしたもの */
+.item-row.last-copied { outline: 2px solid #2e9e5b; outline-offset: -2px; background: rgba(46,158,91,0.10); }
+.last-copied-badge { font-size: 10px; font-weight: 600; color: #fff; background: #2e9e5b; border-radius: 6px; padding: 1px 6px; margin-right: 4px; white-space: nowrap; }
+.sk-gallery-card.last-copied .sk-gallery-thumb { outline: 3px solid #2e9e5b; outline-offset: -3px; }
+#sk-recent-bar { display: none; align-items: center; gap: 5px; overflow-x: auto; padding: 5px 8px; border-bottom: 1px solid var(--rule); }
+#sk-recent-bar .rb-label { flex-shrink: 0; font-size: 11px; color: var(--ink-soft); }
+#sk-recent-bar button { flex-shrink: 0; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid var(--rule-strong); background: var(--paper-card); border-radius: 12px; font-size: 11.5px; padding: 3px 9px; }
+#sk-recent-bar button.first { border-color: #2e9e5b; background: rgba(46,158,91,0.12); font-weight: 600; }
+#sk-history-overlay { position: fixed; inset: 0; z-index: 420; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; }
+#sk-history-box { background: var(--paper-card, #fff); width: min(420px, 92vw); max-height: 80vh; overflow-y: auto; border-radius: 12px; padding: 10px 12px; }
+#sk-history-box .hb-head { display: flex; align-items: center; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
+#sk-history-box .hb-head span { flex: 1; }
+#sk-history-box .hb-row { display: flex; align-items: center; gap: 8px; padding: 8px 4px; border-bottom: 1px solid var(--rule); cursor: pointer; }
+#sk-history-box .hb-time { flex-shrink: 0; width: 64px; font-size: 11px; color: var(--ink-soft); }
+#sk-history-box .hb-title { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-mode { display: none; min-height: 100vh; }
 .app-mode.active { display: block; }
 
@@ -745,6 +760,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
         <button class="sk-reveal-icon-btn" id="sk-reveal-all-btn" style="display:none;" title="一括表示/非表示">👁</button>
         <button class="sk-reveal-icon-btn" id="sk-search-toggle-btn" title="検索">🔍</button>
         <button class="sk-reveal-icon-btn" id="sk-dup-filter-btn" title="重複（🔴）だけ表示">🔴</button>
+        <button class="sk-reveal-icon-btn" id="sk-history-btn" title="最近コピーしたもの">🕘</button>
         <button class="sk-reveal-icon-btn ms-side-toggle" title="素材帳パネルを開閉">🖼</button>
         <select class="sort-mode-select" id="sk-sort-mode-select">
           <option value="created">並び替え：追加順</option>
@@ -760,6 +776,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 
       <button class="fab-add-btn" id="sk-fab-add-btn" title="新規追加">＋</button>
 
+      <div id="sk-recent-bar"></div>
       <div id="sk-item-list"></div>
       <div id="sk-gallery-grid" class="sk-gallery-grid" style="display:none;"></div>
       <div id="sk-empty-state" class="empty-state" style="display:none;">まだ何もありません。「＋新規追加」から作成してください。</div>
@@ -1404,6 +1421,24 @@ document.addEventListener('click', (e) => {
 }, true);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') peekHide(); });
 window.addEventListener('scroll', () => peekHide(), true);
+
+// 「最近使った順」：コピー/使用した時刻が新しい順。まだ一度も使っていないものは最後に、追加が新しい順で並べる
+function recentCompare(a, b) {
+  const ua = a.lastUsedAt || '', ub = b.lastUsedAt || '';
+  if (ua && ub) return ub.localeCompare(ua);
+  if (ua) return -1;
+  if (ub) return 1;
+  return (b.createdAt || '').localeCompare(a.createdAt || '');
+}
+function relTimeJa(iso) {
+  const t = new Date(iso).getTime(); if (!t) return '';
+  const m = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (m < 1) return 'たった今';
+  if (m < 60) return m + '分前';
+  const h = Math.round(m / 60); if (h < 24) return h + '時間前';
+  const d = Math.round(h / 24); if (d < 30) return d + '日前';
+  return new Date(t).toLocaleDateString('ja-JP');
+}
 
 function showCenterToast(msg) {
   let el = document.getElementById('shared-center-toast');
@@ -4531,8 +4566,53 @@ window.addEventListener('DOMContentLoaded', () => {
     return ids;
   }
 
+  function skRecentItems(n) {
+    return notebook.items.filter((it) => !it.trashed && it.lastUsedAt).sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt)).slice(0, n);
+  }
+  function skItemLabel(it) {
+    return it.title || (it.text ? it.text.split('\n')[0].slice(0, 20) : (itemImages(it).length ? '(画像)' : '(無題)'));
+  }
+  function renderRecentBar() {
+    const bar = $('#sk-recent-bar'); if (!bar) return;
+    const list = skRecentItems(5);
+    bar.innerHTML = '';
+    if (!list.length) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    const lb = document.createElement('span'); lb.className = 'rb-label'; lb.textContent = '直前:'; bar.appendChild(lb);
+    list.forEach((it, i) => {
+      const b = document.createElement('button'); b.type = 'button';
+      b.className = i === 0 ? 'first' : '';
+      b.textContent = skItemLabel(it);
+      b.title = 'タップでもう一度コピー（' + relTimeJa(it.lastUsedAt) + 'にコピー）';
+      b.onclick = () => copyItem(it);
+      bar.appendChild(b);
+    });
+  }
+  function openHistoryDialog() {
+    const old = document.getElementById('sk-history-overlay'); if (old) old.remove();
+    const ov = document.createElement('div'); ov.id = 'sk-history-overlay';
+    const box = document.createElement('div'); box.id = 'sk-history-box';
+    box.innerHTML = '<div class="hb-head"><span>🕘 最近コピーしたもの</span><button type="button" class="sk-reveal-icon-btn" id="sk-history-close">✕</button></div>';
+    const list = skRecentItems(10);
+    if (!list.length) { const e = document.createElement('div'); e.style.cssText = 'padding:16px;text-align:center;color:#777;font-size:13px;'; e.textContent = 'まだ履歴がありません'; box.appendChild(e); }
+    list.forEach((it) => {
+      const row = document.createElement('div'); row.className = 'hb-row';
+      const t = document.createElement('span'); t.className = 'hb-time'; t.textContent = relTimeJa(it.lastUsedAt);
+      const ti = document.createElement('span'); ti.className = 'hb-title'; ti.textContent = skItemLabel(it);
+      const cp = document.createElement('span'); cp.textContent = '📋';
+      row.appendChild(t); row.appendChild(ti); row.appendChild(cp);
+      row.onclick = () => { copyItem(it); ov.remove(); };
+      box.appendChild(row);
+    });
+    ov.appendChild(box);
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+    box.querySelector('#sk-history-close').onclick = () => ov.remove();
+  }
+
   function renderStorageView() {
     if (!notebook) return;
+    renderRecentBar();
     const addBtn = $('#sk-add-new-btn');
     const fab = $('#sk-fab-add-btn');
     const listEl = $('#sk-item-list');
@@ -4565,7 +4645,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (userSortMode === 'frequency') {
       items.sort((a, b) => (b.useCount || 0) - (a.useCount || 0) || (b.createdAt || '').localeCompare(a.createdAt || ''));
     } else if (userSortMode === 'recent') {
-      items.sort((a, b) => (b.lastUsedAt || b.createdAt || '').localeCompare(a.lastUsedAt || a.createdAt || ''));
+      items.sort(recentCompare);
     } else {
       items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     }
@@ -4596,6 +4676,9 @@ window.addEventListener('DOMContentLoaded', () => {
     const row = document.createElement('div');
     row.className = 'item-row';
     row.onclick = () => openEditor(item);
+    const lastCopied = skRecentItems(1)[0];
+    const isLast = !!(lastCopied && lastCopied.id === item.id);
+    if (isLast) row.classList.add('last-copied');
 
     const starBtn = document.createElement('button');
     starBtn.className = 'item-star' + (item.favorite ? ' active' : '');
@@ -4636,6 +4719,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const titleEl = document.createElement('div');
     titleEl.className = 'item-title' + (item.title ? '' : ' placeholder');
     titleEl.textContent = item.title || fallback;
+    if (isLast) { const lb = document.createElement('span'); lb.className = 'last-copied-badge'; lb.textContent = '📋直前'; titleEl.insertBefore(lb, titleEl.firstChild); }
     const previewEl = document.createElement('div');
     previewEl.className = 'item-preview';
     previewEl.textContent = item.text ? item.text.replace(/\n/g, ' ') : '';
@@ -4670,6 +4754,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function renderGalleryCard(item, isNearDup) {
     const card = document.createElement('div');
     card.className = 'sk-gallery-card';
+    { const lc = skRecentItems(1)[0]; if (lc && lc.id === item.id) card.classList.add('last-copied'); }
     const thumb = document.createElement('div');
     thumb.className = 'sk-gallery-thumb';
     const revealed = sk_revealedIds.has(item.id);
@@ -5221,7 +5306,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (userSortMode === 'frequency') {
         items.sort((a, b) => (b.useCount || 0) - (a.useCount || 0) || (b.createdAt || '').localeCompare(a.createdAt || ''));
       } else if (userSortMode === 'recent') {
-        items.sort((a, b) => (b.lastUsedAt || b.createdAt || '').localeCompare(a.lastUsedAt || a.createdAt || ''));
+        items.sort(recentCompare);
       } else if (userSortMode === 'similar' && !isSearching) {
         items = reorderBySimilarity(items);
       } else {
@@ -5528,6 +5613,7 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-add-new-btn').onclick = () => openEditor(null);
     $('#sk-fab-add-btn').onclick = () => openEditor(null);
     $('#sk-dup-filter-btn').onclick = () => { skDupOnly = !skDupOnly; renderStorageView(); };
+    $('#sk-history-btn').onclick = openHistoryDialog;
     $('#sk-search-toggle-btn').onclick = () => {
       const wrap = $('#sk-search-wrap');
       const input = $('#sk-search-input');
@@ -5543,11 +5629,19 @@ window.addEventListener('DOMContentLoaded', () => {
         renderStorageView();
       }
     };
-    $('#sk-search-input').addEventListener('input', (e) => {
-      searchQuery = e.target.value.trim();
-      $('#sk-search-clear-btn').classList.toggle('visible', !!searchQuery);
-      renderStorageView();
-    });
+    {
+      // 入力のたびに全件を描き直すと重いので、入力が落ち着いてから反映する（日本語変換中は反映しない）
+      const inp = $('#sk-search-input'); let comp = false, tm = null;
+      const apply = () => {
+        searchQuery = inp.value.trim();
+        $('#sk-search-clear-btn').classList.toggle('visible', !!searchQuery);
+        renderStorageView();
+      };
+      const sched = () => { clearTimeout(tm); tm = setTimeout(() => { if (!comp) apply(); }, 220); };
+      inp.addEventListener('compositionstart', () => { comp = true; });
+      inp.addEventListener('compositionend', () => { comp = false; sched(); });
+      inp.addEventListener('input', () => { $('#sk-search-clear-btn').classList.toggle('visible', !!inp.value.trim()); if (!comp) sched(); });
+    }
     $('#sk-search-clear-btn').onclick = () => {
       const input = $('#sk-search-input');
       input.value = '';
@@ -5581,11 +5675,18 @@ window.addEventListener('DOMContentLoaded', () => {
         renderWorkbenchBrowser();
       }
     };
-    $('#sk-wb-search-input').addEventListener('input', (e) => {
-      wbSearchQuery = e.target.value.trim();
-      $('#sk-wb-search-clear-btn').classList.toggle('visible', !!wbSearchQuery);
-      renderWorkbenchBrowser();
-    });
+    {
+      const inp = $('#sk-wb-search-input'); let comp = false, tm = null;
+      const apply = () => {
+        wbSearchQuery = inp.value.trim();
+        $('#sk-wb-search-clear-btn').classList.toggle('visible', !!wbSearchQuery);
+        renderWorkbenchBrowser();
+      };
+      const sched = () => { clearTimeout(tm); tm = setTimeout(() => { if (!comp) apply(); }, 220); };
+      inp.addEventListener('compositionstart', () => { comp = true; });
+      inp.addEventListener('compositionend', () => { comp = false; sched(); });
+      inp.addEventListener('input', () => { $('#sk-wb-search-clear-btn').classList.toggle('visible', !!inp.value.trim()); if (!comp) sched(); });
+    }
     $('#sk-wb-search-clear-btn').onclick = () => {
       const input = $('#sk-wb-search-input');
       input.value = '';
