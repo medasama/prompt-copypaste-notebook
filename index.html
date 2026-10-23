@@ -100,6 +100,7 @@ html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="wo
 @media (max-width: 720px) { html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="workbench"] body.ms-panel-open .editor-overlay { padding-right: 24px; } }
 .ms-sp-head { display: flex; align-items: center; gap: 4px; padding: 5px 6px; border-bottom: 1px solid rgba(0,0,0,0.1); }
 .ms-sp-head .ms-sp-title { flex: 1; font-size: 12px; font-weight: 600; }
+.ms-sp-head button.off { background: #20262b; color: #fff; border-color: #20262b; }
 .ms-sp-head button { border: 1px solid rgba(0,0,0,0.2); background: #fff; border-radius: 8px; font-size: 13px; padding: 2px 7px; }
 .ms-sp-search { margin: 5px 6px 0; padding: 4px 6px; font-size: 12px; border: 1px solid rgba(0,0,0,0.2); border-radius: 8px; width: calc(100% - 12px); box-sizing: border-box; }
 .ms-sp-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 5px 6px; flex-shrink: 0; }
@@ -6419,12 +6420,36 @@ window.addEventListener('DOMContentLoaded', () => {
     if (spPanel) return spPanel;
     spPanel = document.createElement('div');
     spPanel.id = 'ms-side-panel';
-    spPanel.innerHTML = '<div class="ms-sp-head"><span class="ms-sp-title">🖼 素材帳</span><button type="button" id="ms-sp-eye" title="画像の表示/非表示">👁</button><button type="button" id="ms-sp-close" title="閉じる">✕</button></div>' +
+    spPanel.innerHTML = '<div class="ms-sp-head"><span class="ms-sp-title">🖼素材帳</span><button type="button" id="ms-sp-eye" title="画像の表示/非表示">👁</button><button type="button" id="ms-sp-close" title="閉じる">✕</button></div>' +
       '<input type="text" class="ms-sp-search" id="ms-sp-search" placeholder="🔍 検索">' +
       '<div class="ms-sp-tabs" id="ms-sp-tabs"></div><div class="ms-sp-list" id="ms-sp-list"></div>';
     document.body.appendChild(spPanel);
     spPanel.querySelector('#ms-sp-close').onclick = () => spSet(false);
     spPanel.querySelector('#ms-sp-eye').onclick = () => { spHideAll = !spHideAll; spRevealed.clear(); spRender(); };
+    // スマホ：パネルを右になぞると閉じる（タブ列・入力欄から始めた操作は除く）
+    let sw = null;
+    spPanel.addEventListener('touchstart', (e) => {
+      if (e.target.closest && e.target.closest('.ms-sp-tabs, input')) { sw = null; return; }
+      const p = e.touches[0]; sw = { x: p.clientX, y: p.clientY, dx: 0, on: false };
+    }, { passive: true });
+    spPanel.addEventListener('touchmove', (e) => {
+      if (!sw) return;
+      const p = e.touches[0]; const dx = p.clientX - sw.x, dy = p.clientY - sw.y;
+      if (!sw.on) {
+        if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx)) { sw = null; return; }
+        if (dx > 14 && dx > Math.abs(dy) * 1.5) sw.on = true; else return;
+      }
+      sw.dx = Math.max(0, dx);
+      spPanel.style.transition = 'none'; spPanel.style.transform = 'translateX(' + sw.dx + 'px)';
+    }, { passive: true });
+    const swEnd = () => {
+      if (!sw) return;
+      const close = sw.on && sw.dx > 70;
+      spPanel.style.transition = ''; spPanel.style.transform = '';
+      sw = null;
+      if (close) spSet(false);
+    };
+    spPanel.addEventListener('touchend', swEnd); spPanel.addEventListener('touchcancel', swEnd);
     let comp = false;
     const inp = spPanel.querySelector('#ms-sp-search');
     inp.addEventListener('compositionstart', () => { comp = true; });
@@ -6459,7 +6484,10 @@ window.addEventListener('DOMContentLoaded', () => {
     };
     mk('★お気に入り', '__fav__', 'fav');
     if (stock) { mk('すべて', '__all__'); getKnownCategories().forEach((c) => mk(c, c)); }
-    spPanel.querySelector('#ms-sp-eye').textContent = spHideAll ? '🙈' : '👁';
+    const eye = spPanel.querySelector('#ms-sp-eye');
+    eye.textContent = spHideAll ? '🙈 出す' : '👁 隠す';
+    eye.classList.toggle('off', spHideAll);
+    eye.title = spHideAll ? '画像は今、非表示です。押すと表示します' : '画像は今、表示中です。押すと非表示にします';
     spRenderList();
   }
   let spGroupView = null; // 開いているグループのid（nullなら一覧）
