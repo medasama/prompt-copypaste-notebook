@@ -112,6 +112,8 @@ html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="wo
 .ms-sp-thumb { position: relative; height: 0; padding-bottom: 133%; border-radius: 6px; overflow: hidden; background: #e8e4da; cursor: pointer; }
 .ms-sp-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; -webkit-user-drag: none; }
 .ms-sp-thumb.veil::after { content: "🙈"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; background: #cfc9b8; }
+.ms-sp-count { position: absolute; left: 3px; top: 3px; z-index: 2; background: rgba(0,0,0,.6); color: #fff; font-size: 10px; border-radius: 6px; padding: 1px 5px; }
+.ms-sp-back { grid-column: 1 / -1; border: 1px solid rgba(0,0,0,0.25); background: #fff; border-radius: 8px; font-size: 12px; padding: 5px; }
 .ms-sp-thumb.copied { outline: 3px solid #2e9e5b; }
 .ms-sp-thumb .ms-peek-btn { right: 2px; bottom: 2px; }
 @media (max-width: 720px) {
@@ -135,6 +137,11 @@ html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="wo
 #sk-history-box .hb-row { display: flex; align-items: center; gap: 8px; padding: 8px 4px; border-bottom: 1px solid var(--rule); cursor: pointer; }
 #sk-history-box .hb-time { flex-shrink: 0; width: 64px; font-size: 11px; color: var(--ink-soft); }
 #sk-history-box .hb-title { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#sk-hold-pop { position: fixed; z-index: 600; display: none; width: min(340px, 90vw); max-height: 60vh; overflow: hidden; background: #fffdf8; color: #222; border: 1px solid rgba(0,0,0,0.25); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); padding: 8px 10px; pointer-events: none; font-size: 12.5px; line-height: 1.5; }
+#sk-hold-pop .hp-title { font-weight: 600; margin-bottom: 4px; }
+#sk-hold-pop .hp-text { white-space: pre-wrap; word-break: break-word; max-height: 44vh; overflow: hidden; }
+#sk-hold-pop img { display: block; max-width: 120px; max-height: 160px; border-radius: 6px; margin-top: 6px; }
+#sk-recent-bar button, #sk-history-box .hb-row { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 .app-mode { display: none; min-height: 100vh; }
 .app-mode.active { display: block; }
 
@@ -4575,6 +4582,39 @@ window.addEventListener('DOMContentLoaded', () => {
   function skItemLabel(it) {
     return it.title || (it.text ? it.text.split('\n')[0].slice(0, 20) : (itemImages(it).length ? '(画像)' : '(無題)'));
   }
+  // 直前バー・履歴の項目を「しばらく当てる（PC）／押し続ける（スマホ）」と中身を表示し、離すと消す
+  let holdPop = null, holdPopItem = null;
+  function holdPopHide() { if (holdPop) holdPop.style.display = 'none'; }
+  async function holdPopShow(anchor, item) {
+    if (!holdPop) { holdPop = document.createElement('div'); holdPop.id = 'sk-hold-pop'; document.body.appendChild(holdPop); }
+    holdPop.innerHTML = '';
+    const t = document.createElement('div'); t.className = 'hp-title'; t.textContent = item.title || '(タイトルなし)'; holdPop.appendChild(t);
+    if (item.text) { const x = document.createElement('div'); x.className = 'hp-text'; x.textContent = item.text; holdPop.appendChild(x); }
+    holdPop.style.display = 'block';
+    const r = anchor.getBoundingClientRect();
+    const pw = holdPop.offsetWidth, ph = holdPop.offsetHeight;
+    let left = Math.max(6, Math.min(r.left, window.innerWidth - pw - 6));
+    let top = r.bottom + 6; if (top + ph > window.innerHeight - 6) top = Math.max(6, r.top - ph - 6);
+    holdPop.style.left = left + 'px'; holdPop.style.top = top + 'px';
+    if (itemImages(item).length) {
+      const url = await loadFirstImageUrl(item);
+      if (url && holdPop.style.display === 'block' && holdPopItem === item) { const im = document.createElement('img'); im.src = url; holdPop.appendChild(im); }
+    }
+  }
+  function attachHoldPreview(el, item, onClick) {
+    let timer = null, shown = false, suppress = false, sx = 0, sy = 0;
+    const show = () => { shown = true; holdPopItem = item; holdPopShow(el, item); };
+    const cancel = () => { clearTimeout(timer); if (shown) holdPopHide(); shown = false; };
+    el.addEventListener('mouseenter', () => { clearTimeout(timer); timer = setTimeout(show, 450); });
+    el.addEventListener('mouseleave', cancel);
+    el.addEventListener('touchstart', (e) => { const p = e.touches[0]; sx = p.clientX; sy = p.clientY; clearTimeout(timer); timer = setTimeout(() => { suppress = true; show(); }, 400); }, { passive: true });
+    el.addEventListener('touchmove', (e) => { const p = e.touches[0]; if (Math.abs(p.clientX - sx) > 8 || Math.abs(p.clientY - sy) > 8) { clearTimeout(timer); if (shown) cancel(); } }, { passive: true });
+    const touchEnd = () => { cancel(); setTimeout(() => { suppress = false; }, 350); };
+    el.addEventListener('touchend', touchEnd); el.addEventListener('touchcancel', touchEnd);
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+    el.onclick = (e) => { if (suppress) { e.preventDefault(); e.stopPropagation(); return; } cancel(); onClick(); };
+  }
+
   function renderRecentBar() {
     const bar = $('#sk-recent-bar'); if (!bar) return;
     const list = skRecentItems(5);
@@ -4586,8 +4626,8 @@ window.addEventListener('DOMContentLoaded', () => {
       const b = document.createElement('button'); b.type = 'button';
       b.className = i === 0 ? 'first' : '';
       b.textContent = skItemLabel(it);
-      b.title = 'タップでもう一度コピー（' + relTimeJa(it.lastUsedAt) + 'にコピー）';
-      b.onclick = () => copyItem(it);
+      b.title = 'タップでもう一度コピー／しばらく当てる・押し続けると中身を表示（' + relTimeJa(it.lastUsedAt) + 'にコピー）';
+      attachHoldPreview(b, it, () => copyItem(it));
       bar.appendChild(b);
     });
   }
@@ -4604,7 +4644,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const ti = document.createElement('span'); ti.className = 'hb-title'; ti.textContent = skItemLabel(it);
       const cp = document.createElement('span'); cp.textContent = '📋';
       row.appendChild(t); row.appendChild(ti); row.appendChild(cp);
-      row.onclick = () => { copyItem(it); ov.remove(); };
+      attachHoldPreview(row, it, () => { copyItem(it); ov.remove(); });
       box.appendChild(row);
     });
     ov.appendChild(box);
@@ -6388,8 +6428,8 @@ window.addEventListener('DOMContentLoaded', () => {
     let comp = false;
     const inp = spPanel.querySelector('#ms-sp-search');
     inp.addEventListener('compositionstart', () => { comp = true; });
-    inp.addEventListener('compositionend', () => { comp = false; spQuery = inp.value; spRenderList(); });
-    inp.addEventListener('input', () => { if (comp) return; spQuery = inp.value; spRenderList(); });
+    inp.addEventListener('compositionend', () => { comp = false; spQuery = inp.value; spGroupView = null; spRenderList(); });
+    inp.addEventListener('input', () => { if (comp) return; spQuery = inp.value; spGroupView = null; spRenderList(); });
     return spPanel;
   }
   async function spSet(open) {
@@ -6414,7 +6454,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const mk = (label, key, cls) => {
       const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
       b.className = (cls || '') + (spTab === key ? ' active' : '');
-      b.onclick = () => { spTab = key; spRender(); };
+      b.onclick = () => { spTab = key; spGroupView = null; spRender(); };
       tabs.appendChild(b);
     };
     mk('★お気に入り', '__fav__', 'fav');
@@ -6422,6 +6462,8 @@ window.addEventListener('DOMContentLoaded', () => {
     spPanel.querySelector('#ms-sp-eye').textContent = spHideAll ? '🙈' : '👁';
     spRenderList();
   }
+  let spGroupView = null; // 開いているグループのid（nullなら一覧）
+  const spSort = (a, b) => (Number(!!b.favorite) - Number(!!a.favorite)) || (b.createdAt || '').localeCompare(a.createdAt || '');
   function spRenderList() {
     if (!spOpen || !spPanel) return;
     peekHide();
@@ -6429,13 +6471,10 @@ window.addEventListener('DOMContentLoaded', () => {
     box.scrollTop = 0;
     if (spObserver) { spObserver.disconnect(); spObserver = null; }
     if (!stock) { box.innerHTML = '<div class="ms-sp-msg">読み込み中…</div>'; return; }
-    let list = stock.items.filter((it) => !it.trashed && it.imageId);
-    if (spTab === '__fav__') list = list.filter((it) => it.favorite);
-    else if (spTab !== '__all__') list = list.filter((it) => it.category === spTab);
-    if (spQuery) { const m = searchMatcher(spQuery); list = list.filter((it) => m(it, it.memo, it.category, ...itemSubCats(it))); }
-    list = [...list].sort((a, b) => (Number(!!b.favorite) - Number(!!a.favorite)) || (b.createdAt || '').localeCompare(a.createdAt || ''));
+    const alive = stock.items.filter((it) => !it.trashed && it.imageId);
+    const byGroup = new Map();
+    alive.forEach((it) => { if (it.groupId) { if (!byGroup.has(it.groupId)) byGroup.set(it.groupId, []); byGroup.get(it.groupId).push(it); } });
     box.innerHTML = '';
-    if (!list.length) { box.innerHTML = '<div class="ms-sp-msg">' + (spTab === '__fav__' && !spQuery ? 'お気に入りがありません' : '該当なし') + '</div>'; return; }
     spObserver = new IntersectionObserver((ents) => {
       ents.forEach((en) => {
         if (!en.isIntersecting) return;
@@ -6448,26 +6487,62 @@ window.addEventListener('DOMContentLoaded', () => {
         });
       });
     }, { root: box, rootMargin: '200px' });
-    list.forEach((it) => {
+    const makeThumb = (it, onTap, count) => {
       const th = document.createElement('div'); th.className = 'ms-sp-thumb'; th._it = it;
       const hidden = () => spHideAll && !spRevealed.has(it.id);
       const sync = () => th.classList.toggle('veil', hidden());
       sync();
-      th.onclick = () => {
-        if (hidden()) { spRevealed.add(it.id); sync(); showPeekBtn(); load(); return; }
-        th.classList.add('copied'); setTimeout(() => th.classList.remove('copied'), 700);
-        copyImageItem(it);
-      };
       let peekBtn = null;
       const showPeekBtn = () => {
         if (peekBtn || hidden()) return;
         peekBtn = makePeekButton(th, () => imageUrlCache.get(it.id) || loadImageUrl(it), 'ms-peek-btn');
         th.appendChild(peekBtn);
       };
-      const load = () => { if (!hidden()) spObserver && spObserver.observe(th); };
+      if (count) { const c = document.createElement('div'); c.className = 'ms-sp-count'; c.textContent = '📚×' + count; th.appendChild(c); }
+      th.onclick = () => {
+        if (hidden()) { spRevealed.add(it.id); sync(); showPeekBtn(); spObserver.observe(th); return; }
+        onTap(th);
+      };
       showPeekBtn();
       box.appendChild(th);
       if (!hidden()) spObserver.observe(th);
+      return th;
+    };
+    const copyTap = (it) => (th) => { th.classList.add('copied'); setTimeout(() => th.classList.remove('copied'), 700); copyImageItem(it); };
+
+    // グループの中身を開いている場合：戻るボタン＋そのグループの画像（タップでコピー）
+    if (spGroupView) {
+      const members = (byGroup.get(spGroupView) || []).slice().sort(spSort);
+      const back = document.createElement('button'); back.type = 'button'; back.className = 'ms-sp-back';
+      back.textContent = '‹ 戻る（' + members.length + '枚）';
+      back.onclick = () => { spGroupView = null; spRenderList(); };
+      box.appendChild(back);
+      if (!members.length) { const m = document.createElement('div'); m.className = 'ms-sp-msg'; m.textContent = '画像がありません'; box.appendChild(m); }
+      members.forEach((it) => makeThumb(it, copyTap(it)));
+      return;
+    }
+
+    // 一覧：グループは1枚のタイル（先頭＝お気に入り→新しい順の1枚）にまとめ、タップで中身を開く
+    const matchTab = (it) => spTab === '__fav__' ? !!it.favorite : (spTab === '__all__' || it.category === spTab);
+    const m = spQuery ? searchMatcher(spQuery) : null;
+    const matchQ = (it) => !m || m(it, it.memo, it.category, ...itemSubCats(it));
+    const entries = [];
+    const seen = new Set();
+    alive.forEach((it) => {
+      if (it.groupId) {
+        if (seen.has(it.groupId)) return;
+        seen.add(it.groupId);
+        const members = byGroup.get(it.groupId).slice().sort(spSort);
+        if (members.some((x) => matchTab(x) && matchQ(x))) entries.push({ cover: members[0], count: members.length, gid: it.groupId, fav: members.some((x) => x.favorite) });
+      } else if (matchTab(it) && matchQ(it)) {
+        entries.push({ cover: it, count: 0, fav: !!it.favorite });
+      }
+    });
+    entries.sort((a, b) => (Number(b.fav) - Number(a.fav)) || (b.cover.createdAt || '').localeCompare(a.cover.createdAt || ''));
+    if (!entries.length) { box.innerHTML = '<div class="ms-sp-msg">' + (spTab === '__fav__' && !spQuery ? 'お気に入りがありません' : '該当なし') + '</div>'; return; }
+    entries.forEach((en) => {
+      if (en.gid) makeThumb(en.cover, () => { spGroupView = en.gid; spRenderList(); }, en.count);
+      else makeThumb(en.cover, copyTap(en.cover));
     });
   }
   document.addEventListener('click', (e) => {
