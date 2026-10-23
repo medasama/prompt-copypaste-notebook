@@ -90,12 +90,14 @@ textarea, input { font-family: inherit; }
 
 
 /* ===== 素材帳サイドパネル（保管庫・作業台の右側に出す） ===== */
-#ms-side-panel { display: none; position: fixed; top: 0; right: 0; bottom: calc(54px + env(safe-area-inset-bottom)); width: 200px; z-index: 160;
+#ms-side-panel { display: none; position: fixed; top: 0; right: 0; bottom: calc(54px + env(safe-area-inset-bottom)); width: 200px; z-index: 250;
   flex-direction: column; background: #fffdf8; border-left: 1px solid rgba(0,0,0,0.15); box-shadow: -2px 0 10px rgba(0,0,0,0.12); }
 html[data-mode="storage"] body.ms-panel-open #ms-side-panel,
 html[data-mode="workbench"] body.ms-panel-open #ms-side-panel { display: flex; }
 html[data-mode="storage"] body.ms-panel-open, html[data-mode="workbench"] body.ms-panel-open { padding-right: 200px; }
 html[data-mode="storage"] body.ms-panel-open .fab-add-btn, html[data-mode="workbench"] body.ms-panel-open .fab-add-btn { right: 218px; }
+html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="workbench"] body.ms-panel-open .editor-overlay { padding-right: 224px; }
+@media (max-width: 720px) { html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="workbench"] body.ms-panel-open .editor-overlay { padding-right: 24px; } }
 .ms-sp-head { display: flex; align-items: center; gap: 4px; padding: 5px 6px; border-bottom: 1px solid rgba(0,0,0,0.1); }
 .ms-sp-head .ms-sp-title { flex: 1; font-size: 12px; font-weight: 600; }
 .ms-sp-head button { border: 1px solid rgba(0,0,0,0.2); background: #fff; border-radius: 8px; font-size: 13px; padding: 2px 7px; }
@@ -825,6 +827,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
       <button id="sk-editor-paste-btn" title="クリップボードから貼り付け（画像優先）">📥</button>
       <button id="sk-editor-undo-btn" title="直前の貼り付け（文字・画像）を一つ戻す">↩</button>
       <button id="sk-editor-copy-btn" title="コピー">📋</button>
+      <button id="sk-editor-ms-btn" class="ms-side-toggle" title="素材帳パネルを開閉">🖼</button>
       <button id="sk-editor-fav-btn" title="お気に入り">☆</button>
       <button id="sk-editor-trash-btn" title="ゴミ箱へ">🗑</button>
       <button id="sk-editor-close-btn">✕</button>
@@ -4610,6 +4613,7 @@ window.addEventListener('DOMContentLoaded', () => {
     box.querySelector('#sk-history-close').onclick = () => ov.remove();
   }
 
+  let skGalleryItems = null; // いまギャラリーとして表示している項目（👁一括表示の対象）
   function renderStorageView() {
     if (!notebook) return;
     renderRecentBar();
@@ -4661,6 +4665,21 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-empty-state').textContent = skDupOnly ? '重複している（🔴の付いた）ものはありません。' : 'まだ何もありません。「＋新規追加」から作成してください。';
     $('#sk-empty-state').style.display = items.length ? 'none' : 'block';
 
+    // 検索中：画像つきはギャラリー形式の格子（先に表示）、テキストだけは普通の一覧（その下）に分ける
+    if (isSearching) {
+      const withImg = items.filter((it) => itemImages(it).length > 0);
+      const textOnly = items.filter((it) => itemImages(it).length === 0);
+      skGalleryItems = withImg;
+      listEl.parentNode.insertBefore(galleryEl, listEl);
+      $('#sk-reveal-all-btn').style.display = withImg.length ? 'block' : 'none';
+      galleryEl.style.display = withImg.length ? 'grid' : 'none';
+      listEl.style.display = textOnly.length ? 'block' : 'none';
+      withImg.forEach((it) => galleryEl.appendChild(renderGalleryCard(it, nearDupIds.has(it.id), true)));
+      textOnly.forEach((it) => listEl.appendChild(renderRow(it, true, nearDupIds.has(it.id))));
+      return;
+    }
+    if (listEl.previousElementSibling !== $('#sk-recent-bar')) listEl.parentNode.insertBefore(listEl, galleryEl); // 通常時は元の並び順（一覧→ギャラリー）に戻す
+    skGalleryItems = isGallery ? items : null;
     $('#sk-reveal-all-btn').style.display = isGallery ? 'block' : 'none';
 
     if (isGallery) {
@@ -4751,7 +4770,7 @@ window.addEventListener('DOMContentLoaded', () => {
     return row;
   }
 
-  function renderGalleryCard(item, isNearDup) {
+  function renderGalleryCard(item, isNearDup, showGenreDot) {
     const card = document.createElement('div');
     card.className = 'sk-gallery-card';
     { const lc = skRecentItems(1)[0]; if (lc && lc.id === item.id) card.classList.add('last-copied'); }
@@ -4798,6 +4817,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const cap = document.createElement('div');
     cap.className = 'sk-gallery-caption';
     cap.textContent = item.title || (item.text || '').slice(0, 20) || '(無題)';
+    if (showGenreDot) {
+      const gid = itemGenreIds(item)[0]; const gg = gid && notebook.genres.find((x) => x.id === gid);
+      if (gg) { const dot = document.createElement('span'); dot.textContent = '● '; dot.style.color = gg.color || 'var(--accent)'; dot.title = itemGenreIds(item).map((id) => (notebook.genres.find((x) => x.id === id) || {}).name).filter(Boolean).join(' / '); cap.insertBefore(dot, cap.firstChild); }
+    }
     cap.onclick = () => openEditor(item);
     card.appendChild(cap);
     return card;
@@ -5696,7 +5719,7 @@ window.addEventListener('DOMContentLoaded', () => {
       renderWorkbenchBrowser();
     };
     $('#sk-reveal-all-btn').addEventListener('click', async () => {
-      const items = notebook.items.filter((it) => itemGenreIds(it).includes(currentView) && !it.trashed);
+      const items = skGalleryItems || notebook.items.filter((it) => itemGenreIds(it).includes(currentView) && !it.trashed);
       const btn = $('#sk-reveal-all-btn');
       if (!sk_bulkRevealState) {
         sk_bulkRevealState = true;
