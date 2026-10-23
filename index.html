@@ -5853,6 +5853,11 @@ window.addEventListener('DOMContentLoaded', () => {
         showCenterToast('✓ 貼り付けました');
       } catch (e) { console.error(e); showCenterToast('✕ 貼り付けに失敗しました'); }
     };
+    // 編集画面の📋でコピーした場合も「使った」として記録する（最近コピーしたもの・直前表示に反映）
+    function markEditingUsed() {
+      const it = editingItemId && notebook ? notebook.items.find((x) => x.id === editingItemId) : null;
+      if (it) markItemUsed(it).then(() => renderStorageView()).catch(() => {});
+    }
     $('#sk-editor-copy-btn').onclick = () => {
       const text = $('#sk-editor-text').value;
       const hasText = !!text.trim();
@@ -5864,9 +5869,9 @@ window.addEventListener('DOMContentLoaded', () => {
         const clipboardItems = blobPromises.map((p) => new ClipboardItem({
           'image/png': (async () => { const blob = await p; if (!blob) throw new Error('no blob'); return await blobToPngBlob(blob); })(),
         }));
-        navigator.clipboard.write(clipboardItems).then(() => showCenterToast('✓ コピーしました')).catch(() => showCenterToast('✕ コピーに失敗しました'));
+        navigator.clipboard.write(clipboardItems).then(() => { showCenterToast('✓ コピーしました'); markEditingUsed(); }).catch(() => showCenterToast('✕ コピーに失敗しました'));
       } else {
-        navigator.clipboard.writeText(text).then(() => showCenterToast('✓ コピーしました')).catch(() => showCenterToast('✕ コピーに失敗しました'));
+        navigator.clipboard.writeText(text).then(() => { showCenterToast('✓ コピーしました'); markEditingUsed(); }).catch(() => showCenterToast('✕ コピーに失敗しました'));
       }
     };
 
