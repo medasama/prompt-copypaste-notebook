@@ -88,6 +88,36 @@ textarea, input { font-family: inherit; }
 .bottom-nav-btn .bnav-label { font-size: 10px; line-height: 1; }
 .bottom-nav-btn.active { color: #fff; background: rgba(255,255,255,0.1); }
 
+
+/* ===== 素材帳サイドパネル（保管庫・作業台の右側に出す） ===== */
+#ms-side-panel { display: none; position: fixed; top: 0; right: 0; bottom: calc(54px + env(safe-area-inset-bottom)); width: 200px; z-index: 160;
+  flex-direction: column; background: #fffdf8; border-left: 1px solid rgba(0,0,0,0.15); box-shadow: -2px 0 10px rgba(0,0,0,0.12); }
+html[data-mode="storage"] body.ms-panel-open #ms-side-panel,
+html[data-mode="workbench"] body.ms-panel-open #ms-side-panel { display: flex; }
+html[data-mode="storage"] body.ms-panel-open, html[data-mode="workbench"] body.ms-panel-open { padding-right: 200px; }
+html[data-mode="storage"] body.ms-panel-open .fab-add-btn, html[data-mode="workbench"] body.ms-panel-open .fab-add-btn { right: 218px; }
+.ms-sp-head { display: flex; align-items: center; gap: 4px; padding: 5px 6px; border-bottom: 1px solid rgba(0,0,0,0.1); }
+.ms-sp-head .ms-sp-title { flex: 1; font-size: 12px; font-weight: 600; }
+.ms-sp-head button { border: 1px solid rgba(0,0,0,0.2); background: #fff; border-radius: 8px; font-size: 13px; padding: 2px 7px; }
+.ms-sp-search { margin: 5px 6px 0; padding: 4px 6px; font-size: 12px; border: 1px solid rgba(0,0,0,0.2); border-radius: 8px; width: calc(100% - 12px); box-sizing: border-box; }
+.ms-sp-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 5px 6px; flex-shrink: 0; }
+.ms-sp-tabs button { flex-shrink: 0; border: 1px solid rgba(0,0,0,0.2); background: #fff; border-radius: 12px; font-size: 11px; padding: 3px 8px; white-space: nowrap; }
+.ms-sp-tabs button.active { background: #20262b; color: #fff; }
+.ms-sp-tabs button.fav { background: #f2c230; color: #3b2f00; border-color: #d8a900; }
+.ms-sp-tabs button.fav.active { outline: 2px solid #20262b; }
+.ms-sp-list { flex: 1; overflow-y: auto; padding: 4px 6px 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; align-content: start; }
+.ms-sp-msg { grid-column: 1 / -1; font-size: 12px; color: #777; text-align: center; padding: 16px 4px; }
+.ms-sp-thumb { position: relative; aspect-ratio: 3 / 4; border-radius: 6px; overflow: hidden; background: #e8e4da; cursor: pointer; }
+.ms-sp-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; -webkit-user-drag: none; }
+.ms-sp-thumb.veil::after { content: "🙈"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; background: #cfc9b8; }
+.ms-sp-thumb.copied { outline: 3px solid #2e9e5b; }
+.ms-sp-thumb .ms-peek-btn { right: 2px; bottom: 2px; }
+@media (max-width: 720px) {
+  #ms-side-panel { width: 45vw; }
+  html[data-mode="storage"] body.ms-panel-open, html[data-mode="workbench"] body.ms-panel-open { padding-right: 0; }
+  html[data-mode="storage"] body.ms-panel-open .fab-add-btn, html[data-mode="workbench"] body.ms-panel-open .fab-add-btn { right: 18px; }
+}
+
 .app-mode { display: none; min-height: 100vh; }
 .app-mode.active { display: block; }
 
@@ -715,6 +745,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
         <button class="sk-reveal-icon-btn" id="sk-reveal-all-btn" style="display:none;" title="一括表示/非表示">👁</button>
         <button class="sk-reveal-icon-btn" id="sk-search-toggle-btn" title="検索">🔍</button>
         <button class="sk-reveal-icon-btn" id="sk-dup-filter-btn" title="重複（🔴）だけ表示">🔴</button>
+        <button class="sk-reveal-icon-btn ms-side-toggle" title="素材帳パネルを開閉">🖼</button>
         <select class="sort-mode-select" id="sk-sort-mode-select">
           <option value="created">並び替え：追加順</option>
           <option value="recent">並び替え：最近使った順</option>
@@ -756,6 +787,7 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
           <option value="similar">並び替え：似ている順</option>
         </select>
         <button class="sk-reveal-icon-btn" id="sk-wb-search-btn" title="検索">🔍</button>
+        <button class="sk-reveal-icon-btn ms-side-toggle" title="素材帳パネルを開閉">🖼</button>
         <button class="sk-reveal-icon-btn" id="sk-wb-reveal-all-btn" style="display:none;" title="一括表示/非表示">👁</button>
       </div>
       <span class="search-input-wrap" id="sk-wb-search-wrap" style="display:none; margin-bottom:6px; width:100%;">
@@ -6210,6 +6242,110 @@ window.addEventListener('DOMContentLoaded', () => {
   // 外部（Google Keep等）からの一括取り込み用：1件分の画像を追加する
   // category：素材帳のカテゴリ名（省略時は先頭の「モデル」）／noResize：すでに圧縮済みの画像を再圧縮しない（保管庫からの送信用）
   window.__msIsReady = function () { return !!stock; };
+  // ============== サイドパネル（保管庫・作業台から素材帳の画像をその場でコピー） ==============
+  let spOpen = false, spTab = '__fav__', spQuery = '', spHideAll = false, spLoading = false;
+  const spRevealed = new Set();
+  let spPanel = null, spObserver = null;
+  function spEnsurePanel() {
+    if (spPanel) return spPanel;
+    spPanel = document.createElement('div');
+    spPanel.id = 'ms-side-panel';
+    spPanel.innerHTML = '<div class="ms-sp-head"><span class="ms-sp-title">🖼 素材帳</span><button type="button" id="ms-sp-eye" title="画像の表示/非表示">👁</button><button type="button" id="ms-sp-close" title="閉じる">✕</button></div>' +
+      '<input type="text" class="ms-sp-search" id="ms-sp-search" placeholder="🔍 検索">' +
+      '<div class="ms-sp-tabs" id="ms-sp-tabs"></div><div class="ms-sp-list" id="ms-sp-list"></div>';
+    document.body.appendChild(spPanel);
+    spPanel.querySelector('#ms-sp-close').onclick = () => spSet(false);
+    spPanel.querySelector('#ms-sp-eye').onclick = () => { spHideAll = !spHideAll; spRevealed.clear(); spRender(); };
+    let comp = false;
+    const inp = spPanel.querySelector('#ms-sp-search');
+    inp.addEventListener('compositionstart', () => { comp = true; });
+    inp.addEventListener('compositionend', () => { comp = false; spQuery = inp.value; spRenderList(); });
+    inp.addEventListener('input', () => { if (comp) return; spQuery = inp.value; spRenderList(); });
+    return spPanel;
+  }
+  async function spSet(open) {
+    spOpen = open;
+    document.body.classList.toggle('ms-panel-open', open);
+    if (!open) { peekHide(); return; }
+    spEnsurePanel();
+    spRender();
+    if (!stock && !spLoading && window.__ensureMaterialLoaded) {
+      spLoading = true;
+      try {
+        await window.__ensureMaterialLoaded();
+        for (let i = 0; i < 50 && !stock; i++) await new Promise((r) => setTimeout(r, 200));
+      } finally { spLoading = false; }
+      if (spOpen) spRender();
+    }
+  }
+  function spRender() {
+    if (!spOpen || !spPanel) return;
+    const tabs = spPanel.querySelector('#ms-sp-tabs');
+    tabs.innerHTML = '';
+    const mk = (label, key, cls) => {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
+      b.className = (cls || '') + (spTab === key ? ' active' : '');
+      b.onclick = () => { spTab = key; spRender(); };
+      tabs.appendChild(b);
+    };
+    mk('★お気に入り', '__fav__', 'fav');
+    if (stock) { mk('すべて', '__all__'); getKnownCategories().forEach((c) => mk(c, c)); }
+    spPanel.querySelector('#ms-sp-eye').textContent = spHideAll ? '🙈' : '👁';
+    spRenderList();
+  }
+  function spRenderList() {
+    if (!spOpen || !spPanel) return;
+    peekHide();
+    const box = spPanel.querySelector('#ms-sp-list');
+    box.scrollTop = 0;
+    if (spObserver) { spObserver.disconnect(); spObserver = null; }
+    if (!stock) { box.innerHTML = '<div class="ms-sp-msg">読み込み中…</div>'; return; }
+    let list = stock.items.filter((it) => !it.trashed && it.imageId);
+    if (spTab === '__fav__') list = list.filter((it) => it.favorite);
+    else if (spTab !== '__all__') list = list.filter((it) => it.category === spTab);
+    if (spQuery) { const m = searchMatcher(spQuery); list = list.filter((it) => m(it, it.memo, it.category, ...itemSubCats(it))); }
+    list = [...list].sort((a, b) => (Number(!!b.favorite) - Number(!!a.favorite)) || (b.createdAt || '').localeCompare(a.createdAt || ''));
+    box.innerHTML = '';
+    if (!list.length) { box.innerHTML = '<div class="ms-sp-msg">' + (spTab === '__fav__' && !spQuery ? 'お気に入りがありません' : '該当なし') + '</div>'; return; }
+    spObserver = new IntersectionObserver((ents) => {
+      ents.forEach((en) => {
+        if (!en.isIntersecting) return;
+        const el = en.target; spObserver.unobserve(el);
+        const it = el._it; if (!it || el.querySelector('img')) return;
+        loadImageUrl(it).then((url) => {
+          if (!url || !el.isConnected || el.querySelector('img')) return;
+          const im = document.createElement('img'); im.src = url; im.draggable = false; im.alt = '';
+          el.insertBefore(im, el.firstChild);
+        });
+      });
+    }, { root: box, rootMargin: '200px' });
+    list.forEach((it) => {
+      const th = document.createElement('div'); th.className = 'ms-sp-thumb'; th._it = it;
+      const hidden = () => spHideAll && !spRevealed.has(it.id);
+      const sync = () => th.classList.toggle('veil', hidden());
+      sync();
+      th.onclick = () => {
+        if (hidden()) { spRevealed.add(it.id); sync(); showPeekBtn(); load(); return; }
+        th.classList.add('copied'); setTimeout(() => th.classList.remove('copied'), 700);
+        copyImageItem(it);
+      };
+      let peekBtn = null;
+      const showPeekBtn = () => {
+        if (peekBtn || hidden()) return;
+        peekBtn = makePeekButton(th, () => imageUrlCache.get(it.id) || loadImageUrl(it), 'ms-peek-btn');
+        th.appendChild(peekBtn);
+      };
+      const load = () => { if (!hidden()) spObserver && spObserver.observe(th); };
+      showPeekBtn();
+      box.appendChild(th);
+      if (!hidden()) spObserver.observe(th);
+    });
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target && e.target.closest && e.target.closest('.ms-side-toggle');
+    if (b) spSet(!spOpen);
+  });
+
   window.__msImportOne = async function ({ imageBlob, memo, category, noResize, createdAt, skipSave }) {
     if (!stock || !imageBlob) return null;
     const blob = noResize ? imageBlob : await resizeImageBlob(imageBlob, 2048, 0.90);
@@ -6355,6 +6491,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   function renderGrid() {
     peekHide();
+    if (spOpen) spRender();
     renderTabs(); // タブ一覧（新しいカテゴリの反映）も常に最新化する
     const grid = $('#ms-grid');
     $('#ms-open-add-btn').style.display = activeTab === '__trash__' ? 'none' : 'flex';
