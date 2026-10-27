@@ -143,6 +143,8 @@ html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="wo
 #sk-hold-pop .hp-text { white-space: pre-wrap; word-break: break-word; max-height: 44vh; overflow: hidden; }
 #sk-hold-pop img { display: block; max-width: 120px; max-height: 160px; border-radius: 6px; margin-top: 6px; }
 #sk-recent-bar button, #sk-history-box .hb-row { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+#ms-added-banner { position: fixed; left: 50%; top: 10px; transform: translate(-50%, -140%); z-index: 700; background: #1f9d55; color: #fff; font-size: 15px; font-weight: 700; padding: 10px 18px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); transition: transform 0.2s ease; pointer-events: none; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis; }
+#ms-added-banner.show { transform: translate(-50%, 0); }
 .app-mode { display: none; min-height: 100vh; }
 .app-mode.active { display: block; }
 
@@ -7486,6 +7488,17 @@ window.addEventListener('DOMContentLoaded', () => {
   let pendingQueueIndex = 0;
   let pendingImagePreviewUrl = null;
   let pendingCategory = CATEGORIES[0];
+  // 追加できたことが一目で分かるよう、画面上部に緑のバナーを数秒出す
+  let addedBannerTimer = null;
+  function showAddedBanner(count, category) {
+    let el = document.getElementById('ms-added-banner');
+    if (!el) { el = document.createElement('div'); el.id = 'ms-added-banner'; document.body.appendChild(el); }
+    el.textContent = `✓ ${count}枚追加しました` + (category ? `（${category}）` : '');
+    void el.offsetWidth;
+    el.classList.add('show');
+    clearTimeout(addedBannerTimer);
+    addedBannerTimer = setTimeout(() => el.classList.remove('show'), 3200);
+  }
   // 追加先カテゴリ：いま開いているカテゴリのタブ（服など）。「すべて」「ゴミ箱」を開いているときは先頭のカテゴリ
   function currentAddCategory() {
     return (activeTab && activeTab !== 'すべて' && activeTab !== '__trash__') ? activeTab : CATEGORIES[0];
@@ -7575,8 +7588,8 @@ window.addEventListener('DOMContentLoaded', () => {
       }
       renderGrid();
     }
-    if (newItems.length && !failed) showCenterToast(newItems.length === 1 ? `✓ 素材を追加しました（${newItems[0].category}）` : `✓ ${newItems.length}枚追加しました（${newItems[0].category}）`);
-    else if (newItems.length) showToast(`${newItems.length}枚追加しました（${failed}枚は失敗しました）`);
+    if (newItems.length && !failed) showAddedBanner(newItems.length, newItems[0].category);
+    else if (newItems.length) { showAddedBanner(newItems.length, newItems[0].category); showToast(`${failed}枚は追加に失敗しました`); }
     else showToast('追加に失敗しました');
     return newItems.length;
   }
@@ -7638,10 +7651,8 @@ window.addEventListener('DOMContentLoaded', () => {
           void target.offsetWidth; // アニメーションを再トリガーするための強制リフロー
           target.classList.add('ms-paste-target-flash');
         }
-      } else if (addedCount === 1) {
-        showCenterToast('✓ 素材を追加しました');
       } else {
-        showToast(`${addedCount}枚を追加しました`);
+        showAddedBanner(addedCount, currentAddCategory());
       }
     } catch (err) {
       console.error('[素材帳] クリップボード貼り付けに失敗:', err);
