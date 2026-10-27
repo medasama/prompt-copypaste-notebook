@@ -4512,6 +4512,12 @@ window.addEventListener('DOMContentLoaded', () => {
   // ============== 画面 ==============
   function currentGenre() { return notebook.genres.find((g) => g.id === currentView); }
 
+  // ジャンルのタブは「中身（件数）が多い順」に並べる（同数なら元の順）。表示だけで、保存している順は変えない
+  function skGenresByCount() {
+    const cnt = new Map();
+    notebook.items.forEach((it) => { if (it.trashed) return; itemGenreIds(it).forEach((id) => cnt.set(id, (cnt.get(id) || 0) + 1)); });
+    return notebook.genres.map((g, i) => ({ g, i, c: cnt.get(g.id) || 0 })).sort((a, b) => b.c - a.c || a.i - b.i).map((x) => x.g);
+  }
   function renderTabs() {
     if (!notebook) return;
     const totalItems = notebook.items.filter((it) => !it.trashed).length;
@@ -4524,7 +4530,7 @@ window.addEventListener('DOMContentLoaded', () => {
     allBtn.textContent = 'すべて';
     allBtn.onclick = () => { currentView = '__all__'; renderTabs(); renderStorageView(); };
     container.appendChild(allBtn);
-    notebook.genres.forEach((g) => {
+    skGenresByCount().forEach((g) => {
       const wrap = document.createElement('div');
       wrap.className = 'sk-tab-wrap';
       const btn = document.createElement('button');
@@ -4654,6 +4660,18 @@ window.addEventListener('DOMContentLoaded', () => {
     box.querySelector('#sk-history-close').onclick = () => ov.remove();
   }
 
+  // 検索中もタブ（ジャンル）を切り替えられる：検索を始めると自動で「すべて」になり、ジャンルのタブを押すとそのジャンルの中だけを検索する。
+  // 検索を消したときは、検索前に開いていたタブに戻る（検索中に自分でタブを選んだ場合は、そのタブのまま）
+  let skPreSearchView = null;
+  function skSetSearchQuery(q) {
+    const had = !!searchQuery; searchQuery = q;
+    if (!had && q) {
+      if (currentView !== '__trash__' && currentView !== '__all__') { skPreSearchView = currentView; currentView = '__all__'; renderTabs(); }
+    } else if (had && !q) {
+      if (skPreSearchView && currentView === '__all__' && (skPreSearchView === '__fav__' || notebook.genres.some((g) => g.id === skPreSearchView))) { currentView = skPreSearchView; renderTabs(); }
+      skPreSearchView = null;
+    }
+  }
   let skGalleryItems = null; // いまギャラリーとして表示している項目（👁一括表示の対象）
   function renderStorageView() {
     if (!notebook) return;
@@ -4670,10 +4688,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const g = currentGenre();
     const isGallery = g && g.gallery && !isSearching;
 
-    if (isSearching) {
-      addBtn.style.display = 'block'; if (fab) fab.style.display = 'flex'; // 検索中も追加ボタンは残す
-      items = notebook.items.filter((it) => !it.trashed);
-    } else if (currentView === '__all__') {
+    if (currentView === '__all__') {
       addBtn.style.display = 'none'; if (fab) fab.style.display = 'flex'; // いつでも表示
       items = notebook.items.filter((it) => !it.trashed);
     } else if (currentView === '__trash__') {
@@ -5243,14 +5258,17 @@ window.addEventListener('DOMContentLoaded', () => {
       // ジャンルの数が前回と同じなら、ボタンを作り直さず選択状態（active）だけ更新する
       // （タップの最中にボタンの実体が入れ替わり、タップが成立しなくなるのを防ぐため）
       // 先頭の「すべて」「★お気に入り」ボタンの分、比較する数を+2する
-      if (existingButtons.length === notebook.genres.length + 2) {
+      const sortedGenres = skGenresByCount();
+      const sig = sortedGenres.map((g) => g.id + ':' + g.name).join('|');
+      if (existingButtons.length === sortedGenres.length + 2 && container.dataset.sig === sig) {
         existingButtons[0].classList.toggle('active', wbGenreView === '__all__');
         existingButtons[1].classList.toggle('active', wbGenreView === '__fav__');
-        notebook.genres.forEach((g, i) => {
+        sortedGenres.forEach((g, i) => {
           existingButtons[i + 2].classList.toggle('active', wbGenreView === g.id);
         });
         return;
       }
+      container.dataset.sig = sig;
       container.innerHTML = '';
       const allBtn = document.createElement('button');
       allBtn.className = 'tab-btn' + (wbGenreView === '__all__' ? ' active' : '');
@@ -5262,7 +5280,7 @@ window.addEventListener('DOMContentLoaded', () => {
       favBtn.textContent = '★ お気に入り';
       favBtn.onclick = () => { wbGenreView = '__fav__'; renderWorkbenchTabs(); renderWorkbenchBrowser(); };
       container.appendChild(favBtn);
-      notebook.genres.forEach((g) => {
+      sortedGenres.forEach((g) => {
         const btn = document.createElement('button');
         btn.className = 'tab-btn' + (wbGenreView === g.id ? ' active' : '');
         btn.style.background = g.color; btn.textContent = g.name;
@@ -5275,6 +5293,16 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
   let wbGenreView = null;
+  let wbPreSearchView = null;
+  function wbSetSearchQuery(q) {
+    const had = !!wbSearchQuery; wbSearchQuery = q;
+    if (!had && q) {
+      if (wbGenreView !== '__all__') { wbPreSearchView = wbGenreView; wbGenreView = '__all__'; renderWorkbenchTabs(); }
+    } else if (had && !q) {
+      if (wbPreSearchView && wbGenreView === '__all__' && (wbPreSearchView === '__fav__' || notebook.genres.some((g) => g.id === wbPreSearchView))) { wbGenreView = wbPreSearchView; renderWorkbenchTabs(); }
+      wbPreSearchView = null;
+    }
+  }
   let wbSearchQuery = ''; // 作業台の検索キーワード（入力中はジャンルタブの絞り込みより優先し、全ジャンル対象で探す）
   const sk_revealedIds = new Set(); // タップで表示したギャラリー画像id（セッション限りで永続化しない）
   let sk_bulkRevealState = false;
@@ -5357,9 +5385,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const isAll = wbGenreView === '__all__';
       const isFav = wbGenreView === '__fav__';
       const showGenreBadges = isSearching || isAll || isFav;
-      let items = isSearching
-        ? notebook.items.filter((it) => !it.trashed)
-        : isFav
+      let items = isFav
           ? notebook.items.filter((it) => it.favorite && !it.trashed)
           : isAll
             ? notebook.items.filter((it) => !it.trashed)
@@ -5688,7 +5714,7 @@ window.addEventListener('DOMContentLoaded', () => {
       } else {
         wrap.style.display = 'none';
         input.value = '';
-        searchQuery = '';
+        skSetSearchQuery('');
         $('#sk-search-clear-btn').classList.remove('visible');
         renderStorageView();
       }
@@ -5697,7 +5723,7 @@ window.addEventListener('DOMContentLoaded', () => {
       // 入力のたびに全件を描き直すと重いので、入力が落ち着いてから反映する（日本語変換中は反映しない）
       const inp = $('#sk-search-input'); let comp = false, tm = null;
       const apply = () => {
-        searchQuery = inp.value.trim();
+        skSetSearchQuery(inp.value.trim());
         $('#sk-search-clear-btn').classList.toggle('visible', !!searchQuery);
         renderStorageView();
       };
@@ -5709,7 +5735,7 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-search-clear-btn').onclick = () => {
       const input = $('#sk-search-input');
       input.value = '';
-      searchQuery = '';
+      skSetSearchQuery('');
       $('#sk-search-clear-btn').classList.remove('visible');
       input.focus();
       renderStorageView();
@@ -5734,7 +5760,7 @@ window.addEventListener('DOMContentLoaded', () => {
       } else {
         wrap.style.display = 'none';
         input.value = '';
-        wbSearchQuery = '';
+        wbSetSearchQuery('');
         $('#sk-wb-search-clear-btn').classList.remove('visible');
         renderWorkbenchBrowser();
       }
@@ -5742,7 +5768,7 @@ window.addEventListener('DOMContentLoaded', () => {
     {
       const inp = $('#sk-wb-search-input'); let comp = false, tm = null;
       const apply = () => {
-        wbSearchQuery = inp.value.trim();
+        wbSetSearchQuery(inp.value.trim());
         $('#sk-wb-search-clear-btn').classList.toggle('visible', !!wbSearchQuery);
         renderWorkbenchBrowser();
       };
@@ -5754,7 +5780,7 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#sk-wb-search-clear-btn').onclick = () => {
       const input = $('#sk-wb-search-input');
       input.value = '';
-      wbSearchQuery = '';
+      wbSetSearchQuery('');
       $('#sk-wb-search-clear-btn').classList.remove('visible');
       input.focus();
       renderWorkbenchBrowser();
@@ -5780,9 +5806,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     let sk_wbBulkRevealState = false;
     $('#sk-wb-reveal-all-btn').addEventListener('click', async () => {
-      let items = wbSearchQuery
-        ? notebook.items.filter((it) => !it.trashed)
-        : wbGenreView === '__fav__'
+      let items = wbGenreView === '__fav__'
           ? notebook.items.filter((it) => it.favorite && !it.trashed)
           : wbGenreView === '__all__'
             ? notebook.items.filter((it) => !it.trashed)
@@ -6075,6 +6099,12 @@ window.addEventListener('DOMContentLoaded', () => {
     const used = new Set(CATEGORIES);
     if (stock) stock.items.forEach((x) => { if (x.category) used.add(x.category); });
     return [...used];
+  }
+  // 素材帳のカテゴリタブ用：件数（ゴミ箱を除く）が多い順。同数なら元の順
+  function categoriesByCount() {
+    const cnt = new Map();
+    if (stock) stock.items.forEach((x) => { if (!x.trashed && x.category) cnt.set(x.category, (cnt.get(x.category) || 0) + 1); });
+    return getKnownCategories().map((c, i) => ({ c, i, n: cnt.get(c) || 0 })).sort((a, b) => b.n - a.n || a.i - b.i).map((x) => x.c);
   }
   function getKnownSubCategories() {
     const used = new Set();
@@ -6483,7 +6513,7 @@ window.addEventListener('DOMContentLoaded', () => {
       tabs.appendChild(b);
     };
     mk('★お気に入り', '__fav__', 'fav');
-    if (stock) { mk('すべて', '__all__'); getKnownCategories().forEach((c) => mk(c, c)); }
+    if (stock) { mk('すべて', '__all__'); categoriesByCount().forEach((c) => mk(c, c)); }
     const eye = spPanel.querySelector('#ms-sp-eye');
     eye.textContent = spHideAll ? '🙈 出す' : '👁 隠す';
     eye.classList.toggle('off', spHideAll);
@@ -6647,7 +6677,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // ============== タブ ==============
   function renderTabs() {
-    const tabs = ['すべて', ...getKnownCategories()];
+    const tabs = ['すべて', ...categoriesByCount()];
     const container = $('#ms-cat-tabs');
     container.innerHTML = '';
     tabs.forEach((t) => {
@@ -7456,6 +7486,10 @@ window.addEventListener('DOMContentLoaded', () => {
   let pendingQueueIndex = 0;
   let pendingImagePreviewUrl = null;
   let pendingCategory = CATEGORIES[0];
+  // 追加先カテゴリ：いま開いているカテゴリのタブ（服など）。「すべて」「ゴミ箱」を開いているときは先頭のカテゴリ
+  function currentAddCategory() {
+    return (activeTab && activeTab !== 'すべて' && activeTab !== '__trash__') ? activeTab : CATEGORIES[0];
+  }
 
   function openAdd() {
     $('#ms-add-overlay').classList.add('open');
@@ -7524,7 +7558,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const now = new Date().toISOString();
         const newItem = {
           id: uid(), imageId, imageIv, imageMime, groupId: null,
-          memo: '', category: pendingCategory || CATEGORIES[0], favorite: false,
+          memo: '', category: currentAddCategory(), favorite: false,
           createdAt: now, updatedAt: now,
         };
         stock.items.push(newItem);
@@ -7541,7 +7575,7 @@ window.addEventListener('DOMContentLoaded', () => {
       }
       renderGrid();
     }
-    if (newItems.length && !failed) showCenterToast(newItems.length === 1 ? '✓ 素材を追加しました' : `✓ ${newItems.length}枚追加しました`);
+    if (newItems.length && !failed) showCenterToast(newItems.length === 1 ? `✓ 素材を追加しました（${newItems[0].category}）` : `✓ ${newItems.length}枚追加しました（${newItems[0].category}）`);
     else if (newItems.length) showToast(`${newItems.length}枚追加しました（${failed}枚は失敗しました）`);
     else showToast('追加に失敗しました');
     return newItems.length;
@@ -7559,7 +7593,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const { imageId, imageIv, imageMime } = await uploadImage(blob);
       const newItem = {
         id: uid(), imageId, imageIv, imageMime, groupId: null,
-        memo: '', category: pendingCategory || CATEGORIES[0], favorite: false,
+        memo: '', category: currentAddCategory(), favorite: false,
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       };
       stock.items.push(newItem);
@@ -7689,7 +7723,7 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#ms-add-preview').style.backgroundImage = `url(${pendingImagePreviewUrl})`;
     $('#ms-queue-progress').textContent = pendingQueue.length > 1 ? `${pendingQueueIndex + 1} / ${pendingQueue.length} 枚目` : '';
     $('#ms-memo-input').value = '';
-    pendingCategory = CATEGORIES[0];
+    pendingCategory = currentAddCategory();
     renderCatChips();
   }
 
