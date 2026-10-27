@@ -144,6 +144,7 @@ html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="wo
 #sk-hold-pop img { display: block; max-width: 120px; max-height: 160px; border-radius: 6px; margin-top: 6px; }
 #sk-recent-bar button, #sk-history-box .hb-row { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 #ms-added-banner { position: fixed; left: 50%; top: 10px; transform: translate(-50%, -140%); z-index: 700; background: #1f9d55; color: #fff; font-size: 15px; font-weight: 700; padding: 10px 18px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); transition: transform 0.2s ease; pointer-events: none; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis; }
+#ms-added-banner.busy { background: #d9822b; }
 #ms-added-banner.show { transform: translate(-50%, 0); }
 .app-mode { display: none; min-height: 100vh; }
 .app-mode.active { display: block; }
@@ -7490,15 +7491,20 @@ window.addEventListener('DOMContentLoaded', () => {
   let pendingCategory = CATEGORIES[0];
   // 追加できたことが一目で分かるよう、画面上部に緑のバナーを数秒出す
   let addedBannerTimer = null;
-  function showAddedBanner(count, category) {
+  function showBanner(text, busy) {
     let el = document.getElementById('ms-added-banner');
     if (!el) { el = document.createElement('div'); el.id = 'ms-added-banner'; document.body.appendChild(el); }
-    el.textContent = `✓ ${count}枚追加しました` + (category ? `（${category}）` : '');
+    el.textContent = text;
+    el.classList.toggle('busy', !!busy);
     void el.offsetWidth;
     el.classList.add('show');
     clearTimeout(addedBannerTimer);
-    addedBannerTimer = setTimeout(() => el.classList.remove('show'), 3200);
+    if (!busy) addedBannerTimer = setTimeout(() => el.classList.remove('show'), 3200);
   }
+  function hideBanner() { const el = document.getElementById('ms-added-banner'); if (el) el.classList.remove('show'); clearTimeout(addedBannerTimer); }
+  // 追加中（オレンジ・消えない）→ 追加できたら緑に変わる、の順で表示する
+  function showAddingBanner(done, total) { showBanner(`⏳ 追加中… ${done} / ${total}枚`, true); }
+  function showAddedBanner(count, category) { showBanner(`✓ ${count}枚追加しました` + (category ? `（${category}）` : ''), false); }
   // 追加先カテゴリ：いま開いているカテゴリのタブ（服など）。「すべて」「ゴミ箱」を開いているときは先頭のカテゴリ
   function currentAddCategory() {
     return (activeTab && activeTab !== 'すべて' && activeTab !== '__trash__') ? activeTab : CATEGORIES[0];
@@ -7564,7 +7570,7 @@ window.addEventListener('DOMContentLoaded', () => {
     let failed = 0;
     const newItems = [];
     for (let i = 0; i < files.length; i++) {
-      if (files.length > 1) showToast(`追加しています… ${i + 1} / ${files.length}`);
+      showAddingBanner(i + 1, files.length);
       try {
         const blob = await resizeImageBlob(files[i], 2048, 0.90);
         const { imageId, imageIv, imageMime } = await uploadImage(blob);
@@ -7582,6 +7588,7 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     }
     if (newItems.length) {
+      showBanner(`💾 保存中… ${newItems.length}枚`, true);
       try { await saveStock(); } catch (err) { console.error('[素材帳] 保存に失敗:', err); }
       if (bulkRevealState) {
         for (const it of newItems) { const url = await loadImageUrl(it); if (url) revealedIds.add(it.id); }
@@ -7590,7 +7597,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     if (newItems.length && !failed) showAddedBanner(newItems.length, newItems[0].category);
     else if (newItems.length) { showAddedBanner(newItems.length, newItems[0].category); showToast(`${failed}枚は追加に失敗しました`); }
-    else showToast('追加に失敗しました');
+    else { hideBanner(); showToast('追加に失敗しました'); }
     return newItems.length;
   }
 
@@ -7630,6 +7637,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('このブラウザはnavigator.clipboard.readに対応していません');
       let addedCount = 0;
       const maxAttempts = 3;
+      showBanner('⏳ 貼り付け中…', true);
       for (let attempt = 0; attempt < maxAttempts && addedCount === 0; attempt++) {
         const clip = await navigator.clipboard.read();
         console.log('[素材帳] クリップボードの内容:', clip.map((i) => i.types));
@@ -7643,6 +7651,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (addedCount === 0 && attempt < maxAttempts - 1) await new Promise((r) => setTimeout(r, 350));
       }
       if (addedCount === 0) {
+        hideBanner();
         showToast('画像が見つかりません。下の欄を長押し→「貼り付け」でお試しください');
         const target = $('#ms-paste-target-input');
         if (target) {
@@ -7660,6 +7669,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (err && err.name === 'NotAllowedError') {
         msg = 'クリップボードの読み取りが許可されていません。ブラウザのサイト設定で権限をご確認いただくか、Ctrl+Vでの貼り付けをお試しください';
       }
+      hideBanner();
       showToast(msg);
     }
   }
