@@ -146,6 +146,19 @@ html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="wo
 #ms-added-banner { position: fixed; left: 50%; top: 10px; transform: translate(-50%, -140%); z-index: 700; background: #1f9d55; color: #fff; font-size: 15px; font-weight: 700; padding: 10px 18px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); transition: transform 0.2s ease; pointer-events: none; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis; }
 #ms-added-banner.busy { background: #d9822b; }
 #ms-added-banner.show { transform: translate(-50%, 0); }
+/* 作業台（PC）：右側に「選んだ項目の画像と全文」を常に表示する2ペイン */
+@media (min-width: 901px) {
+  html[data-mode="workbench"] #sk-wb-preview-overlay.active { position: fixed; inset: auto; top: 0; right: 0; bottom: calc(54px + env(safe-area-inset-bottom)); left: auto; width: max(420px, 40vw); background: transparent; z-index: 120; pointer-events: none; align-items: stretch; }
+  html[data-mode="workbench"] #sk-wb-preview-overlay.active .dialog { pointer-events: auto; width: 100% !important; height: 100% !important; max-height: 100% !important; box-sizing: border-box; border-radius: 0; border-left: 2px solid #9a86c9; box-shadow: -2px 0 12px rgba(0,0,0,0.12); }
+  html[data-mode="workbench"] body.wb-pane-open { padding-right: max(420px, 40vw); }
+  html[data-mode="workbench"] body.wb-pane-open .fab-add-btn { right: calc(max(420px, 40vw) + 18px); }
+  html[data-mode="workbench"] body.wb-pane-open.ms-panel-open { padding-right: calc(max(420px, 40vw) + 200px); }
+  html[data-mode="workbench"] body.wb-pane-open.ms-panel-open #sk-wb-preview-overlay.active { right: 200px; }
+  html[data-mode="workbench"] body.wb-pane-open.ms-panel-open .fab-add-btn { right: calc(max(420px, 40vw) + 218px); }
+}
+.sk-wb-browser-row.sel { background: var(--accent-soft); box-shadow: inset 3px 0 0 #5b4a8a; }
+.sk-wb-browser-snippet { font-size: 11.5px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-wb-browser-text mark, .sk-wb-browser-snippet mark { background: #ffe08a; color: inherit; border-radius: 2px; padding: 0 1px; }
 .app-mode { display: none; min-height: 100vh; }
 .app-mode.active { display: block; }
 
@@ -687,6 +700,8 @@ body { padding-bottom: calc(54px + env(safe-area-inset-bottom)); }
 
 .sk-wb-lower { display: flex; flex-direction: column; flex-shrink: 0; border-top: 2px dashed var(--rule-strong); padding-top: 8px; }
 .sk-wb-tabs-row { width: auto; padding: 0; flex-direction: row; flex-wrap: wrap; margin-bottom: 8px; flex-shrink: 0; min-height: 28px; }
+#sk-wb-search-wrap, #sk-search-wrap { flex: 0 0 auto !important; height: auto; align-items: center; }
+#sk-wb-search-wrap .search-input { padding: 8px 32px 8px 12px; }
 .sk-wb-lower-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-shrink: 0; }
 .sk-wb-lower-toolbar .sort-mode-select { flex: 1; padding: 6px 6px; font-size: 11px; }
 .sk-wb-browser-list { max-height: 42vh; min-height: 120px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -1452,6 +1467,52 @@ function relTimeJa(iso) {
   const h = Math.round(m / 60); if (h < 24) return h + '時間前';
   const d = Math.round(h / 24); if (d < 30) return d + '日前';
   return new Date(t).toLocaleDateString('ja-JP');
+}
+
+// 検索語の一致箇所に <mark> を付けて el に入れる。opts.excerpt なら、最初の一致の前後だけを抜粋して入れる。
+// 戻り値：{ ok: 一致があったか, first: 最初の一致の位置（元の文字列内） }。表記ゆれ（全角半角・大文字小文字・ひらカナ）も同じ規則で一致させる
+function highlightInto(el, text, query, opts) {
+  opts = opts || {};
+  text = String(text || '').replace(/\n/g, ' ');
+  const words = normalizeForSearch(query).split(/\s+/).filter(Boolean);
+  let norm = ''; const map = [];
+  for (let i = 0; i < text.length;) {
+    const ch = String.fromCodePoint(text.codePointAt(i));
+    const n = normalizeForSearch(ch);
+    for (let k = 0; k < n.length; k++) map.push(i);
+    norm += n; i += ch.length;
+  }
+  let ranges = [];
+  words.forEach((w) => {
+    let p = 0;
+    while ((p = norm.indexOf(w, p)) !== -1) {
+      const sIdx = map[p], lastIdx = map[p + w.length - 1];
+      ranges.push([sIdx, lastIdx + (text.codePointAt(lastIdx) > 0xFFFF ? 2 : 1)]);
+      p += w.length;
+    }
+  });
+  ranges.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  ranges.forEach((r) => { const l = merged[merged.length - 1]; if (l && r[0] <= l[1]) l[1] = Math.max(l[1], r[1]); else merged.push(r.slice()); });
+  const first = merged.length ? merged[0][0] : -1;
+  let start = 0, end = text.length;
+  if (opts.excerpt) {
+    if (first < 0) return { ok: false, first: -1 };
+    start = Math.max(0, first - (opts.before || 12)); end = Math.min(text.length, start + (opts.len || 60));
+  }
+  el.textContent = '';
+  if (start > 0) el.appendChild(document.createTextNode('…'));
+  let pos = start;
+  merged.forEach(([a, b]) => {
+    if (b <= start || a >= end) return;
+    const aa = Math.max(a, start), bb = Math.min(b, end);
+    if (aa > pos) el.appendChild(document.createTextNode(text.slice(pos, aa)));
+    const mk = document.createElement('mark'); mk.textContent = text.slice(aa, bb); el.appendChild(mk);
+    pos = bb;
+  });
+  if (pos < end) el.appendChild(document.createTextNode(text.slice(pos, end)));
+  if (end < text.length) el.appendChild(document.createTextNode('…'));
+  return { ok: merged.length > 0, first };
 }
 
 function showCenterToast(msg) {
@@ -5374,6 +5435,20 @@ window.addEventListener('DOMContentLoaded', () => {
       imgEl.style.display = 'none'; imgEl.src = '';
     }
     $('#sk-wb-preview-overlay').classList.add('active');
+    document.querySelectorAll('#sk-wb-browser-list .sk-wb-browser-row').forEach((r) => r.classList.toggle('sel', r._itemId === item.id));
+  }
+  // PC（幅901px以上）の作業台では、確認画面を右側に常に出す2ペイン表示にする（コピーしても閉じない）
+  const wbPaneMode = () => window.matchMedia('(min-width: 901px)').matches;
+  {
+    const ov = $('#sk-wb-preview-overlay');
+    new MutationObserver(() => {
+      const on = ov.classList.contains('active');
+      document.body.classList.toggle('wb-pane-open', on);
+      if (!on) document.querySelectorAll('#sk-wb-browser-list .sk-wb-browser-row.sel').forEach((r) => r.classList.remove('sel'));
+    }).observe(ov, { attributes: true, attributeFilter: ['class'] });
+    // 作業台以外の画面に切り替えたときは、右側の確認画面を閉じる
+    new MutationObserver(() => { if (document.documentElement.getAttribute('data-mode') !== 'workbench') ov.classList.remove('active'); })
+      .observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode'] });
   }
 
   function renderWorkbenchBrowser() {
@@ -5435,8 +5510,16 @@ window.addEventListener('DOMContentLoaded', () => {
         textWrap.className = 'sk-wb-browser-textwrap';
         const text = document.createElement('div');
         text.className = 'sk-wb-browser-text';
-        text.textContent = it.title || (it.text || '').slice(0, 40) || '(画像)';
+        const titleStr = it.title || (it.text || '').slice(0, 40) || '(画像)';
+        text.textContent = titleStr;
+        if (wbSearchQuery) highlightInto(text, titleStr, wbSearchQuery);
         textWrap.appendChild(text);
+        if (wbSearchQuery && it.text) {
+          // 本文のどこが一致したかを、一致箇所の前後だけ抜粋して色付きで見せる
+          const sn = document.createElement('div'); sn.className = 'sk-wb-browser-snippet';
+          const r = highlightInto(sn, it.text, wbSearchQuery, { excerpt: true, before: 12, len: 64 });
+          if (r.ok && (it.title || r.first >= 40)) textWrap.appendChild(sn);
+        }
         if (showGenreBadges) {
           const gs = itemGenreIds(it).map((id) => notebook.genres.find((x) => x.id === id)).filter(Boolean);
           if (gs.length) {
@@ -5457,6 +5540,8 @@ window.addEventListener('DOMContentLoaded', () => {
           const thumbEl = row.querySelector('.sk-wb-browser-thumb-box');
           if (thumbEl) row.appendChild(makePeekButton(thumbEl, () => loadFirstImageUrl(it), 'sk-wb-peek-btn')); // 🔍 全体像を小さく表示
         }
+        row._itemId = it.id;
+        if (sk_wbPreviewItem && sk_wbPreviewItem.id === it.id && $('#sk-wb-preview-overlay').classList.contains('active')) row.classList.add('sel');
         row.onclick = () => openWbPreviewDialog(it);
         list.appendChild(row);
       });
@@ -6063,7 +6148,7 @@ window.addEventListener('DOMContentLoaded', () => {
         showCenterToast('✓ コピーしました　上の欄に貼り付けてください');
       } catch (e) { showCenterToast('✕ コピーに失敗しました'); }
       finally { sk_wbPreviewCopying = false; }
-      $('#sk-wb-preview-overlay').classList.remove('active');
+      if (!wbPaneMode()) $('#sk-wb-preview-overlay').classList.remove('active');
     };
     $('#sk-wb-preview-partial-btn').onclick = async () => {
       if (sk_wbPreviewCopying) return;
@@ -6077,7 +6162,7 @@ window.addEventListener('DOMContentLoaded', () => {
         showCenterToast('✓ 選択部分をコピーしました　上の欄に貼り付けてください');
       } catch (e) { showCenterToast('✕ コピーに失敗しました'); }
       finally { sk_wbPreviewCopying = false; }
-      $('#sk-wb-preview-overlay').classList.remove('active');
+      if (!wbPaneMode()) $('#sk-wb-preview-overlay').classList.remove('active');
     };
   });
 })();
