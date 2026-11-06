@@ -90,13 +90,27 @@ textarea, input { font-family: inherit; }
 
 
 /* ===== 素材帳サイドパネル（保管庫・作業台の右側に出す） ===== */
-#ms-side-panel { display: none; position: fixed; top: 0; right: 0; bottom: calc(54px + env(safe-area-inset-bottom)); width: 200px; z-index: 250;
+body { --ms-sp-w: 200px; }
+body[data-sp-cols="1"] { --ms-sp-w: 140px; }
+body[data-sp-cols="3"] { --ms-sp-w: 300px; }
+@media (max-width: 720px) { body { --ms-sp-w: 45vw; } body[data-sp-cols="1"] { --ms-sp-w: 34vw; } body[data-sp-cols="3"] { --ms-sp-w: 72vw; } }
+#ms-side-panel .ms-sp-list { grid-template-columns: repeat(var(--sp-cols, 2), 1fr); }
+.ms-sp-head { flex-wrap: wrap; }
+.ms-sp-tabs button.pin { background: #d9822b; color: #fff; border-color: #b96a1a; }
+.ms-sp-tabs button.pin.active { outline: 2px solid #20262b; }
+.ms-sp-pin { position: absolute; right: 3px; top: 3px; z-index: 2; font-size: 11px; background: rgba(217,130,43,.9); border-radius: 6px; padding: 0 3px; }
+.ms-pin-btn { position: absolute; top: 28px; right: 4px; z-index: 3; width: 20px; height: 20px; border-radius: 6px; border: none; background: rgba(0,0,0,.5); font-size: 11px; opacity: .6; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+.ms-pin-btn.on { opacity: 1; background: #d9822b; }
+.ms-pin-move { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); z-index: 3; display: flex; gap: 2px; }
+.ms-pin-move button { width: 20px; height: 20px; border-radius: 6px; border: none; background: rgba(217,130,43,.92); color: #fff; font-size: 10px; cursor: pointer; padding: 0; }
+.ms-pin-move button:disabled { opacity: .3; }
+#ms-side-panel { display: none; position: fixed; top: 0; right: 0; bottom: calc(54px + env(safe-area-inset-bottom)); width: var(--ms-sp-w); z-index: 250;
   flex-direction: column; background: #fffdf8; border-left: 1px solid rgba(0,0,0,0.15); box-shadow: -2px 0 10px rgba(0,0,0,0.12); }
 html[data-mode="storage"] body.ms-panel-open #ms-side-panel,
 html[data-mode="workbench"] body.ms-panel-open #ms-side-panel { display: flex; }
-html[data-mode="storage"] body.ms-panel-open, html[data-mode="workbench"] body.ms-panel-open { padding-right: 200px; }
-html[data-mode="storage"] body.ms-panel-open .fab-add-btn, html[data-mode="workbench"] body.ms-panel-open .fab-add-btn { right: 218px; }
-html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="workbench"] body.ms-panel-open .editor-overlay { padding-right: 224px; }
+html[data-mode="storage"] body.ms-panel-open, html[data-mode="workbench"] body.ms-panel-open { padding-right: var(--ms-sp-w); }
+html[data-mode="storage"] body.ms-panel-open .fab-add-btn, html[data-mode="workbench"] body.ms-panel-open .fab-add-btn { right: calc(var(--ms-sp-w) + 18px); }
+html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="workbench"] body.ms-panel-open .editor-overlay { padding-right: calc(var(--ms-sp-w) + 24px); }
 @media (max-width: 720px) { html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="workbench"] body.ms-panel-open .editor-overlay { padding-right: 24px; } }
 .ms-sp-head { display: flex; align-items: center; gap: 4px; padding: 5px 6px; border-bottom: 1px solid rgba(0,0,0,0.1); }
 .ms-sp-head .ms-sp-title { flex: 1; font-size: 12px; font-weight: 600; }
@@ -118,7 +132,6 @@ html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="wo
 .ms-sp-thumb.copied { outline: 3px solid #2e9e5b; }
 .ms-sp-thumb .ms-peek-btn { right: 2px; bottom: 2px; }
 @media (max-width: 720px) {
-  #ms-side-panel { width: 45vw; }
   html[data-mode="storage"] body.ms-panel-open, html[data-mode="workbench"] body.ms-panel-open { padding-right: 0; }
   html[data-mode="storage"] body.ms-panel-open .fab-add-btn, html[data-mode="workbench"] body.ms-panel-open .fab-add-btn { right: 18px; }
 }
@@ -152,9 +165,9 @@ html[data-mode="storage"] body.ms-panel-open .editor-overlay, html[data-mode="wo
   html[data-mode="workbench"] #sk-wb-preview-overlay.active .dialog { pointer-events: auto; width: 100% !important; height: 100% !important; max-height: 100% !important; box-sizing: border-box; border-radius: 0; border-left: 2px solid #9a86c9; box-shadow: -2px 0 12px rgba(0,0,0,0.12); }
   html[data-mode="workbench"] body.wb-pane-open { padding-right: max(420px, 40vw); }
   html[data-mode="workbench"] body.wb-pane-open .fab-add-btn { right: calc(max(420px, 40vw) + 18px); }
-  html[data-mode="workbench"] body.wb-pane-open.ms-panel-open { padding-right: calc(max(420px, 40vw) + 200px); }
-  html[data-mode="workbench"] body.wb-pane-open.ms-panel-open #sk-wb-preview-overlay.active { right: 200px; }
-  html[data-mode="workbench"] body.wb-pane-open.ms-panel-open .fab-add-btn { right: calc(max(420px, 40vw) + 218px); }
+  html[data-mode="workbench"] body.wb-pane-open.ms-panel-open { padding-right: calc(max(420px, 40vw) + var(--ms-sp-w)); }
+  html[data-mode="workbench"] body.wb-pane-open.ms-panel-open #sk-wb-preview-overlay.active { right: var(--ms-sp-w); }
+  html[data-mode="workbench"] body.wb-pane-open.ms-panel-open .fab-add-btn { right: calc(max(420px, 40vw) + var(--ms-sp-w) + 18px); }
 }
 .sk-wb-browser-row.sel { background: var(--accent-soft); box-shadow: inset 3px 0 0 #5b4a8a; }
 .sk-wb-browser-snippet { font-size: 11.5px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -6531,18 +6544,30 @@ window.addEventListener('DOMContentLoaded', () => {
   // category：素材帳のカテゴリ名（省略時は先頭の「モデル」）／noResize：すでに圧縮済みの画像を再圧縮しない（保管庫からの送信用）
   window.__msIsReady = function () { return !!stock; };
   // ============== サイドパネル（保管庫・作業台から素材帳の画像をその場でコピー） ==============
-  let spOpen = false, spTab = '__fav__', spQuery = '', spHideAll = false, spLoading = false;
+  let spOpen = false, spTab = '__fav__', spQuery = '', spHideAll = false, spLoading = false, spInit = false;
+  let spCols = 2;
+  try { const v = parseInt(localStorage.getItem('msSpCols'), 10); if (v === 1 || v === 2 || v === 3) spCols = v; } catch (e) {}
+  function spApplyCols() {
+    document.body.setAttribute('data-sp-cols', String(spCols));
+    if (spPanel) { spPanel.style.setProperty('--sp-cols', String(spCols)); const b = spPanel.querySelector('#ms-sp-cols'); if (b) b.textContent = '▦' + spCols + '列'; }
+  }
   const spRevealed = new Set();
   let spPanel = null, spObserver = null;
   function spEnsurePanel() {
     if (spPanel) return spPanel;
     spPanel = document.createElement('div');
     spPanel.id = 'ms-side-panel';
-    spPanel.innerHTML = '<div class="ms-sp-head"><span class="ms-sp-title">🖼素材帳</span><button type="button" id="ms-sp-eye" title="画像の表示/非表示">👁</button><button type="button" id="ms-sp-close" title="閉じる">✕</button></div>' +
+    spPanel.innerHTML = '<div class="ms-sp-head"><span class="ms-sp-title">🖼素材帳</span><button type="button" id="ms-sp-cols" title="サムネの列数を切り替え">▦2列</button><button type="button" id="ms-sp-eye" title="画像の表示/非表示">👁</button><button type="button" id="ms-sp-close" title="閉じる">✕</button></div>' +
       '<input type="text" class="ms-sp-search" id="ms-sp-search" placeholder="🔍 検索">' +
       '<div class="ms-sp-tabs" id="ms-sp-tabs"></div><div class="ms-sp-list" id="ms-sp-list"></div>';
     document.body.appendChild(spPanel);
     spPanel.querySelector('#ms-sp-close').onclick = () => spSet(false);
+    spPanel.querySelector('#ms-sp-cols').onclick = () => {
+      spCols = spCols === 2 ? 3 : spCols === 3 ? 1 : 2;
+      try { localStorage.setItem('msSpCols', String(spCols)); } catch (e) {}
+      spApplyCols(); spRenderList();
+    };
+    spApplyCols();
     spPanel.querySelector('#ms-sp-eye').onclick = () => { spHideAll = !spHideAll; spRevealed.clear(); spRender(); };
     // スマホ：パネルを右になぞると閉じる（タブ列・入力欄から始めた操作は除く）
     let sw = null;
@@ -6580,6 +6605,7 @@ window.addEventListener('DOMContentLoaded', () => {
     document.body.classList.toggle('ms-panel-open', open);
     if (!open) { peekHide(); return; }
     spEnsurePanel();
+    spApplyCols();
     spRender();
     if (!stock && !spLoading && window.__ensureMaterialLoaded) {
       spLoading = true;
@@ -6600,6 +6626,8 @@ window.addEventListener('DOMContentLoaded', () => {
       b.onclick = () => { spTab = key; spGroupView = null; spRender(); };
       tabs.appendChild(b);
     };
+    if (!spInit && stock) { spInit = true; if (stock.items.some((x) => x.pinned && !x.trashed)) spTab = '__pin__'; } // 初回はピンがあればピンのタブから
+    mk('📌ピン', '__pin__', 'pin');
     mk('★お気に入り', '__fav__', 'fav');
     if (stock) { mk('すべて', '__all__'); categoriesByCount().forEach((c) => mk(c, c)); }
     const eye = spPanel.querySelector('#ms-sp-eye');
@@ -6669,7 +6697,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     // 一覧：グループは1枚のタイル（先頭＝お気に入り→新しい順の1枚）にまとめ、タップで中身を開く
-    const matchTab = (it) => spTab === '__fav__' ? !!it.favorite : (spTab === '__all__' || it.category === spTab);
+    const matchTab = (it) => spTab === '__pin__' ? !!it.pinned : spTab === '__fav__' ? !!it.favorite : (spTab === '__all__' || it.category === spTab);
     const m = spQuery ? searchMatcher(spQuery) : null;
     const matchQ = (it) => !m || m(it, it.memo, it.category, ...itemSubCats(it));
     const entries = [];
@@ -6679,16 +6707,16 @@ window.addEventListener('DOMContentLoaded', () => {
         if (seen.has(it.groupId)) return;
         seen.add(it.groupId);
         const members = byGroup.get(it.groupId).slice().sort(spSort);
-        if (members.some((x) => matchTab(x) && matchQ(x))) entries.push({ cover: members[0], count: members.length, gid: it.groupId, fav: members.some((x) => x.favorite) });
+        if (members.some((x) => matchTab(x) && matchQ(x))) entries.push({ cover: members[0], count: members.length, gid: it.groupId, fav: members.some((x) => x.favorite), pin: pinInfo(members) });
       } else if (matchTab(it) && matchQ(it)) {
-        entries.push({ cover: it, count: 0, fav: !!it.favorite });
+        entries.push({ cover: it, count: 0, fav: !!it.favorite, pin: pinInfo([it]) });
       }
     });
-    entries.sort((a, b) => (Number(b.fav) - Number(a.fav)) || (b.cover.createdAt || '').localeCompare(a.cover.createdAt || ''));
-    if (!entries.length) { box.innerHTML = '<div class="ms-sp-msg">' + (spTab === '__fav__' && !spQuery ? 'お気に入りがありません' : '該当なし') + '</div>'; return; }
+    entries.sort((a, b) => (Number(b.pin.pinned) - Number(a.pin.pinned)) || (a.pin.pinned && b.pin.pinned ? a.pin.order - b.pin.order : 0) || (Number(b.fav) - Number(a.fav)) || (b.cover.createdAt || '').localeCompare(a.cover.createdAt || ''));
+    if (!entries.length) { box.innerHTML = '<div class="ms-sp-msg">' + (spTab === '__pin__' && !spQuery ? '📌ピンがありません（素材帳のカードの📌で追加）' : spTab === '__fav__' && !spQuery ? 'お気に入りがありません' : '該当なし') + '</div>'; return; }
     entries.forEach((en) => {
-      if (en.gid) makeThumb(en.cover, () => { spGroupView = en.gid; spRenderList(); }, en.count);
-      else makeThumb(en.cover, copyTap(en.cover));
+      const th = en.gid ? makeThumb(en.cover, () => { spGroupView = en.gid; spRenderList(); }, en.count) : makeThumb(en.cover, copyTap(en.cover));
+      if (en.pin.pinned) { const p = document.createElement('div'); p.className = 'ms-sp-pin'; p.textContent = '📌'; th.appendChild(p); }
     });
   }
   document.addEventListener('click', (e) => {
@@ -6875,8 +6903,13 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // 複数写真（2枚以上）のモデルは、枚数が多い順に上へ。それ以外は元の並び（お気に入り→作成日時）を維持
+    // 📌ピン留めしたものを最優先で先頭へ（ピンの並び順どおり）。そのあと、複数写真→元の並び
+    const entryMembers = (e) => e.type === 'group' ? e.members : [e.item];
+    const entryPin = (e) => pinInfo(entryMembers(e));
     entries.sort((a, b) => {
+      const pa = entryPin(a), pb = entryPin(b);
+      if (pa.pinned !== pb.pinned) return pa.pinned ? -1 : 1;
+      if (pa.pinned && pb.pinned) return pa.order - pb.order;
       const aCount = a.type === 'group' ? a.members.length : 1;
       const bCount = b.type === 'group' ? b.members.length : 1;
       const aBig = aCount >= 2;
@@ -6886,10 +6919,56 @@ window.addEventListener('DOMContentLoaded', () => {
       return 0; // 元の並び順を維持（安定ソート）
     });
 
+    const pinnedEntries = entries.filter((e) => entryPin(e).pinned);
+    msPinnedView = pinnedEntries.map(entryMembers);
     entries.forEach((entry) => {
-      if (entry.type === 'group') grid.appendChild(renderGroupCard(entry.groupId, entry.members));
-      else grid.appendChild(renderCard(entry.item));
+      const card = entry.type === 'group' ? renderGroupCard(entry.groupId, entry.members) : renderCard(entry.item);
+      grid.appendChild(card);
+      if (!selectionMode) addPinControls(card, entryMembers(entry), pinnedEntries.indexOf(entry), pinnedEntries.length);
     });
+  }
+
+  // ============== 📌ピン留め（いつも使うものを先頭に固定。◀▶で順番を入れ替え） ==============
+  let msPinnedView = []; // いま表示中の、ピン留めされたカード（メンバー配列）を表示順に並べたもの
+  function pinInfo(members) {
+    const ps = members.filter((m) => m.pinned);
+    return { pinned: ps.length > 0, order: ps.length ? Math.min(...ps.map((m) => m.pinOrder || 0)) : Infinity };
+  }
+  async function setPinned(members, on) {
+    if (on) {
+      const max = Math.max(0, ...stock.items.map((x) => x.pinOrder || 0));
+      members.forEach((m) => { m.pinned = true; m.pinOrder = max + 1; });
+    } else {
+      members.forEach((m) => { delete m.pinned; delete m.pinOrder; });
+    }
+    await saveStock();
+    renderGrid();
+  }
+  async function movePin(idx, dir) {
+    const j = idx + dir;
+    if (idx < 0 || j < 0 || j >= msPinnedView.length) return;
+    const arr = msPinnedView.slice();
+    const orders = arr.map((mem) => pinInfo(mem).order).sort((a, b) => a - b);
+    [arr[idx], arr[j]] = [arr[j], arr[idx]];
+    arr.forEach((mem, i) => mem.forEach((m) => { m.pinned = true; m.pinOrder = orders[i]; }));
+    await saveStock();
+    renderGrid();
+  }
+  function addPinControls(card, members, pinIdx, pinCount) {
+    const on = pinIdx >= 0;
+    const b = document.createElement('button');
+    b.className = 'ms-pin-btn' + (on ? ' on' : '');
+    b.textContent = '📌'; b.title = on ? 'ピン留めを外す' : '先頭にピン留め';
+    b.onclick = (e) => { e.stopPropagation(); setPinned(members, !on); };
+    card.appendChild(b);
+    if (on && pinCount > 1) {
+      const mv = document.createElement('div'); mv.className = 'ms-pin-move';
+      const l = document.createElement('button'); l.textContent = '◀'; l.disabled = pinIdx === 0; l.title = '前へ';
+      const r = document.createElement('button'); r.textContent = '▶'; r.disabled = pinIdx === pinCount - 1; r.title = '後ろへ';
+      l.onclick = (e) => { e.stopPropagation(); movePin(pinIdx, -1); };
+      r.onclick = (e) => { e.stopPropagation(); movePin(pinIdx, 1); };
+      mv.appendChild(l); mv.appendChild(r); card.appendChild(mv);
+    }
   }
 
   // ドラッグ＆ドロップで別のアイテムに重ねてまとめる（同じモデルの写真をグループ化）
