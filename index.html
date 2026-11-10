@@ -1610,7 +1610,19 @@ function computeSimilarityGroups(notes, threshold = 0.55) {
   return notes.map((note, i) => ({ ...note, groupId: find(i), groupSize: sizeByRoot[find(i)] }));
 }
 // 既にソート済みの一覧に対して、似ているものだけを隣接させる（見出しは付けない、控えめな並べ替え）
+let _simOrderKey = null, _simOrderIds = null;
 function reorderBySimilarity(items, threshold = 0.55) {
+  // 内容が変わっていなければ、前回計算した並びを再利用する（編集画面を閉じるたびの再計算を避ける）
+  const key = threshold + '|' + items.map((i) => i.id + ':' + (i.updatedAt || '') + ':' + (i.title || '').length + ':' + (i.text || '').length).join(',');
+  if (key === _simOrderKey && _simOrderIds) {
+    const byId = new Map(items.map((i) => [i.id, i]));
+    return _simOrderIds.map((id) => byId.get(id));
+  }
+  const res = _reorderBySimilarityRaw(items, threshold);
+  _simOrderKey = key; _simOrderIds = res.map((i) => i.id);
+  return res;
+}
+function _reorderBySimilarityRaw(items, threshold = 0.55) {
   const grouped = computeSimilarityGroups(items, threshold);
   const visited = new Set();
   const result = [];
@@ -4180,10 +4192,24 @@ window.addEventListener('DOMContentLoaded', () => {
     const imageId = uid();
     const mime = fileOrBlob.type || 'image/jpeg';
     await idbPut(db, 'images', { imageId, iv: ivB64, mime, cipher: cipherBuffer });
-    try { await pushRemoteImage(imageId, ivB64, mime, bufToB64(cipherBuffer)); }
-    catch (e) { console.warn('画像のSupabase同期に失敗しました', e); }
+    // 端末への保存まで終われば先に進む。Supabaseへの送信は裏で行う（待たないので、編集画面をすぐ閉じられる）
+    skPendingPushes++;
+    const b64 = bufToB64(cipherBuffer);
+    skPushRemoteLimited(imageId, ivB64, mime, b64)
+      .catch((e) => console.warn('画像のSupabase同期に失敗しました', e))
+      .finally(() => { skPendingPushes--; });
     return { imageId, imageIv: ivB64, imageMime: mime };
   }
+  // 裏での画像送信は同時に3件まで（一気に大量に送って詰まるのを防ぐ）。送信が終わる前にページを閉じようとしたら確認を出す
+  var skPendingPushes = 0, skPushActive = 0;
+  var skPushWaiters = [];
+  async function skPushRemoteLimited(...args) {
+    while (skPushActive >= 3) await new Promise((r) => skPushWaiters.push(r));
+    skPushActive++;
+    try { await pushRemoteImage(...args); }
+    finally { skPushActive--; const w = skPushWaiters.shift(); if (w) w(); }
+  }
+  window.addEventListener('beforeunload', (e) => { if (skPendingPushes > 0) { e.preventDefault(); e.returnValue = ''; } });
   // 画像の同時読み込み数を制限する（一気に大量リクエストを送ってSupabase側が詰まるのを防ぐ）
   const SK_MAX_CONCURRENT_IMAGE_LOADS = 4;
   let sk_activeImageLoads = 0;
@@ -5281,14 +5307,14 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!text && !pendingNewImages.length) { closeEditorUI(); return; }
         const genreIds = editorGenreIds.length ? editorGenreIds.slice() : (notebook.genres[0] ? [notebook.genres[0].id] : []);
         if (!genreIds.length) { closeEditorUI(); return; }
-        const uploaded = [];
-        for (const p of pendingNewImages) uploaded.push(await uploadImageBlob(p.file));
+        const uploaded = await Promise.all(pendingNewImages.map((p) => uploadImageBlob(p.file)));
         const it = {
           id: uid(), genreIds, title, text, favorite: editorFavorite, trashed: false,
           images: uploaded, useCount: 0, lastUsedAt: null,
           createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
         };
         notebook.items.push(it);
+        if (sk_bulkRevealState && uploaded.length) sk_revealedIds.add(it.id); // 👁表示モードのときは、追加した画像もすぐ表示する
         closeEditorUI(); renderStorageView();
         showCenterToast('✓ 保存しました');
         saveNotebookBackground();
@@ -5298,11 +5324,11 @@ window.addEventListener('DOMContentLoaded', () => {
           const imageWillChange = pendingNewImages.length > 0 || removedExisting.length > 0;
           const snap = editorOriginalSnapshot;
           const changed = !snap || snap.title !== title || snap.text !== text || snap.favorite !== editorFavorite || imageWillChange;
-          for (const img of removedExisting) await deleteImageById(img.imageId);
-          const uploaded = [];
-          for (const p of pendingNewImages) uploaded.push(await uploadImageBlob(p.file));
+          const uploaded = await Promise.all(pendingNewImages.map((p) => uploadImageBlob(p.file)));
           it.title = title; it.text = text; it.favorite = editorFavorite;
           it.images = [...keptExisting, ...uploaded];
+          if (sk_bulkRevealState && uploaded.length) sk_revealedIds.add(it.id);
+          removedExisting.forEach((img) => { deleteImageById(img.imageId).catch(() => {}); }); // 削除は裏で行う（待たない）
           if (changed) it.updatedAt = new Date().toISOString();
           closeEditorUI(); renderStorageView();
           if (changed) showCenterToast('✓ 保存しました');
@@ -5619,6 +5645,7 @@ window.addEventListener('DOMContentLoaded', () => {
             createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
           };
           notebook.items.push(it);
+          if (sk_bulkRevealState && it.images.length) sk_revealedIds.add(it.id);
           await saveNotebook();
           $('#sk-quicksave-overlay').classList.remove('active');
           showCenterToast('✓ 保管庫に保存しました');
